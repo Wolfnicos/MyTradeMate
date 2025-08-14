@@ -2,7 +2,8 @@ import Foundation
 import CryptoKit
 
 class BinanceExchangeClient: ExchangeClient {
-    let id: ExchangeID = .binance
+    let id: Exchange = .binance
+    let exchange: Exchange = .binance
     private let baseURL = URL(string: "https://api.binance.com")!
     private let wsURL = URL(string: "wss://stream.binance.com:9443/ws")!
     
@@ -111,17 +112,17 @@ class BinanceExchangeClient: ExchangeClient {
     func createOrder(_ req: OrderRequest) async throws -> OrderFill {
         // TODO: Implement live trading with API keys and signatures
         // For MVP, only support MARKET orders when credentials are present
-        guard let apiKey = try? KeychainStore.shared.getAPIKey(for: .binance),
-              let apiSecret = try? KeychainStore.shared.getAPISecret(for: .binance) else {
+        guard let apiKey = try? await KeychainStore.shared.getAPIKey(for: .binance),
+              let apiSecret = try? await KeychainStore.shared.getAPISecret(for: .binance) else {
             throw ExchangeError.missingCredentials
         }
         
         let timestamp = String(Int64(Date().timeIntervalSince1970 * 1000))
         let params = [
-            "symbol": req.symbol,
+            "symbol": req.symbol.raw,
             "side": req.side == .buy ? "BUY" : "SELL",
             "type": "MARKET",
-            "quantity": String(format: "%.8f", req.qty),
+            "quantity": String(format: "%.8f", req.quantity),
             "timestamp": timestamp
         ]
         
@@ -148,10 +149,12 @@ class BinanceExchangeClient: ExchangeClient {
         case 200:
             let fill = try JSONDecoder().decode(BinanceOrderResponse.self, from: data)
             return OrderFill(
-                orderId: fill.orderId,
-                executedQty: Double(fill.executedQty) ?? 0,
-                avgPrice: Double(fill.avgPrice) ?? 0,
-                time: Date(timeIntervalSince1970: Double(fill.transactTime) / 1000)
+                id: UUID(),
+                symbol: req.symbol,
+                side: req.side,
+                quantity: Double(fill.executedQty) ?? 0,
+                price: Double(fill.avgPrice) ?? 0,
+                timestamp: Date(timeIntervalSince1970: Double(fill.transactTime) / 1000)
             )
         case 401:
             throw ExchangeError.missingCredentials
@@ -183,6 +186,42 @@ class BinanceExchangeClient: ExchangeClient {
             using: key
         )
         return Data(signature).map { String(format: "%02hhx", $0) }.joined()
+    }
+    
+    // MARK: - ExchangeClient Protocol
+    
+    func normalized(symbol: Symbol) -> String {
+        return symbol.raw.uppercased() // Binance uses BTCUSDT format
+    }
+    
+    func bestPrice(for symbol: Symbol) async throws -> Double {
+        // Simple implementation - get current market price from API
+        let symbolStr = normalized(symbol: symbol)
+        guard let url = URL(string: "https://api.binance.com/api/v3/ticker/price?symbol=\(symbolStr)") else {
+            throw URLError(.badURL)
+        }
+        
+        let (data, _) = try await URLSession.shared.data(from: url)
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let priceStr = json["price"] as? String,
+              let price = Double(priceStr) else {
+            throw URLError(.cannotParseResponse)
+        }
+        
+        return price
+    }
+    
+    func placeMarketOrder(_ req: OrderRequest) async throws -> OrderFill {
+        // Mock implementation for paper trading
+        let price = try await bestPrice(for: req.symbol)
+        return OrderFill(
+            id: UUID(),
+            symbol: req.symbol,
+            side: req.side,
+            quantity: req.quantity,
+            price: price,
+            timestamp: Date()
+        )
     }
 }
 

@@ -1,6 +1,8 @@
 import Foundation
+import SwiftUI
 
-public actor RiskManager {
+@MainActor
+public final class RiskManager: ObservableObject {
     public static let shared = RiskManager()
     
     public struct Params: Codable, Sendable {

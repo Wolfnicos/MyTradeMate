@@ -40,7 +40,7 @@ enum KrakenModels {
             case count = 7
         }
         
-        func toCandle(symbol: String, timeframe: TimeFrame) -> Candle? {
+        func toCandle(symbol: String, timeframe: Timeframe) -> Candle? {
             guard let open = Decimal(string: open),
                   let high = Decimal(string: high),
                   let low = Decimal(string: low),
@@ -50,14 +50,12 @@ enum KrakenModels {
             }
             
             return Candle(
-                symbol: symbol,
-                timeframe: timeframe,
-                timestamp: Date(timeIntervalSince1970: time),
-                open: open,
-                high: high,
-                low: low,
-                close: close,
-                volume: volume
+                openTime: Date(timeIntervalSince1970: time),
+                open: Double(truncating: open as NSNumber),
+                high: Double(truncating: high as NSNumber),
+                low: Double(truncating: low as NSNumber),
+                close: Double(truncating: close as NSNumber),
+                volume: Double(truncating: volume as NSNumber)
             )
         }
     }
@@ -92,16 +90,16 @@ enum KrakenModels {
         let balance: String
         let hold: String
         
-        func toAccountBalance() -> Account.Balance? {
+        func toAccountBalance() -> MyTradeMate.Balance? {
             guard let free = Decimal(string: balance),
                   let locked = Decimal(string: hold) else {
                 return nil
             }
             
-            return Account.Balance(
+            return MyTradeMate.Balance(
                 asset: asset,
-                free: free,
-                locked: locked
+                free: Double(truncating: free as NSNumber),
+                locked: Double(truncating: locked as NSNumber)
             )
         }
     }
@@ -139,27 +137,22 @@ enum KrakenModels {
             guard let quantity = Decimal(string: vol),
                   let filledQty = Decimal(string: vol_exec),
                   let price = Decimal(string: descr.price),
-                  let side = Order.Side(rawValue: descr.type.lowercased()),
+                  let side = OrderSide(rawValue: descr.type.lowercased()),
                   let type = mapOrderType(descr.ordertype),
                   let status = mapOrderStatus(status) else {
                 return nil
             }
             
-            var order = Order(
+            let order = Order(
+                id: UUID().uuidString,
                 symbol: descr.pair,
                 side: side,
-                type: type,
-                quantity: quantity,
-                price: price,
-                exchange: .kraken
+                amount: Double(truncating: quantity as NSNumber),
+                price: Double(truncating: price as NSNumber),
+                status: status,
+                orderType: type,
+                createdAt: Date()
             )
-            
-            order.status = status
-            order.filledQuantity = filledQty
-            
-            if let stopPrice = stopprice.flatMap({ Decimal(string: $0) }) {
-                order.stopPrice = stopPrice
-            }
             
             return order
         }
@@ -176,11 +169,11 @@ enum KrakenModels {
         
         private func mapOrderStatus(_ status: String) -> Order.Status? {
             switch status.lowercased() {
-            case "pending": return .new
-            case "open": return .new
+            case "pending": return .pending
+            case "open": return .pending
             case "closed": return .filled
             case "canceled": return .cancelled
-            case "expired": return .expired
+            case "expired": return .rejected
             default: return nil
             }
         }

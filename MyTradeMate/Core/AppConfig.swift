@@ -6,7 +6,7 @@ import Foundation
     
     // MARK: - Default Symbols
     
-    let defaultSymbols: [ExchangeID: String] = [
+    let defaultSymbols: [Exchange: String] = [
         .binance: "BTCUSDT",
         .kraken: "XBTUSDT"  // Falls back to XBTUSD if USDT pair not available
     ]

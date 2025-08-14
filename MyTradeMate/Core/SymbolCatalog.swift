@@ -3,7 +3,7 @@ import Foundation
 struct SymbolCatalog {
     // MARK: - Symbol Mapping
     
-    static func defaultSymbol(for exchange: ExchangeID) -> String {
+    static func defaultSymbol(for exchange: Exchange) -> String {
         switch exchange {
         case .binance:
             return "BTCUSDT"
@@ -12,7 +12,7 @@ struct SymbolCatalog {
         }
     }
     
-    static func normalize(_ uiSymbol: String, for exchange: ExchangeID) -> String {
+    static func normalize(_ uiSymbol: String, for exchange: Exchange) -> String {
         // Convert UI symbol to exchange-specific format
         switch exchange {
         case .binance:
@@ -38,7 +38,7 @@ struct SymbolCatalog {
         }
     }
     
-    static func quotePrecision(for exchange: ExchangeID, symbol: String) -> Int {
+    static func quotePrecision(for exchange: Exchange, symbol: String) -> Int {
         let normalizedSymbol = normalize(symbol, for: exchange)
         
         // Return standard precisions for common pairs
@@ -67,7 +67,7 @@ struct SymbolCatalog {
     
     // MARK: - Symbol Validation
     
-    static func isValidSymbol(_ symbol: String, for exchange: ExchangeID) -> Bool {
+    static func isValidSymbol(_ symbol: String, for exchange: Exchange) -> Bool {
         let normalized = normalize(symbol, for: exchange)
         
         // Basic validation rules
@@ -91,7 +91,7 @@ struct SymbolCatalog {
     
     // MARK: - Symbol Components
     
-    static func baseAsset(_ symbol: String, for exchange: ExchangeID) -> String {
+    static func baseAsset(_ symbol: String, for exchange: Exchange) -> String {
         let normalized = normalize(symbol, for: exchange)
         
         switch exchange {
@@ -108,7 +108,7 @@ struct SymbolCatalog {
         }
     }
     
-    static func quoteAsset(_ symbol: String, for exchange: ExchangeID) -> String {
+    static func quoteAsset(_ symbol: String, for exchange: Exchange) -> String {
         let normalized = normalize(symbol, for: exchange)
         
         switch exchange {

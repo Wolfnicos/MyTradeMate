@@ -8,7 +8,7 @@ public actor PaperExchangeClient: ExchangeClient {
         self.exchange = exchange
     }
     
-    public func normalized(symbol: Symbol) -> String {
+    nonisolated public func normalized(symbol: Symbol) -> String {
         switch exchange {
         case .binance: return symbol.raw.replacingOccurrences(of: "-", with: "") // e.g. BTCUSDT
         case .kraken: return symbol.raw                                          // e.g. BTC/USDT or BTCUSDT

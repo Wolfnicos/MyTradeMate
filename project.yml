@@ -9,6 +9,8 @@ targets:
     platform: iOS
     sources:
       - path: MyTradeMate
+        excludes:
+          - Tests/**
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.yourdomain.MyTradeMate

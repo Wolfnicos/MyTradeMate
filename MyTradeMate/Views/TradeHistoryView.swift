@@ -121,18 +121,6 @@ struct TradeHistoryView: View {
         }
     }
     
-    private func awaitSnapshot() throws -> [OrderFill] {
-        let sem = DispatchSemaphore(value: 0)
-        var snapshot: [OrderFill] = []
-        Task {
-            let s = await TradeManager.shared.fillsSnapshot()
-            snapshot = s
-            sem.signal()
-        }
-        sem.wait()
-        return snapshot
-    }
-    
     private func filterFills(_ fills: [OrderFill]) -> [OrderFill] {
         let (from, to) = rangeDates(exportRange)
         return fills.filter { f in
@@ -145,10 +133,10 @@ struct TradeHistoryView: View {
     
     private func exportCSV() {
         isExporting = true
-        BackgroundExporter.run(work: {
-            let all = try awaitSnapshot()
+        BackgroundExporter.runAsync(work: {
+            let all = await TradeManager.shared.fillsSnapshot()
             let filtered = filterFills(all)
-            return try CSVExporter.exportFills(filtered, fileName: "trades")
+            return try await CSVExporter.exportFills(filtered, fileName: "trades")
         }, completion: { result in
             isExporting = false
             switch result {
@@ -165,8 +153,8 @@ struct TradeHistoryView: View {
     
     private func exportDailyPnL() {
         isExporting = true
-        BackgroundExporter.run(work: {
-            let all = try awaitSnapshot()
+        BackgroundExporter.runAsync(work: {
+            let all = await TradeManager.shared.fillsSnapshot()
             let filtered = filterFills(all)
             let rows = PnLAggregator.aggregateDaily(fills: filtered)
             return try PnLCSVExporter.exportDaily(rows)
@@ -186,8 +174,8 @@ struct TradeHistoryView: View {
     
     private func exportPnLMetrics() {
         isExporting = true
-        BackgroundExporter.run(work: {
-            let all = try awaitSnapshot()
+        BackgroundExporter.runAsync(work: {
+            let all = await TradeManager.shared.fillsSnapshot()
             let filtered = filterFills(all)
             let metrics = PnLMetricsAggregator.compute(from: filtered)
             return try PnLMetricsCSVExporter.export(metrics)
@@ -207,8 +195,8 @@ struct TradeHistoryView: View {
     
     private func exportJSON() {
         isExporting = true
-        BackgroundExporter.run(work: {
-            let all = try awaitSnapshot()
+        BackgroundExporter.runAsync(work: {
+            let all = await TradeManager.shared.fillsSnapshot()
             let filtered = filterFills(all)
             return try JSONExporter.export(filtered, fileName: "trades")
         }, completion: { result in

@@ -9,7 +9,23 @@ struct RootTabs: View {
             NavigationStack { TradeHistoryView() }
                 .tabItem { Label("History", systemImage: "clock.arrow.circlepath") }
             
-            NavigationStack { SettingsView() }
+            NavigationStack { 
+                List {
+                    Section("General") {
+                        Toggle("Haptics", isOn: .constant(true))
+                        Toggle("Dark Mode", isOn: .constant(false))
+                    }
+                    Section("About") {
+                        HStack {
+                            Text("Version")
+                            Spacer()
+                            Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .navigationTitle("Settings")
+            }
                 .tabItem { Label("Settings", systemImage: "gear") }
         }
     }

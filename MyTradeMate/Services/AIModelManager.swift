@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 public protocol TradingSignalModel: Sendable {
     func signal(symbol: Symbol, mark: Double) async -> Signal
@@ -50,10 +51,18 @@ public actor H4Model: TradingSignalModel {
     }
 }
 
-public actor AIModelManager {
+@MainActor
+public final class AIModelManager: ObservableObject {
     public static let shared = AIModelManager()
     
     public enum Mode: String, Codable, Sendable { case normal, precision }
+    
+    public func preloadModels() async {
+        // Preload all models by accessing their shared instances
+        _ = M5Model.shared
+        _ = H1Model.shared
+        _ = H4Model.shared
+    }
     
     public func generateSignal(symbol: Symbol, mark: Double, timeframe: Timeframe, mode: Mode) async -> Signal {
         switch mode {

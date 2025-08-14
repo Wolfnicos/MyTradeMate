@@ -78,8 +78,8 @@ actor SignalEngine {
         }
         
         return Signal(
-            scores: scores,
             confidence: confidence,
+            scores: scores,
             action: action
         )
     }

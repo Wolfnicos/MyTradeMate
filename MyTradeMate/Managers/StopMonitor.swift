@@ -28,7 +28,12 @@ public actor StopMonitor {
         guard let p = pos, p.quantity > 0 else { return }
         
         // Prefer latest tick pushed; else compute mid
-        let lastPrice = currentPrice ?? await MarketPriceCache.shared.lastPrice
+        let lastPrice: Double
+        if let currentPrice = currentPrice {
+            lastPrice = currentPrice
+        } else {
+            lastPrice = await MarketPriceCache.shared.lastPrice
+        }
         
         // Read current SL/TP from RiskManager
         let risk = await RiskManager.shared.params

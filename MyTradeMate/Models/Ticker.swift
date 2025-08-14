@@ -1,16 +1,20 @@
 import Foundation
 
-struct Ticker: Identifiable, Hashable {
-    let id = UUID()
-    let symbol: String
-    let price: Double
-    let time: Date
+public struct Ticker: Codable, Sendable, Identifiable {
+    public let id: UUID
+    public let symbol: String
+    public let price: Double
+    public let time: Date
     
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
+    public init(id: UUID = UUID(), symbol: String, price: Double, time: Date) {
+        self.id = id
+        self.symbol = symbol
+        self.price = price
+        self.time = time
     }
     
-    static func == (lhs: Ticker, rhs: Ticker) -> Bool {
-        lhs.id == rhs.id
+    // Convenience initializer for backward compatibility
+    public init(symbol: String, price: Double, ts: Date) {
+        self.init(id: UUID(), symbol: symbol, price: price, time: ts)
     }
 }

@@ -3,6 +3,7 @@ import Foundation
 actor KrakenClient: ExchangeClient {
     let name = "Kraken"
     let supportsWebSocket = true
+    let exchange: Exchange = .kraken
     
     private var task: URLSessionWebSocketTask?
     private var continuation: AsyncStream<Ticker>.Continuation?
@@ -85,5 +86,49 @@ actor KrakenClient: ExchangeClient {
             }
             self.receive(ws, originalSymbols: originalSymbols)
         }
+    }
+    
+    // MARK: - ExchangeClient Protocol
+    
+    nonisolated func normalized(symbol: Symbol) -> String {
+        let symbol = symbol.raw.uppercased()
+        // Convert BTC to XBT for Kraken
+        if symbol.hasPrefix("BTC") {
+            return "XBT" + String(symbol.dropFirst(3))
+        }
+        return symbol
+    }
+    
+    func bestPrice(for symbol: Symbol) async throws -> Double {
+        // Simple implementation - get current market price from API
+        let symbolStr = normalized(symbol: symbol)
+        guard let url = URL(string: "https://api.kraken.com/0/public/Ticker?pair=\(symbolStr)") else {
+            throw URLError(.badURL)
+        }
+        
+        let (data, _) = try await URLSession.shared.data(from: url)
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let result = json["result"] as? [String: Any],
+              let pair = result.values.first as? [String: Any],
+              let askArray = pair["a"] as? [String],
+              let priceStr = askArray.first,
+              let price = Double(priceStr) else {
+            throw URLError(.cannotParseResponse)
+        }
+        
+        return price
+    }
+    
+    func placeMarketOrder(_ req: OrderRequest) async throws -> OrderFill {
+        // Mock implementation for paper trading
+        let price = try await bestPrice(for: req.symbol)
+        return OrderFill(
+            id: UUID(),
+            symbol: req.symbol,
+            side: req.side,
+            quantity: req.quantity,
+            price: price,
+            timestamp: Date()
+        )
     }
 }

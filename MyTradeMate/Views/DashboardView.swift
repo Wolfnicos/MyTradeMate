@@ -10,7 +10,7 @@ struct DashboardView: View {
                     ForEach(Exchange.allCases, id: \.self) { Text($0.displayName).tag($0) }
                 }
                 .pickerStyle(.menu)
-                .onChange(of: vm.exchange) { _, ex in vm.changeExchange(ex) }
+                .onChange(of: vm.exchange) { ex in vm.changeExchange(ex) }
                 
                 Text(vm.symbol.display).font(.headline)
                 Spacer()
@@ -38,11 +38,11 @@ struct DashboardView: View {
             }
             
             if let s = vm.lastSignal {
-                Text("Signal: \(s.type.rawValue.uppercased()) • \(Int(s.confidence * 100))% • \(s.modelName)")
+                Text("Signal: \(s.type?.rawValue.uppercased() ?? "UNKNOWN") • \(Int(s.confidence * 100))% • \(s.modelName ?? "N/A")")
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .transition(.move(edge: .top).combined(with: .opacity))
-                    .id(s.timestamp)
+                    .id(s.timestamp ?? Date())
             }
             
             HStack(spacing: 12) {

@@ -14,23 +14,23 @@ actor KeychainStore {
     
     // MARK: - API Key Management
     
-    func saveAPIKey(_ key: String, for exchange: ExchangeID) throws {
+    func saveAPIKey(_ key: String, for exchange: Exchange) throws {
         try saveItem(key, service: "apiKey.\(exchange.rawValue)")
     }
     
-    func saveAPISecret(_ secret: String, for exchange: ExchangeID) throws {
+    func saveAPISecret(_ secret: String, for exchange: Exchange) throws {
         try saveItem(secret, service: "apiSecret.\(exchange.rawValue)")
     }
     
-    func getAPIKey(for exchange: ExchangeID) throws -> String {
+    func getAPIKey(for exchange: Exchange) throws -> String {
         try getString(service: "apiKey.\(exchange.rawValue)")
     }
     
-    func getAPISecret(for exchange: ExchangeID) throws -> String {
+    func getAPISecret(for exchange: Exchange) throws -> String {
         try getString(service: "apiSecret.\(exchange.rawValue)")
     }
     
-    func deleteCredentials(for exchange: ExchangeID) throws {
+    func deleteCredentials(for exchange: Exchange) throws {
         try delete(service: "apiKey.\(exchange.rawValue)")
         try delete(service: "apiSecret.\(exchange.rawValue)")
     }

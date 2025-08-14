@@ -55,7 +55,7 @@ final class DashboardVM: ObservableObject {
     
     func buy(_ qty: Double = 0.01) {
         Task {
-            Haptics.tradeBuy()
+            Haptics.buyFeedback()
             let req = OrderRequest(symbol: symbol, side: .buy, quantity: qty, limitPrice: nil, stopLoss: nil, takeProfit: nil)
             _ = try? await TradeManager.shared.manualOrder(req)
         }
@@ -63,7 +63,7 @@ final class DashboardVM: ObservableObject {
     
     func sell(_ qty: Double = 0.01) {
         Task {
-            Haptics.tradeSell()
+            Haptics.sellFeedback()
             let req = OrderRequest(symbol: symbol, side: .sell, quantity: qty, limitPrice: nil, stopLoss: nil, takeProfit: nil)
             _ = try? await TradeManager.shared.manualOrder(req)
         }

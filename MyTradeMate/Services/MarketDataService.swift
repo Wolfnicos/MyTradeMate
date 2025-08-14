@@ -1,11 +1,18 @@
 import Foundation
+import SwiftUI
 
-public actor MarketDataService {
+@MainActor
+public final class MarketDataService: ObservableObject {
     public static let shared = MarketDataService()
     
     private var task: URLSessionWebSocketTask?
     private var symbol: Symbol?
     private var onTick: ((PriceTick) -> Void)?
+    private var isConnecting = false
+    private var shouldReconnect = false
+    private var reconnectAttempts = 0
+    private let maxReconnectAttempts = 10
+    private var pingTimer: Timer?
     
     public func subscribe(_ handler: @escaping (PriceTick) -> Void) {
         onTick = handler
@@ -14,45 +21,133 @@ public actor MarketDataService {
     public func start(symbol: Symbol) async {
         await stop()
         self.symbol = symbol
-        
-        let (url, subscribeMessage) = wsSpec(for: symbol)
-        let session = URLSession(configuration: .default)
-        let t = session.webSocketTask(with: url)
-        task = t
-        t.resume()
-        
-        if let msgData = try? JSONSerialization.data(withJSONObject: subscribeMessage),
-           let txt = String(data: msgData, encoding: .utf8) {
-            await send(.string(txt))
-        }
-        
-        receiveLoop()
+        shouldReconnect = true
+        reconnectAttempts = 0
+        await connect()
     }
     
     public func stop() async {
+        shouldReconnect = false
+        stopPingTimer()
         task?.cancel(with: .goingAway, reason: nil)
         task = nil
         symbol = nil
+        isConnecting = false
     }
     
-    private func receiveLoop() {
-        task?.receive { [weak self] result in
-            guard let self else { return }
-            Task {
-                switch result {
-                case .failure:
-                    // reconnect simple backoff
-                    try? await Task.sleep(nanoseconds: 800_000_000)
-                    if let s = self.symbol { await self.start(symbol: s) }
-                case .success(let message):
-                    await self.handle(message: message)
-                    self.receiveLoop()
+    private func connect() async {
+        guard let symbol = symbol, !isConnecting else { return }
+        
+        isConnecting = true
+        let (url, subscribeMessage) = wsSpec(for: symbol)
+        
+        // URL sanity check
+        guard url.scheme == "wss", url.host != nil else {
+            print("❌ Invalid WebSocket URL: \(url)")
+            isConnecting = false
+            return
+        }
+        
+        let session = URLSession(configuration: .default)
+        let newTask = session.webSocketTask(with: url)
+        task = newTask // Keep strong reference
+        
+        newTask.resume() // CRITICAL: Must call resume()
+        
+        // Send subscription message if needed
+        if !subscribeMessage.isEmpty,
+           let msgData = try? JSONSerialization.data(withJSONObject: subscribeMessage),
+           let txt = String(data: msgData, encoding: .utf8) {
+            send(.string(txt))
+        }
+        
+        isConnecting = false
+        reconnectAttempts = 0
+        startPingTimer()
+        
+        // Start async receive loop
+        Task {
+            await receiveLoop()
+        }
+    }
+    
+    private func receiveLoop() async {
+        guard let task = task else { return }
+        
+        do {
+            let message = try await task.receive()
+            await MainActor.run {
+                self.handle(message: message)
+            }
+            
+            // Continue receiving if still connected
+            if self.task === task && shouldReconnect {
+                Task {
+                    await self.receiveLoop()
                 }
+            }
+        } catch {
+            // Connection lost - attempt reconnect if should reconnect
+            if shouldReconnect {
+                await handleConnectionLoss(error: error)
             }
         }
     }
     
-    private func handle(message: URLSessionWebSocketTask.Message) async {
+    private func handleConnectionLoss(error: Error) async {
+        print("🔌 WebSocket connection lost: \(error.localizedDescription)")
+        
+        guard shouldReconnect && reconnectAttempts < maxReconnectAttempts else {
+            print("❌ Max reconnection attempts reached")
+            return
+        }
+        
+        reconnectAttempts += 1
+        let delay = min(pow(2.0, Double(reconnectAttempts)), 30.0) // Exponential backoff, max 30s
+        print("🔄 Reconnecting in \(delay)s (attempt \(reconnectAttempts)/\(maxReconnectAttempts))")
+        
+        try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+        
+        if shouldReconnect {
+            stopPingTimer()
+            task?.cancel(with: .abnormalClosure, reason: nil)
+            task = nil
+            await connect()
+        }
+    }
+    
+    private func startPingTimer() {
+        stopPingTimer()
+        pingTimer = Timer.scheduledTimer(withTimeInterval: 30.0, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                await self?.sendPing()
+            }
+        }
+    }
+    
+    private func stopPingTimer() {
+        pingTimer?.invalidate()
+        pingTimer = nil
+    }
+    
+    private func sendPing() async {
+        guard let task = task else { return }
+        
+        do {
+            try await task.sendPing { [weak self] error in
+                if let error = error {
+                    print("🏓 Ping failed: \(error.localizedDescription)")
+                    Task {
+                        await self?.handleConnectionLoss(error: error)
+                    }
+                }
+            }
+        } catch {
+            await handleConnectionLoss(error: error)
+        }
+    }
+    
+    private func handle(message: URLSessionWebSocketTask.Message) {
         guard case let .string(text) = message,
               let data = text.data(using: .utf8) ?? text.replacingOccurrences(of: "\n", with: "").data(using: .utf8)
         else { return }
@@ -67,8 +162,10 @@ public actor MarketDataService {
                    let cStr = json["c"] as? String,
                    let price = Double(cStr) {
                     let tick = PriceTick(symbol: sym, price: price, change24h: nil, ts: Date())
-                    await MarketPriceCache.shared.update(price)
-                    await StopMonitor.shared.onTick(price)
+                    Task {
+                        await MarketPriceCache.shared.update(price)
+                        await StopMonitor.shared.onTick(price)
+                    }
                     onTick?(tick)
                 }
             case .kraken:
@@ -80,18 +177,18 @@ public actor MarketDataService {
                    let last = cArr.first,
                    let price = Double(last) {
                     let tick = PriceTick(symbol: sym, price: price, change24h: nil, ts: Date())
-                    await MarketPriceCache.shared.update(price)
-                    await StopMonitor.shared.onTick(price)
+                    Task {
+                        await MarketPriceCache.shared.update(price)
+                        await StopMonitor.shared.onTick(price)
+                    }
                     onTick?(tick)
                 }
             }
         }
     }
     
-    private func send(_ message: URLSessionWebSocketTask.Message) async {
-        await withCheckedContinuation { cont in
-            task?.send(message) { _ in cont.resume() }
-        }
+    private func send(_ message: URLSessionWebSocketTask.Message) {
+        task?.send(message) { _ in }
     }
     
     private func wsSpec(for symbol: Symbol) -> (URL, [String: Any]) {
@@ -99,12 +196,16 @@ public actor MarketDataService {
         case .binance:
             // miniTicker for single symbol
             let stream = symbol.raw.lowercased() + "@miniTicker"
-            let url = URL(string: "wss://stream.binance.com:9443/ws/\(stream)")!
+            guard let url = URL(string: "wss://stream.binance.com:9443/ws/\(stream)") else {
+                fatalError("Invalid Binance WebSocket URL")
+            }
             // no subscribe needed for direct /ws/stream
             return (url, [:])
         case .kraken:
             // needs subscribe message
-            let url = URL(string: "wss://ws.kraken.com/")!
+            guard let url = URL(string: "wss://ws.kraken.com/") else {
+                fatalError("Invalid Kraken WebSocket URL")
+            }
             let krakenPair = krakenPairName(symbol.raw)
             let sub: [String: Any] = [
                 "event": "subscribe",
@@ -124,5 +225,10 @@ public actor MarketDataService {
             return "\(base)/\(quote)"
         }
         return "XBT/USDT"
+    }
+    
+    public func setPaperExchange(_ exchange: Exchange) async {
+        // For paper trading, we can switch data sources
+        // Implementation can be expanded based on needs
     }
 }

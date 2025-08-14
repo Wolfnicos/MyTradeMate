@@ -2,7 +2,8 @@ import Foundation
 import CryptoKit
 
 class KrakenExchangeClient: ExchangeClient {
-    let id: ExchangeID = .kraken
+    let id: Exchange = .kraken
+    let exchange: Exchange = .kraken
     private let baseURL = URL(string: "https://api.kraken.com")!
     private let wsURL = URL(string: "wss://ws.kraken.com")!
     
@@ -106,17 +107,17 @@ class KrakenExchangeClient: ExchangeClient {
     func createOrder(_ req: OrderRequest) async throws -> OrderFill {
         // TODO: Implement live trading with API keys and signatures
         // For MVP, only support MARKET orders when credentials are present
-        guard let apiKey = try? KeychainStore.shared.getAPIKey(for: .kraken),
-              let apiSecret = try? KeychainStore.shared.getAPISecret(for: .kraken) else {
+        guard let apiKey = try? await KeychainStore.shared.getAPIKey(for: .kraken),
+              let apiSecret = try? await KeychainStore.shared.getAPISecret(for: .kraken) else {
             throw ExchangeError.missingCredentials
         }
         
         let nonce = String(Int64(Date().timeIntervalSince1970 * 1000))
-        let params = [
-            "pair": req.symbol,
+        let params: [String: String] = [
+            "pair": req.symbol.raw,
             "type": req.side == .buy ? "buy" : "sell",
             "ordertype": "market",
-            "volume": String(format: "%.8f", req.qty),
+            "volume": String(format: "%.8f", req.quantity),
             "nonce": nonce
         ]
         
@@ -128,7 +129,7 @@ class KrakenExchangeClient: ExchangeClient {
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         
         let body = params.map { "\($0.key)=\($0.value)" }.joined(separator: "&")
-        request.httpBody = body.data(using: .utf8)
+        request.httpBody = body.data(using: String.Encoding.utf8)
         
         let (data, response) = try await URLSession.shared.data(for: request)
         
@@ -145,10 +146,12 @@ class KrakenExchangeClient: ExchangeClient {
             
             // For MVP, assume immediate fill at market price
             return OrderFill(
-                orderId: orderId,
-                executedQty: req.qty,
-                avgPrice: req.price ?? 0,
-                time: Date()
+                id: UUID(),
+                symbol: req.symbol,
+                side: req.side,
+                quantity: req.quantity,
+                price: req.limitPrice ?? 0,
+                timestamp: Date()
             )
         case 401:
             throw ExchangeError.missingCredentials
@@ -189,6 +192,50 @@ class KrakenExchangeClient: ExchangeClient {
             using: key
         )
         return Data(signature).base64EncodedString()
+    }
+    
+    // MARK: - ExchangeClient Protocol
+    
+    func normalized(symbol: Symbol) -> String {
+        let symbol = symbol.raw.uppercased()
+        // Convert BTC to XBT for Kraken
+        if symbol.hasPrefix("BTC") {
+            return "XBT" + String(symbol.dropFirst(3))
+        }
+        return symbol
+    }
+    
+    func bestPrice(for symbol: Symbol) async throws -> Double {
+        // Simple implementation - get current market price from API
+        let symbolStr = normalized(symbol: symbol)
+        guard let url = URL(string: "https://api.kraken.com/0/public/Ticker?pair=\(symbolStr)") else {
+            throw URLError(.badURL)
+        }
+        
+        let (data, _) = try await URLSession.shared.data(from: url)
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let result = json["result"] as? [String: Any],
+              let pair = result.values.first as? [String: Any],
+              let askArray = pair["a"] as? [String],
+              let priceStr = askArray.first,
+              let price = Double(priceStr) else {
+            throw URLError(.cannotParseResponse)
+        }
+        
+        return price
+    }
+    
+    func placeMarketOrder(_ req: OrderRequest) async throws -> OrderFill {
+        // Mock implementation for paper trading
+        let price = try await bestPrice(for: req.symbol)
+        return OrderFill(
+            id: UUID(),
+            symbol: req.symbol,
+            side: req.side,
+            quantity: req.quantity,
+            price: price,
+            timestamp: Date()
+        )
     }
 }
 

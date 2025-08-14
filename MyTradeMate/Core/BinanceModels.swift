@@ -29,24 +29,22 @@ enum BinanceModels {
             case takerBuyQuoteVolume = 10
         }
         
-        func toCandle(symbol: String, timeframe: TimeFrame) -> Candle? {
-            guard let open = Decimal(string: open),
-                  let high = Decimal(string: high),
-                  let low = Decimal(string: low),
-                  let close = Decimal(string: close),
-                  let volume = Decimal(string: volume) else {
+        func toCandle(symbol: String, timeframe: Timeframe) -> Candle? {
+            guard let openVal = Double(open),
+                  let highVal = Double(high),
+                  let lowVal = Double(low),
+                  let closeVal = Double(close),
+                  let volumeVal = Double(volume) else {
                 return nil
             }
             
             return Candle(
-                symbol: symbol,
-                timeframe: timeframe,
-                timestamp: Date(timeIntervalSince1970: TimeInterval(openTime / 1000)),
-                open: open,
-                high: high,
-                low: low,
-                close: close,
-                volume: volume
+                openTime: Date(timeIntervalSince1970: TimeInterval(openTime / 1000)),
+                open: openVal,
+                high: highVal,
+                low: lowVal,
+                close: closeVal,
+                volume: volumeVal
             )
         }
     }
@@ -68,16 +66,16 @@ enum BinanceModels {
             let free: String
             let locked: String
             
-            func toAccountBalance() -> Account.Balance? {
-                guard let free = Decimal(string: free),
-                      let locked = Decimal(string: locked) else {
+            func toAccountBalance() -> MyTradeMate.Balance? {
+                guard let freeVal = Double(free),
+                      let lockedVal = Double(locked) else {
                     return nil
                 }
                 
-                return Account.Balance(
+                return MyTradeMate.Balance(
                     asset: asset,
-                    free: free,
-                    locked: locked
+                    free: freeVal,
+                    locked: lockedVal
                 )
             }
         }
@@ -97,30 +95,24 @@ enum BinanceModels {
         let side: String
         
         func toOrder() -> Order? {
-            guard let price = Decimal(string: price),
-                  let quantity = Decimal(string: origQty),
-                  let filledQty = Decimal(string: executedQty),
-                  let side = Order.Side(rawValue: side.lowercased()),
-                  let type = Order.OrderType(rawValue: type.lowercased()),
-                  let status = Order.Status(rawValue: status.lowercased()),
-                  let timeInForce = Order.TimeInForce(rawValue: timeInForce.lowercased()) else {
+            guard let priceVal = Double(price),
+                  let quantity = Double(origQty),
+                  let sideEnum = OrderSide(rawValue: side.lowercased()),
+                  let typeEnum = Order.OrderType(rawValue: type.lowercased()),
+                  let statusEnum = Order.Status(rawValue: status.lowercased()) else {
                 return nil
             }
             
-            var order = Order(
+            return Order(
+                id: String(orderId),
                 symbol: symbol,
-                side: side,
-                type: type,
-                quantity: quantity,
-                price: price,
-                exchange: .binance,
-                timeInForce: timeInForce
+                side: sideEnum,
+                amount: quantity,
+                price: priceVal,
+                status: statusEnum,
+                orderType: typeEnum,
+                createdAt: Date(timeIntervalSince1970: TimeInterval(transactTime / 1000))
             )
-            
-            order.status = status
-            order.filledQuantity = filledQty
-            
-            return order
         }
     }
     

@@ -1,8 +1,10 @@
 import Foundation
+import SwiftUI
 
 public enum CloseReason: String, Sendable { case manual, stopLoss, takeProfit }
 
-public actor TradeManager {
+@MainActor
+public final class TradeManager: ObservableObject {
     public static let shared = TradeManager()
 
     public private(set) var mode: TradingMode = .paper

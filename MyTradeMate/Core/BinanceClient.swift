@@ -3,6 +3,7 @@ import Foundation
 actor BinanceClient: ExchangeClient {
     let name = "Binance"
     let supportsWebSocket = true
+    let exchange: Exchange = .binance
     
     private var task: URLSessionWebSocketTask?
     private var continuation: AsyncStream<Ticker>.Continuation?
@@ -62,5 +63,41 @@ actor BinanceClient: ExchangeClient {
             // keep receiving
             self.receive(ws)
         }
+    }
+    
+    // MARK: - ExchangeClient Protocol
+    
+    nonisolated func normalized(symbol: Symbol) -> String {
+        return symbol.raw.uppercased() // Binance uses BTCUSDT format
+    }
+    
+    func bestPrice(for symbol: Symbol) async throws -> Double {
+        // Simple implementation - get current market price from API
+        let symbolStr = normalized(symbol: symbol)
+        guard let url = URL(string: "https://api.binance.com/api/v3/ticker/price?symbol=\(symbolStr)") else {
+            throw URLError(.badURL)
+        }
+        
+        let (data, _) = try await URLSession.shared.data(from: url)
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let priceStr = json["price"] as? String,
+              let price = Double(priceStr) else {
+            throw URLError(.cannotParseResponse)
+        }
+        
+        return price
+    }
+    
+    func placeMarketOrder(_ req: OrderRequest) async throws -> OrderFill {
+        // Mock implementation for paper trading
+        let price = try await bestPrice(for: req.symbol)
+        return OrderFill(
+            id: UUID(),
+            symbol: req.symbol,
+            side: req.side,
+            quantity: req.quantity,
+            price: price,
+            timestamp: Date()
+        )
     }
 }
