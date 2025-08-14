@@ -1,0 +1,16 @@
+# Xcode
+*.xcworkspace
+xcuserdata/
+DerivedData/
+build/
+*.ipa
+*.dSYM
+
+# Swift Package Manager
+/.build/
+/Packages/
+/Package.pins
+/Package.resolved
+
+# Misc
+.DS_Store
