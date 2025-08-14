@@ -1,0 +1,31 @@
+name: MyTradeMate
+options:
+  deploymentTarget:
+    iOS: "16.0"
+packages: {}
+targets:
+  MyTradeMate:
+    type: application
+    platform: iOS
+    sources:
+      - path: MyTradeMate
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.yourdomain.MyTradeMate
+        DEVELOPMENT_TEAM: ""
+        SWIFT_VERSION: 5.0
+        CODE_SIGN_STYLE: Automatic
+        INFOPLIST_FILE: MyTradeMate/Info.plist
+        IPHONEOS_DEPLOYMENT_TARGET: 16.0
+    scheme:
+      testTargets:
+        - MyTradeMateTests
+    postCompileScripts: []
+  MyTradeMateTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: MyTradeMateTests
+    settings:
+      base:
+        SWIFT_VERSION: 5.0

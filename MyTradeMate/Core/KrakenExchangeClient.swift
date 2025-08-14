@@ -1,0 +1,210 @@
+import Foundation
+import CryptoKit
+
+class KrakenExchangeClient: ExchangeClient {
+    let id: ExchangeID = .kraken
+    private let baseURL = URL(string: "https://api.kraken.com")!
+    private let wsURL = URL(string: "wss://ws.kraken.com")!
+    
+    private var wsTask: Task<Void, Error>?
+    private var wsStream: URLSessionWebSocketTask?
+    private var continuation: AsyncStream<Ticker>.Continuation?
+    
+    lazy var liveTickerStream: AsyncStream<Ticker> = {
+        AsyncStream { continuation in
+            self.continuation = continuation
+        }
+    }()
+    
+    // MARK: - WebSocket Methods
+    
+    func wsConnect(symbol: String) async {
+        wsStream = URLSession.shared.webSocketTask(with: wsURL)
+        wsStream?.resume()
+        
+        // Subscribe to ticker
+        let message = """
+        {
+            "event": "subscribe",
+            "pair": ["\(symbol)"],
+            "subscription": {
+                "name": "ticker"
+            }
+        }
+        """
+        try? await wsStream?.send(.string(message))
+        
+        // Start receiving messages
+        wsTask = Task {
+            while !Task.isCancelled {
+                guard let message = try await wsStream?.receive() else { continue }
+                
+                switch message {
+                case .string(let text):
+                    if let data = text.data(using: .utf8),
+                       let ticker = try? JSONDecoder().decode(KrakenTicker.self, from: data) {
+                        let price = Double(ticker.c[0]) ?? 0
+                        continuation?.yield(Ticker(
+                            id: UUID(),
+                            symbol: symbol,
+                            price: price,
+                            time: Date()
+                        ))
+                    }
+                default:
+                    break
+                }
+            }
+        }
+    }
+    
+    func wsDisconnect() async {
+        wsTask?.cancel()
+        wsStream?.cancel()
+        continuation?.finish()
+    }
+    
+    // MARK: - Market Data
+    
+    func fetchCandles(symbol: String, interval: String, limit: Int) async throws -> [Candle] {
+        var components = URLComponents(url: baseURL.appendingPathComponent("/0/public/OHLC"), resolvingAgainstBaseURL: true)
+        components?.queryItems = [
+            URLQueryItem(name: "pair", value: symbol),
+            URLQueryItem(name: "interval", value: interval)
+        ]
+        
+        guard let url = components?.url else {
+            throw ExchangeError.invalidResponse
+        }
+        
+        let (data, response) = try await URLSession.shared.data(from: url)
+        
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200 else {
+            throw ExchangeError.networkError(URLError(.badServerResponse))
+        }
+        
+        let result = try JSONDecoder().decode(KrakenOHLCResponse.self, from: data)
+        guard let ohlc = result.result[symbol] else {
+            throw ExchangeError.invalidResponse
+        }
+        
+        return ohlc.prefix(limit).map { item in
+            Candle(
+                openTime: Date(timeIntervalSince1970: item[0]),
+                open: item[1],
+                high: item[2],
+                low: item[3],
+                close: item[4],
+                volume: item[6]
+            )
+        }
+    }
+    
+    // MARK: - Trading
+    
+    func createOrder(_ req: OrderRequest) async throws -> OrderFill {
+        // TODO: Implement live trading with API keys and signatures
+        // For MVP, only support MARKET orders when credentials are present
+        guard let apiKey = try? KeychainStore.shared.getAPIKey(for: .kraken),
+              let apiSecret = try? KeychainStore.shared.getAPISecret(for: .kraken) else {
+            throw ExchangeError.missingCredentials
+        }
+        
+        let nonce = String(Int64(Date().timeIntervalSince1970 * 1000))
+        let params = [
+            "pair": req.symbol,
+            "type": req.side == .buy ? "buy" : "sell",
+            "ordertype": "market",
+            "volume": String(format: "%.8f", req.qty),
+            "nonce": nonce
+        ]
+        
+        let signature = sign(path: "/0/private/AddOrder", params: params, secret: apiSecret)
+        var request = URLRequest(url: baseURL.appendingPathComponent("/0/private/AddOrder"))
+        request.httpMethod = "POST"
+        request.setValue(apiKey, forHTTPHeaderField: "API-Key")
+        request.setValue(signature, forHTTPHeaderField: "API-Sign")
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        
+        let body = params.map { "\($0.key)=\($0.value)" }.joined(separator: "&")
+        request.httpBody = body.data(using: .utf8)
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw ExchangeError.networkError(URLError(.badServerResponse))
+        }
+        
+        switch httpResponse.statusCode {
+        case 200:
+            let result = try JSONDecoder().decode(KrakenOrderResponse.self, from: data)
+            guard let orderId = result.result.txid.first else {
+                throw ExchangeError.invalidResponse
+            }
+            
+            // For MVP, assume immediate fill at market price
+            return OrderFill(
+                orderId: orderId,
+                executedQty: req.qty,
+                avgPrice: req.price ?? 0,
+                time: Date()
+            )
+        case 401:
+            throw ExchangeError.missingCredentials
+        case 429:
+            throw ExchangeError.rateLimitExceeded
+        default:
+            throw ExchangeError.serverError("Status code: \(httpResponse.statusCode)")
+        }
+    }
+    
+    func account() async throws -> Account {
+        // TODO: Implement account info fetching with API keys
+        throw ExchangeError.missingCredentials
+    }
+    
+    func supportsPaperTrading() -> Bool {
+        false
+    }
+    
+    // MARK: - Private Methods
+    
+    private func sign(path: String, params: [String: String], secret: String) -> String {
+        let postData = params.map { "\($0.key)=\($0.value)" }.joined(separator: "&")
+        let nonce = params["nonce"] ?? ""
+        let message = nonce + postData
+        
+        let sha256 = SHA256.hash(data: message.data(using: .utf8)!)
+        let sha256Data = Data(sha256)
+        
+        guard let secretData = Data(base64Encoded: secret),
+              let pathData = path.data(using: .utf8) else {
+            return ""
+        }
+        
+        let key = SymmetricKey(data: secretData)
+        let signature = HMAC<SHA512>.authenticationCode(
+            for: pathData + sha256Data,
+            using: key
+        )
+        return Data(signature).base64EncodedString()
+    }
+}
+
+// MARK: - API Models
+
+private struct KrakenTicker: Codable {
+    let c: [String] // Last trade closed array
+}
+
+private struct KrakenOHLCResponse: Codable {
+    let result: [String: [[Double]]]
+}
+
+private struct KrakenOrderResponse: Codable {
+    struct Result: Codable {
+        let txid: [String]
+    }
+    let result: Result
+}
