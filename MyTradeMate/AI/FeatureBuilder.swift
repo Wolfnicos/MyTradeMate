@@ -1,186 +1,184 @@
 import Foundation
+import CoreML
+import os.log
 
-enum FeatureError: Error, CustomStringConvertible {
-    case notEnoughCandles(required: Int, have: Int)
-    case nanInFeatures
-    case invalidInput(String)
+final class FeatureBuilder {
+    private static let logger = Logger(subsystem: "com.mytrade.mate", category: "FeatureBuilder")
     
-    var description: String {
-        switch self {
-        case .notEnoughCandles(let r, let h): 
-            return "not enough candles (need \(r), have \(h))"
-        case .nanInFeatures: 
-            return "NaN in features after normalization"
-        case .invalidInput(let msg):
-            return "invalid input: \(msg)"
-        }
+    // MARK: - Static Feature Building
+    static func vector10(from candles: [Candle]) throws -> MLMultiArray {
+        let builder = FeatureBuilder()
+        return try builder.buildFeatures(from: candles)
     }
-}
-
-struct FeatureBuilder {
-    /// Construiește exact 10 trăsături deterministe din ultimile N lumânări.
-    static func vector10(from candles: [Candle]) throws -> [Float] {
-        let need = 50
-        guard candles.count >= need else { 
-            throw FeatureError.notEnoughCandles(required: need, have: candles.count) 
+    
+    // MARK: - Constants
+    private enum Constants {
+        static let featureCount = 10
+        static let lookbackPeriods = [5, 10, 20, 50, 100]  // For technical indicators
+        static let priceScalingFactor = 10000.0  // For BTC prices
+    }
+    
+    private let settings: AppSettings
+    
+    init(settings: AppSettings = .shared) {
+        self.settings = settings
+    }
+    
+    // MARK: - Feature Building
+    func buildFeatures(from candles: [Candle]) throws -> MLMultiArray {
+        guard candles.count >= Constants.lookbackPeriods.max() ?? 0 else {
+            throw AIModelError.invalidFeatureCount
         }
         
-        guard let lastCandle = candles.last else {
-            throw FeatureError.invalidInput("no candles provided")
-        }
-
-        // Extract price and volume series
-        let closes = candles.map(\.close)
-        let highs = candles.map(\.high)
-        let lows = candles.map(\.low)
-        let opens = candles.map(\.open)
-        let volumes = candles.map(\.volume)
+        let features = try MLMultiArray(shape: [1, Constants.featureCount as NSNumber], 
+                                      dataType: .double)
         
-        // Feature 0: Close price percentage change (1 period)
-        let pctChange1 = pctChange(closes, periods: 1)
+        // 1. Price momentum (close/close_prev - 1)
+        features[0] = calculateMomentum(candles: candles, period: 1)
         
-        // Feature 1: Close price percentage change (5 periods)
-        let pctChange5 = pctChange(closes, periods: 5)
+        // 2. Price volatility (std dev of returns)
+        features[1] = calculateVolatility(candles: candles, period: 20)
         
-        // Feature 2: Close price percentage change (10 periods)
-        let pctChange10 = pctChange(closes, periods: 10)
+        // 3-5. Moving averages crossovers
+        features[2] = calculateMACrossover(candles: candles, fast: 5, slow: 20)
+        features[3] = calculateMACrossover(candles: candles, fast: 10, slow: 50)
+        features[4] = calculateMACrossover(candles: candles, fast: 20, slow: 100)
         
-        // Feature 3: RSI(14)
-        let rsi14 = rsi(closes, periods: 14)
+        // 6-7. RSI indicators
+        features[5] = calculateRSI(candles: candles, period: 14)
+        features[6] = calculateRSI(candles: candles, period: 28)
         
-        // Feature 4: RSI(28)
-        let rsi28 = rsi(closes, periods: 28)
+        // 8. Volume trend
+        features[7] = calculateVolumeTrend(candles: candles)
         
-        // Feature 5: EMA(9) slope
-        let ema9Values = ema(closes, periods: 9)
-        let slope9 = slope(ema9Values, window: 3) / Float(lastCandle.close)
+        // 9. Price range position
+        features[8] = calculatePriceRangePosition(candles: candles)
         
-        // Feature 6: EMA(21) slope
-        let ema21Values = ema(closes, periods: 21)
-        let slope21 = slope(ema21Values, window: 3) / Float(lastCandle.close)
+        // 10. Trend strength
+        features[9] = calculateTrendStrength(candles: candles)
         
-        // Feature 7: ATR(14) normalized
-        let atr14 = atr(highs: highs, lows: lows, closes: closes, periods: 14)
-        let atrNorm = Float(atr14 / lastCandle.close)
-        
-        // Feature 8: Volume Z-Score(20)
-        let volumeZScore = zscore(volumes.map(Float.init), lookback: 20)
-        
-        // Feature 9: Candle body ratio to ATR
-        let bodySize = abs(lastCandle.close - lastCandle.open)
-        let bodyATRRatio = Float(bodySize / max(atr14, 1e-8))
-        
-        let features: [Float] = [
-            pctChange1, pctChange5, pctChange10,
-            rsi14, rsi28,
-            slope9, slope21,
-            atrNorm,
-            volumeZScore,
-            bodyATRRatio
-        ]
-
-        // Validate no NaN or infinite values
-        if features.contains(where: { $0.isNaN || !$0.isFinite }) { 
-            throw FeatureError.nanInFeatures 
+        if settings.shouldLogVerbose {
+            Self.logger.debug("""
+                Built features vector:
+                1. Momentum: \(features[0])
+                2. Volatility: \(features[1])
+                3. MA Cross 5/20: \(features[2])
+                4. MA Cross 10/50: \(features[3])
+                5. MA Cross 20/100: \(features[4])
+                6. RSI-14: \(features[5])
+                7. RSI-28: \(features[6])
+                8. Volume Trend: \(features[7])
+                9. Price Range: \(features[8])
+                10. Trend Strength: \(features[9])
+                """)
         }
         
         return features
     }
     
-    // MARK: - Technical Indicators
-    
-    private static func pctChange(_ prices: [Double], periods: Int) -> Float {
-        guard prices.count > periods else { return 0 }
-        let current = prices[prices.count - 1]
-        let previous = prices[prices.count - 1 - periods]
-        guard previous != 0 else { return 0 }
-        return Float((current / previous) - 1.0)
+    // MARK: - Feature Calculations
+    private func calculateMomentum(candles: [Candle], period: Int) -> Double {
+        guard candles.count > period else { return 0 }
+        let current = candles.last!.close
+        let previous = candles[candles.count - 1 - period].close
+        return (current - previous) / previous
     }
     
-    private static func rsi(_ prices: [Double], periods: Int) -> Float {
-        guard prices.count > periods else { return 50 }
-        
-        var gains = 0.0
-        var losses = 0.0
-        
-        for i in 1...periods {
-            let change = prices[prices.count - i] - prices[prices.count - i - 1]
-            if change >= 0 {
-                gains += change
-            } else {
-                losses -= change
-            }
+    private func calculateVolatility(candles: [Candle], period: Int) -> Double {
+        let returns = candles.suffix(period).windows(ofCount: 2).map { window in
+            let prices = Array(window)
+            return (prices[1].close - prices[0].close) / prices[0].close
+        }
+        return returns.standardDeviation()
+    }
+    
+    private func calculateMACrossover(candles: [Candle], fast: Int, slow: Int) -> Double {
+        let fastMA = candles.suffix(fast).map { $0.close }.average()
+        let slowMA = candles.suffix(slow).map { $0.close }.average()
+        return (fastMA - slowMA) / slowMA
+    }
+    
+    private func calculateRSI(candles: [Candle], period: Int) -> Double {
+        let changes = candles.suffix(period + 1).windows(ofCount: 2).map { window in
+            let prices = Array(window)
+            return prices[1].close - prices[0].close
         }
         
-        let avgGain = gains / Double(periods)
-        let avgLoss = losses / Double(periods)
+        let gains = changes.filter { $0 > 0 }.average()
+        let losses = abs(changes.filter { $0 < 0 }.average())
         
-        guard avgLoss > 0 else { return 100 }
-        let rs = avgGain / avgLoss
-        return Float(100.0 - 100.0 / (1.0 + rs))
+        guard losses != 0 else { return 100 }
+        let rs = gains / losses
+        return 100 - (100 / (1 + rs))
     }
     
-    private static func ema(_ prices: [Double], periods: Int) -> [Double] {
-        guard !prices.isEmpty else { return [] }
+    private func calculateVolumeTrend(candles: [Candle]) -> Double {
+        let shortPeriod = 5
+        let longPeriod = 20
         
-        var result: [Double] = []
-        let multiplier = 2.0 / (Double(periods) + 1.0)
-        var ema = prices[0]
+        let shortVol = candles.suffix(shortPeriod).map { $0.volume }.average()
+        let longVol = candles.suffix(longPeriod).map { $0.volume }.average()
         
-        for price in prices {
-            ema = price * multiplier + ema * (1.0 - multiplier)
-            result.append(ema)
-        }
-        
-        return result
+        return (shortVol - longVol) / longVol
     }
     
-    private static func slope(_ values: [Double], window: Int) -> Float {
-        guard values.count >= window else { return 0 }
-        let recent = Array(values.suffix(window))
-        guard let first = recent.first, let last = recent.last else { return 0 }
-        return Float(last - first)
+    private func calculatePriceRangePosition(candles: [Candle]) -> Double {
+        let period = 50
+        let recentCandles = Array(candles.suffix(period))
+        let high = recentCandles.map { $0.high }.max() ?? 0
+        let low = recentCandles.map { $0.low }.min() ?? 0
+        let current = candles.last?.close ?? 0
+        
+        guard high != low else { return 0.5 }
+        return (current - low) / (high - low)
     }
     
-    private static func atr(highs: [Double], lows: [Double], closes: [Double], periods: Int) -> Double {
-        guard highs.count == lows.count && lows.count == closes.count,
-              highs.count > periods else { return 0 }
+    private func calculateTrendStrength(candles: [Candle]) -> Double {
+        let period = 20
+        let prices = candles.suffix(period).map { $0.close }
+        let x = Array(0..<period).map(Double.init)
         
-        var trueRanges: [Double] = []
+        // Linear regression slope
+        let slope = linearRegressionSlope(y: prices, x: x)
+        let averagePrice = prices.average()
         
-        for i in 1..<highs.count {
-            let high = highs[i]
-            let low = lows[i]
-            let prevClose = closes[i - 1]
-            
-            let tr = max(high - low, max(abs(high - prevClose), abs(low - prevClose)))
-            trueRanges.append(tr)
-        }
-        
-        guard trueRanges.count >= periods else { return 0 }
-        let recentTR = Array(trueRanges.suffix(periods))
-        return recentTR.reduce(0, +) / Double(periods)
-    }
-    
-    static func zscore(_ values: [Float], lookback: Int) -> Float {
-        guard values.count >= lookback else { return 0 }
-        let recent = Array(values.suffix(lookback))
-        guard let mean = recent.average, let std = recent.std, std > 0 else { return 0 }
-        guard let last = recent.last else { return 0 }
-        return (last - mean) / std
+        return slope / averagePrice  // Normalized slope
     }
 }
 
 // MARK: - Array Extensions
-
-private extension Collection where Element == Float {
-    var average: Float? { 
-        isEmpty ? nil : reduce(0, +) / Float(count) 
+extension Array where Element: BinaryFloatingPoint {
+    func average() -> Element {
+        guard !isEmpty else { return 0 }
+        return reduce(0, +) / Element(count)
     }
     
-    var std: Float? {
-        guard let mean = average else { return nil }
-        let variance = map { ($0 - mean) * ($0 - mean) }.reduce(0, +) / Float(count)
+    func standardDeviation() -> Element {
+        guard count > 1 else { return 0 }
+        let avg = average()
+        let variance = map { pow($0 - avg, 2) }.average()
         return sqrt(variance)
     }
+}
+
+extension Array {
+    func windows(ofCount count: Int) -> [ArraySlice<Element>] {
+        guard count > 0, self.count >= count else { return [] }
+        return (0...self.count - count).map {
+            self[$0..<$0 + count]
+        }
+    }
+}
+
+// MARK: - Helper Functions
+func linearRegressionSlope(y: [Double], x: [Double]) -> Double {
+    guard y.count == x.count, y.count > 1 else { return 0 }
+    
+    let n = Double(y.count)
+    let sumX = x.reduce(0, +)
+    let sumY = y.reduce(0, +)
+    let sumXY = zip(x, y).map(*).reduce(0, +)
+    let sumX2 = x.map { $0 * $0 }.reduce(0, +)
+    
+    return (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX)
 }

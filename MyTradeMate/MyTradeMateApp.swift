@@ -1,52 +1,82 @@
 import SwiftUI
+import OSLog
+
+private let logger = Logger(subsystem: "com.mytrademate", category: "App")
 
 @main
 struct MyTradeMateApp: App {
-    @StateObject private var appSettings = AppSettings.shared
-    @StateObject private var market = MarketDataService.shared
-    @StateObject private var trade  = TradeManager.shared
-    @StateObject private var risk   = RiskManager.shared
-    @StateObject private var ai     = AIModelManager.shared
-    @StateObject private var theme  = ThemeManager.shared
+    @StateObject private var settings = AppSettings.shared
+    @StateObject private var aiManager = AIModelManager.shared
     
     init() {
-        // Global appearance setup
-        let appearance = UINavigationBar.appearance()
-        appearance.largeTitleTextAttributes = [.font: UIFont.systemFont(ofSize: 34, weight: .bold)]
-        appearance.titleTextAttributes = [.font: UIFont.systemFont(ofSize: 17, weight: .semibold)]
+        setupAppearance()
+        configureLogging()
     }
     
     var body: some Scene {
         WindowGroup {
             RootTabs()
-                .environmentObject(appSettings)
-                .environmentObject(market)
-                .environmentObject(trade)
-                .environmentObject(risk)
-                .environmentObject(ai)
-                .environmentObject(theme)
-                .preferredColorScheme(theme.colorScheme)
-                .onAppear {
-                    // Initialize market data based on settings
-                    market.setLiveEnabled(appSettings.liveMarketData)
-                    
-                    if appSettings.shouldShowAIDebug {
-                        print("🧪 Demo Mode: \(appSettings.demoMode ? "ON" : "OFF")")
-                        print("📊 PnL Demo Mode: \(appSettings.pnlDemoMode ? "ON" : "OFF")")
-                        
-                        // Run CoreML model sanity check when AI debug is enabled
-                        runModelSanityCheck()
-                    }
-                    
-                    // RUN DIAGNOSTIC AUDIT
-                    Task {
-                        await Audit.run()
-                    }
-                }
-                .onDisappear {
-                    appSettings.saveSettings()
+                .environmentObject(settings)
+                .environmentObject(aiManager)
+                .preferredColorScheme(settings.darkMode ? .dark : .light)
+                .task {
+                    await runStartupDiagnostics()
                 }
         }
     }
+    
+    private func setupAppearance() {
+        // Global navigation bar appearance
+        let appearance = UINavigationBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        appearance.largeTitleTextAttributes = [
+            .font: UIFont.systemFont(ofSize: 34, weight: .bold)
+        ]
+        appearance.titleTextAttributes = [
+            .font: UIFont.systemFont(ofSize: 17, weight: .semibold)
+        ]
+        
+        UINavigationBar.appearance().standardAppearance = appearance
+        UINavigationBar.appearance().scrollEdgeAppearance = appearance
+        UINavigationBar.appearance().compactAppearance = appearance
+        
+        // Tab bar appearance
+        let tabAppearance = UITabBarAppearance()
+        tabAppearance.configureWithOpaqueBackground()
+        UITabBar.appearance().standardAppearance = tabAppearance
+        UITabBar.appearance().scrollEdgeAppearance = tabAppearance
+    }
+    
+    private func configureLogging() {
+        // Configure logging subsystems
+        logger.info("MyTradeMate starting up...")
+        logger.info("Demo mode: \(AppSettings.shared.demoMode)")
+        logger.info("Verbose logging: \(AppSettings.shared.verboseAILogs)")
+    }
+    
+    @MainActor
+    private func runStartupDiagnostics() async {
+        logger.info("Running startup diagnostics...")
+        
+        // Run audit
+        await Audit.runOnStartup()
+        
+        // Validate AI models
+        do {
+            try await aiManager.validateModels()
+            logger.info("✅ AI models validated successfully")
+        } catch {
+            logger.error("❌ AI model validation failed: \(error.localizedDescription)")
+        }
+        
+        // Check demo/live isolation
+        if settings.demoMode {
+            logger.info("🎭 Running in DEMO mode - no real trades")
+        }
+        if settings.pnlDemoMode {
+            logger.info("📊 PnL in DEMO mode - synthetic equity curve")
+        }
+        
+        logger.info("Startup diagnostics complete")
+    }
 }
-

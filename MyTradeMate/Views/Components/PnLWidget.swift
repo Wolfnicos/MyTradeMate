@@ -14,6 +14,8 @@ struct PnLWidget: View {
             HStack {
                 Text("Equity: \(snapshot.equity, format: .currency(code: "USD"))")
                     .font(.headline)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                 
                 Spacer()
                 
@@ -27,43 +29,57 @@ struct PnLWidget: View {
                         .cornerRadius(4)
                 }
             }
+            .padding(.horizontal)
+            .padding(.top, 8)
             
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading) {
                     Text("Realized Today")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Text(formatPnL(snapshot.realizedToday))
-                        .font(.subheadline.weight(.medium))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    Text(snapshot.realizedToday, format: .currency(code: "USD"))
+                        .font(.subheadline.monospacedDigit())
                         .foregroundColor(snapshot.realizedToday >= 0 ? .green : .red)
+                }
+                
+                VStack(alignment: .leading) {
+                    Text("Unrealized")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    Text(snapshot.unrealized, format: .currency(code: "USD"))
+                        .font(.subheadline.monospacedDigit())
+                        .foregroundColor(snapshot.unrealized >= 0 ? .green : .red)
                 }
                 
                 Spacer()
                 
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text("Unrealized")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Text(formatPnL(snapshot.unrealized))
-                        .font(.subheadline.weight(.medium))
-                        .foregroundColor(snapshot.unrealized >= 0 ? .green : .red)
+                VStack(alignment: .trailing) {
+                    Text("Updated")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    Text(snapshot.ts, style: .time)
+                        .font(.subheadline.monospacedDigit())
                 }
             }
-            
-            if isDemoMode {
-                Text("Demo mode simulating real-time PnL changes")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-                    .padding(.top, 2)
-            }
+            .padding(.horizontal)
+            .padding(.bottom, 8)
         }
-        .padding(12)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-        .animation(.easeInOut(duration: 0.3), value: snapshot.equity)
+        .background(Color(.systemBackground))
+        .cornerRadius(10)
+        .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
+        // Use safeAreaInset to ensure proper spacing
+        .safeAreaInset(edge: .top) { Color.clear.frame(height: 0) }
+        .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 0) }
     }
-    
-    private func formatPnL(_ v: Double) -> String {
-        let sign = v >= 0 ? "+" : ""
-        return "\(sign)\(String(format: "%.2f", v))"
-    }
+}
+
+#Preview {
+    PnLWidget(snapshot: PnLSnapshot(
+        equity: 10500.0,
+        realizedToday: 250.0,
+        unrealized: 500.0,
+        ts: Date()
+    ), isDemoMode: true)
+    .padding()
+    .background(Color(.systemGroupedBackground))
 }

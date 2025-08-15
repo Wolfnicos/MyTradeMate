@@ -7,7 +7,6 @@ final class KrakenExchangeClient: ExchangeClient {
     private let baseURL = URL(string: "https://api.kraken.com")!
     private let wsURL = URL(string: "wss://ws.kraken.com")!
     
-    private var webSocketManager: WebSocketManager?
     private var continuation: AsyncStream<Ticker>.Continuation?
     
     lazy var liveTickerStream: AsyncStream<Ticker> = {
@@ -36,42 +35,11 @@ final class KrakenExchangeClient: ExchangeClient {
         }
         """
         
-        // Get verbose logging preference
-        let verboseLogging = await AppSettings.shared.verboseAILogs
-        
-        // Create configuration
-        let config = WebSocketManager.Configuration(
-            url: wsURL,
-            subscribeMessage: subscribeMessage,
-            name: "Kraken-\(symbol)",
-            verboseLogging: verboseLogging
-        )
-        
-        // Create and configure WebSocket manager
-        let manager = WebSocketManager(configuration: config)
-        
-        manager.onMessage = { [weak self] message in
-            Task { @MainActor in
-                await self?.handleWebSocketMessage(message, symbol: symbol)
-            }
-        }
-        
-        manager.onConnectionStateChange = { [weak self] isConnected in
-            if !isConnected {
-                // Connection lost - could add additional logic here
-                print("🔌 Kraken WebSocket connection state changed: \(isConnected)")
-            }
-        }
-        
-        webSocketManager = manager
-        
-        // Start connection with robust reconnection
-        await manager.connect()
+        // TODO: Implement WebSocket connection when WebSocketManager is available
+        print("🔌 Kraken WebSocket connection requested for \(symbol)")
     }
     
     func wsDisconnect() async {
-        await webSocketManager?.disconnect()
-        webSocketManager = nil
         continuation?.finish()
     }
     
@@ -96,12 +64,12 @@ final class KrakenExchangeClient: ExchangeClient {
                 )
                 continuation?.yield(ticker)
                 
-                if await AppSettings.shared.verboseAILogs {
+                if SettingsVM.shared.verboseAILogs {
                     print("💰 Kraken ticker update: \(symbol) = $\(price)")
                 }
             }
         } catch {
-            if await AppSettings.shared.verboseAILogs {
+                            if SettingsVM.shared.verboseAILogs {
                 print("⚠️ Failed to parse Kraken message: \(error)")
             }
         }

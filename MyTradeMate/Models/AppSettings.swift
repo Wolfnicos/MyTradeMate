@@ -1,66 +1,36 @@
-import Foundation
-import Combine
+import SwiftUI
 
 @MainActor
-final class AppSettings: ObservableObject, @unchecked Sendable {
-    @Published var liveMarketData: Bool = true            // WS on/off
-    @Published var aiDebug: Bool = false                  // AI debug logs and toasts
-    @Published var demoMode: Bool = false                 // governs AI prediction source
-    @Published var verboseAILogs: Bool = false           // console logs for development
-    @Published var pnlDemoMode: Bool = false             // governs PnL simulator only
+public final class AppSettings: ObservableObject {
+    public static let shared = AppSettings()
+    private init() {}
     
-    static let shared = AppSettings()
+    // Market Data
+    @AppStorage("liveMarketDataEnabled") public var liveMarketDataEnabled = true
     
-    private init() {
-        loadSettings()
-    }
+    // AI & Trading
+    @AppStorage("aiDebugMode") public var aiDebugMode = false
+    @AppStorage("demoMode") public var demoMode = false
+    @AppStorage("verboseAILogs") public var verboseAILogs = false
+    @AppStorage("pnlDemoMode") public var pnlDemoMode = false
+    @AppStorage("autoTrading") public var autoTrading = false
     
-    private func loadSettings() {
-        let defaults = UserDefaults.standard
-        liveMarketData = defaults.bool(forKey: "AppSettings.liveMarketData") 
-        aiDebug = defaults.bool(forKey: "AppSettings.aiDebug")
-        demoMode = defaults.bool(forKey: "AppSettings.demoMode") 
-        verboseAILogs = defaults.bool(forKey: "AppSettings.verboseAILogs")
-        pnlDemoMode = defaults.bool(forKey: "AppSettings.pnlDemoMode")
-        
-        // Default to true for liveMarketData on first launch
-        if defaults.object(forKey: "AppSettings.liveMarketData") == nil {
-            liveMarketData = true
+    // Experience
+    @AppStorage("hapticsEnabled") public var hapticsEnabled = true
+    @AppStorage("darkMode") public var darkMode = false
+    @AppStorage("confirmTrades") public var confirmTrades = true
+    @AppStorage("defaultTimeframe") public var defaultTimeframe: String = "5m"
+    
+    // Helpers
+    public var isDemoAI: Bool { demoMode }
+    public var isDemoPnL: Bool { pnlDemoMode }
+    
+    // Computed timeframe
+    public var timeframe: Timeframe {
+        switch defaultTimeframe {
+        case "1h": return .h1
+        case "4h": return .h4
+        default: return .m5
         }
-    }
-    
-    func saveSettings() {
-        let defaults = UserDefaults.standard
-        defaults.set(liveMarketData, forKey: "AppSettings.liveMarketData")
-        defaults.set(aiDebug, forKey: "AppSettings.aiDebug")
-        defaults.set(demoMode, forKey: "AppSettings.demoMode")
-        defaults.set(verboseAILogs, forKey: "AppSettings.verboseAILogs")
-        defaults.set(pnlDemoMode, forKey: "AppSettings.pnlDemoMode")
-    }
-    
-    // Computed helpers for business logic
-    var isDemoAI: Bool { demoMode }
-    var isDemoPnL: Bool { pnlDemoMode }
-    var shouldShowAIDebug: Bool { aiDebug || verboseAILogs }
-    var shouldLogVerbose: Bool { verboseAILogs }
-    
-    // Debug print for state changes
-    func logStateChange(_ property: String, _ value: Any) {
-        if shouldShowAIDebug {
-            print("⚙️ AppSettings.\(property) = \(value)")
-        }
-    }
-}
-
-// MARK: - Convenience Publishers
-extension AppSettings {
-    var demoModePublisher: AnyPublisher<Bool, Never> {
-        $demoMode.eraseToAnyPublisher()
-    }
-    
-    var timeframeSwitchPublisher: AnyPublisher<Bool, Never> {
-        Publishers.CombineLatest($aiDebug, $verboseAILogs)
-            .map { $0 || $1 }
-            .eraseToAnyPublisher()
     }
 }

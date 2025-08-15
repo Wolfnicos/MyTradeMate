@@ -1,346 +1,190 @@
 import Foundation
 import Combine
 import SwiftUI
+import CoreML
+import OSLog
+
+private let logger = Logger(subsystem: "com.mytrademate", category: "Dashboard")
 
 @MainActor
 final class DashboardVM: ObservableObject {
-    @Published var exchange: Exchange = .binance
-    @Published var symbol: Symbol = Symbol("BTCUSDT", exchange: .binance)
-    @Published var price: Double = 0
-    @Published var priceUp: Bool = true
-    @Published var lastSignal: Signal?
-    @Published var lastAIDecision: SignalDecision?
-    @Published var lastPrediction: PredictionResult?
+    // MARK: - Published Properties
+    @Published var price: Double = 0.0
+    @Published var priceChange: Double = 0.0
+    @Published var priceChangePercent: Double = 0.0
+    @Published var candles: [Candle] = []
+    @Published var chartPoints: [CGPoint] = []
+    @Published var isLoading = false
+    @Published var isRefreshing = false
+    @Published var errorMessage: String?
     @Published var timeframe: Timeframe = .m5
-    @Published var aiMode: AIModelManager.Mode = .normal
-    @Published var autoTrading: Bool = false
-    @Published var pnl: PnLSnapshot = .init(equity: 10_000, realizedToday: 0, unrealized: 0, ts: .init())
-    @Published var signalFlashColor: Color? = nil
+    @Published var isPrecisionMode: Bool = false
+    @Published var currentSignal: SignalInfo?
+    @Published var openPositions: [Position] = []
+    @Published var isConnected: Bool = false
+    @Published var connectionStatus: String = "Connecting..."
+    @Published var lastUpdated: Date = Date()
     
-    private var prev: Double = 0
-    private var mockCandles: [Candle] = []
-    private let aiManager = AIModelManager.shared
-    private let paperTrading = PaperTradingModule.shared
+    // MARK: - Private Properties
+    private let aiModelManager = AIModelManager.shared
+    private let ensembleDecider = EnsembleDecider()
+    private let marketDataService = MarketDataService.shared
     private var cancellables = Set<AnyCancellable>()
-    private var refreshTask: Task<Void, Never>?
+    private var refreshTimer: Timer?
+    private var lastPredictionTime: Date = .distantPast
     
-    // AppSettings reference - will be injected via environment
-    private weak var appSettings: AppSettings?
-    
-    // Demo isolation properties
-    var isDemoAI: Bool { appSettings?.isDemoAI ?? false }
-    var isDemoPnL: Bool { appSettings?.isDemoPnL ?? false }
-    var shouldShowAIDebug: Bool { appSettings?.shouldShowAIDebug ?? false }
-    
-    func configure(with appSettings: AppSettings) {
-        self.appSettings = appSettings
-        setupTimeframeObserver()
-        setupDemoModeObserver()
+    // MARK: - Signal Info
+    struct SignalInfo {
+        let direction: String // "BUY", "SELL", "HOLD"
+        let confidence: Double
+        let reason: String
+        let timestamp: Date
     }
     
-    private func setupTimeframeObserver() {
-        // Debounced timeframe switching with auto prediction
+    // MARK: - Computed Properties
+    var priceString: String {
+        String(format: "%.2f", price)
+    }
+    
+    var priceChangeString: String {
+        let sign = priceChange >= 0 ? "+" : ""
+        return "\(sign)\(String(format: "%.2f", priceChange))"
+    }
+    
+    var priceChangePercentString: String {
+        let sign = priceChangePercent >= 0 ? "+" : ""
+        return "\(sign)\(String(format: "%.2f", priceChangePercent))%"
+    }
+    
+    var priceChangeColor: Color {
+        priceChange >= 0 ? Accent.green : Accent.red
+    }
+    
+    var lastUpdatedString: String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter.localizedString(for: lastUpdated, relativeTo: Date())
+    }
+    
+    // MARK: - Initialization
+    init() {
+        setupBindings()
+        loadInitialData()
+        startAutoRefresh()
+    }
+    
+    // MARK: - Setup
+    private func setupBindings() {
+        // Observe timeframe changes with debounce
         $timeframe
             .removeDuplicates()
             .debounce(for: .milliseconds(300), scheduler: RunLoop.main)
-            .sink { [weak self] tf in
-                if let self = self, let appSettings = self.appSettings {
-                    if appSettings.shouldShowAIDebug {
-                        print("🖥️ timeframe=\(tf.rawValue)")
-                    }
-                    Task { 
-                        await self.refreshPrediction(reason: "timeframe_changed")
-                        if appSettings.shouldShowAIDebug {
-                            print("✅ Prediction refreshed for timeframe: \(tf.rawValue)")
-                        }
-                    }
-                }
-            }
-            .store(in: &cancellables)
-    }
-    
-    private func setupDemoModeObserver() {
-        // Observe demo mode changes for isolation
-        appSettings?.demoModePublisher
-            .removeDuplicates()
-            .sink { [weak self] isDemo in
-                guard let self = self else { return }
-                if !isDemo {
-                    // Clear demo-specific data when exiting demo mode
-                    self.clearDemoData()
-                }
-                if let appSettings = self.appSettings, appSettings.shouldShowAIDebug {
-                    print("🧪 Demo Mode: \(isDemo ? "ON" : "OFF")")
-                }
-            }
-            .store(in: &cancellables)
-    }
-    
-    private func clearDemoData() {
-        // Clear any demo-specific prediction data
-        if let prediction = lastPrediction, prediction.modelUsed == "Demo" {
-            lastPrediction = nil
-            lastSignal = nil
-            lastAIDecision = nil
-            if shouldShowAIDebug {
-                print("🧹 Cleared demo prediction data")
-            }
-        }
-    }
-    
-    func onAppear() {
-        // Generate some mock candle data for AI predictions
-        generateMockCandles()
-        
-        // Observe demo mode changes to reset PnL when toggled off
-        aiManager.$pnlDemoMode
-            .removeDuplicates()
-            .sink { [weak self] isDemo in
-                guard let self = self else { return }
-                if !isDemo {
-                    // Reset to real PnL data when demo mode is turned off
-                    Task { await self.resetToRealPnL() }
+            .sink { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    await self?.refreshPredictionAsync()
                 }
             }
             .store(in: &cancellables)
         
-        Task { await MarketDataService.shared.subscribe { [weak self] tick in
-            Task { @MainActor in
-                guard let self, tick.symbol == self.symbol else { return }
-                self.priceUp = tick.price >= self.prev
-                self.prev = tick.price
-                self.price = tick.price
-                
-                // Update mock candles with latest price
-                self.updateMockCandles(with: tick.price)
-                
-                // Update PnL (use demo mode if enabled)
-                if self.aiManager.pnlDemoMode {
-                    self.updateDemoPnL()
-                } else {
-                    let pos = await TradeManager.shared.position
-                    let eq = await TradeManager.shared.equity
-                    await PnLManager.shared.resetIfNeeded()
-                    let snap = await PnLManager.shared.snapshot(price: tick.price, position: pos, equity: eq)
-                    await MainActor.run { self.pnl = snap }
+        // Observe connection status
+        NotificationCenter.default.publisher(for: .init("WebSocketStatusChanged"))
+            .receive(on: RunLoop.main)
+            .sink { [weak self] notification in
+                if let status = notification.object as? Bool {
+                    self?.isConnected = status
+                    self?.connectionStatus = status ? "Connected" : "Disconnected"
                 }
             }
-        }}
-        Task { await MarketDataService.shared.start(symbol: symbol) }
+            .store(in: &cancellables)
     }
     
-    func changeExchange(_ ex: Exchange) {
-        exchange = ex
-        symbol = Symbol(symbol.raw, exchange: ex)
+    private func loadInitialData() {
         Task {
-            await MarketDataService.shared.stop()
-            await TradeManager.shared.setExchange(ex)
-            await MarketDataService.shared.start(symbol: symbol)
+            await loadMarketData()
+            await refreshPredictionAsync()
         }
     }
     
-    func generateSignal() {
-        Task {
-            await refreshSignal(reason: "manual_trigger")
-        }
-    }
-    
-    func refreshPrediction(reason: String) async {
-        // Cancel any previous refresh task
-        refreshTask?.cancel()
-        
-        refreshTask = Task {
-            let prediction: PredictionResult?
-            
-            if shouldShowAIDebug {
-                print("🔄 Refreshing AI signal for \(timeframe.rawValue) (reason: \(reason))")
+    private func startAutoRefresh() {
+        refreshTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                await self?.loadMarketData()
             }
-            
-            // Demo isolation: use isDemoAI instead of checking aiManager directly
-            if isDemoAI {
-                prediction = aiManager.generateSyntheticPrediction(for: timeframe)
-                if shouldShowAIDebug {
-                    print("🎭 Using Demo prediction for \(timeframe.rawValue)")
-                }
+        }
+    }
+    
+    // MARK: - Data Loading
+    private func loadMarketData() async {
+        do {
+            // In demo mode, generate mock data
+            if AppSettings.shared.demoMode {
+                generateMockData()
             } else {
-                // Use enhanced prediction with candles
-                prediction = await aiManager.predictWithCandles(for: timeframe, candles: mockCandles)
-                if shouldShowAIDebug {
-                    print("🧠 Using Live model prediction for \(timeframe.rawValue)")
+                // Load real market data
+                let marketData = try await marketDataService.fetchCandles(
+                    symbol: "BTCUSDT",
+                    timeframe: timeframe
+                )
+                
+                await MainActor.run {
+                    self.candles = marketData
+                    self.updatePriceInfo()
+                    self.updateChartPoints()
                 }
             }
-            
-            guard let prediction = prediction else {
-                print("❌ No prediction generated")
-                return
-            }
-            
+        } catch {
+            logger.error("Failed to load market data: \(error.localizedDescription)")
             await MainActor.run {
-                self.lastPrediction = prediction
-                self.flashSignalUI(for: prediction.signal)
-                
-                // Update legacy signal for compatibility
-                self.lastSignal = Signal(
-                    symbol: symbol,
-                    timeframe: timeframe,
-                    type: SignalType(rawValue: prediction.signal.rawValue),
-                    confidence: prediction.confidence,
-                    modelName: prediction.modelUsed,
-                    timestamp: prediction.timestamp
-                )
-                
-                // Update AI decision for compatibility
-                self.lastAIDecision = SignalDecision(
-                    signal: prediction.signal,
-                    confidence: prediction.confidence,
-                    reasoning: prediction.reasoning,
-                    timestamp: prediction.timestamp
-                )
-            }
-            
-            // Auto trading if enabled and not in demo mode
-            if autoTrading && !isDemoAI {
-                await executeAutoTrade(prediction: prediction)
+                self.errorMessage = error.localizedDescription
             }
         }
     }
     
-    // Legacy method for compatibility
-    func refreshSignal(reason: String) async {
-        await refreshPrediction(reason: reason)
-    }
-    
-    private func extractFeatures(from candles: [Candle], for timeframe: Timeframe) -> [Double] {
-        guard !candles.isEmpty else { 
-            return timeframe == .h4 ? Array(repeating: 45000.0, count: 5) : Array(repeating: 0.45, count: 10)
-        }
+    private func generateMockData() {
+        // Generate mock data for demo mode
+        let basePrice = 45000.0 + Double.random(in: -2000...2000)
+        price = basePrice
+        priceChange = Double.random(in: -500...500)
+        priceChangePercent = (priceChange / basePrice) * 100
         
-        let recentCandle = candles.last!
+        // Generate mock candles
+        candles = generateMockCandles(basePrice: basePrice)
+        updateChartPoints()
         
-        // For 4H model, use OHLCV directly
-        if timeframe == .h4 {
-            return [
-                recentCandle.open,
-                recentCandle.high,
-                recentCandle.low,
-                recentCandle.close,
-                recentCandle.volume
+        // Generate mock positions
+        if openPositions.isEmpty && Bool.random() {
+            openPositions = [
+                Position(
+                    id: UUID().uuidString,
+                    symbol: "BTCUSDT",
+                    side: "LONG",
+                    size: "0.01",
+                    entryPrice: basePrice - 100,
+                    currentPrice: basePrice,
+                    pnl: 1.0,
+                    pnlPercent: 0.1
+                )
             ]
         }
-        
-        // For NN models (5m, 1h), use 10 normalized features
-        let close = recentCandle.close
-        let open = recentCandle.open
-        let high = recentCandle.high
-        let low = recentCandle.low
-        let volume = recentCandle.volume
-        
-        return [
-            close / 100000.0,  // Normalized close
-            open / 100000.0,   // Normalized open
-            high / 100000.0,   // Normalized high
-            low / 100000.0,    // Normalized low
-            volume / 10000.0,  // Normalized volume
-            (close - open) / open,  // Price change ratio
-            (high - low) / open,    // Range ratio
-            volume / (candles.count > 1 ? candles[candles.count-2].volume : volume), // Volume ratio
-            Double.random(in: 0...1), // Random feature 9
-            Double.random(in: 0...1)  // Random feature 10
-        ]
     }
     
-    private func flashSignalUI(for signal: MyTradeMate.SignalType) {
-        let flashColor: Color
-        switch signal {
-        case .buy: 
-            flashColor = .green
-            Haptics.success()
-        case .sell: 
-            flashColor = .red
-            Haptics.warning()
-        case .hold: 
-            flashColor = .gray
-            Haptics.playSelection()
-        }
+    private func generateMockCandles(basePrice: Double) -> [Candle] {
+        var mockCandles: [Candle] = []
+        let count = 100
         
-        signalFlashColor = flashColor
-        
-        // Clear flash after delay
-        Task {
-            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
-            await MainActor.run {
-                self.signalFlashColor = nil
-            }
-        }
-    }
-    
-    private func executeAutoTrade(prediction: PredictionResult) async {
-        guard prediction.signal != .hold else { return }
-        
-        print("🤖 Auto trading: Executing \(prediction.signal.rawValue) signal")
-        
-        // Use the integrated auto trading from AIModelManager
-        let equity = await TradeManager.shared.equity
-        await aiManager.executeAutoTrade(
-            signal: prediction,
-            symbol: symbol,
-            currentPrice: price,
-            equity: equity
-        )
-        
-        // Update PnL in demo mode
-        if aiManager.pnlDemoMode {
-            await MainActor.run {
-                let impact = Double.random(in: -50...100) * prediction.confidence
-                self.pnl = PnLSnapshot(
-                    equity: self.pnl.equity + impact,
-                    realizedToday: self.pnl.realizedToday + impact,
-                    unrealized: self.pnl.unrealized,
-                    ts: Date()
-                )
-            }
-        }
-    }
-    
-    func buy(_ qty: Double = 0.01) {
-        Task {
-            if await ThemeManager.shared.isHapticsEnabled {
-                Haptics.buyFeedback()
-            }
-            let req = OrderRequest(symbol: symbol, side: .buy, quantity: qty, limitPrice: nil, stopLoss: nil, takeProfit: nil)
-            _ = try? await TradeManager.shared.manualOrder(req)
-        }
-    }
-    
-    func sell(_ qty: Double = 0.01) {
-        Task {
-            if await ThemeManager.shared.isHapticsEnabled {
-                Haptics.sellFeedback()
-            }
-            let req = OrderRequest(symbol: symbol, side: .sell, quantity: qty, limitPrice: nil, stopLoss: nil, takeProfit: nil)
-            _ = try? await TradeManager.shared.manualOrder(req)
-        }
-    }
-    
-    // MARK: - Mock Data & Demo Functions
-    
-    private func generateMockCandles() {
-        mockCandles.removeAll()
-        let basePrice = 45000.0
-        let now = Date()
-        
-        // Generate 200 mock candles with realistic OHLCV data
-        for i in 0..<200 {
-            let openTime = now.addingTimeInterval(TimeInterval(-i * 300)) // 5min intervals
-            let volatility = Double.random(in: 0.995...1.005)
-            let open = basePrice * volatility
-            let close = open * Double.random(in: 0.998...1.002)
-            let high = max(open, close) * Double.random(in: 1.0...1.001)
-            let low = min(open, close) * Double.random(in: 0.999...1.0)
-            let volume = Double.random(in: 50...500)
+        for i in 0..<count {
+            let timestamp = Date().addingTimeInterval(-Double(i * 300)) // 5-minute intervals
+            let volatility = Double.random(in: 0.002...0.01) * basePrice
+            let trend = sin(Double(i) * 0.1) * volatility
+            
+            let open = basePrice + trend + Double.random(in: -volatility...volatility)
+            let close = open + Double.random(in: -volatility/2...volatility/2)
+            let high = max(open, close) + Double.random(in: 0...volatility/4)
+            let low = min(open, close) - Double.random(in: 0...volatility/4)
+            let volume = Double.random(in: 100...1000)
             
             let candle = Candle(
-                openTime: openTime,
+                openTime: timestamp,
                 open: open,
                 high: high,
                 low: low,
@@ -350,81 +194,297 @@ final class DashboardVM: ObservableObject {
             mockCandles.append(candle)
         }
         
-        // Sort by time (oldest first)
-        mockCandles.sort { $0.openTime < $1.openTime }
+        return mockCandles.reversed()
     }
     
-    private func updateMockCandles(with currentPrice: Double) {
-        // Update the latest candle with current price
-        if !mockCandles.isEmpty {
-            let lastIndex = mockCandles.count - 1
-            let lastCandle = mockCandles[lastIndex]
-            
-            let updatedCandle = Candle(
-                openTime: lastCandle.openTime,
-                open: lastCandle.open,
-                high: max(lastCandle.high, currentPrice),
-                low: min(lastCandle.low, currentPrice),
-                close: currentPrice,
-                volume: lastCandle.volume + Double.random(in: 1...10)
+    private func updatePriceInfo() {
+        guard let lastCandle = candles.last,
+              candles.count >= 2 else { return }
+        
+        let previousCandle = candles[candles.count - 2]
+        price = lastCandle.close
+        priceChange = lastCandle.close - previousCandle.close
+        priceChangePercent = (priceChange / previousCandle.close) * 100
+    }
+    
+    private func updateChartPoints() {
+        guard !candles.isEmpty else {
+            chartPoints = []
+            return
+        }
+        
+        let closes = candles.suffix(100).map { $0.close }
+        guard let maxPrice = closes.max(),
+              let minPrice = closes.min(),
+              maxPrice > minPrice else {
+            chartPoints = []
+            return
+        }
+        
+        let priceRange = maxPrice - minPrice
+        chartPoints = closes.enumerated().map { index, close in
+            CGPoint(
+                x: CGFloat(index) / CGFloat(closes.count - 1),
+                y: CGFloat((close - minPrice) / priceRange)
             )
-            
-            mockCandles[lastIndex] = updatedCandle
         }
     }
     
-    private func updateDemoPnL() {
-        // Generate realistic but random PnL movements
-        let baseEquity = 10000.0
-        let variation = Double.random(in: -200...500)
-        let realizedToday = Double.random(in: -100...300)
-        let unrealized = Double.random(in: -50...150)
+    // MARK: - Prediction
+    func refreshPrediction() {
+        guard !isRefreshing else { return }
         
-        pnl = PnLSnapshot(
-            equity: baseEquity + variation,
-            realizedToday: realizedToday,
-            unrealized: unrealized,
-            ts: Date()
-        )
-    }
-    
-    private func updateDemoPnLWithSignal(_ prediction: PredictionResult) {
-        // Update PnL based on AI signal strength and market conditions
-        let baseImpact = Double.random(in: -100...200)
-        let signalMultiplier: Double
-        
-        switch prediction.signal {
-        case .buy: signalMultiplier = 1.2
-        case .sell: signalMultiplier = 0.8  
-        case .hold: signalMultiplier = 0.9
-        }
-        
-        let confidenceMultiplier = prediction.confidence
-        let finalImpact = baseImpact * signalMultiplier * confidenceMultiplier
-        
-        pnl = PnLSnapshot(
-            equity: pnl.equity + finalImpact,
-            realizedToday: pnl.realizedToday + finalImpact,
-            unrealized: Double.random(in: -25...50),
-            ts: Date()
-        )
-        
-        if aiManager.aiDebugMode {
-            print("💰 Demo PnL updated: \(prediction.signal.rawValue) signal, impact: \(String(format: "%.2f", finalImpact))")
+        Task {
+            await refreshPredictionAsync()
         }
     }
     
-    private func resetToRealPnL() async {
-        // Reset to real PnL data when exiting demo mode
-        let pos = await TradeManager.shared.position
-        let eq = await TradeManager.shared.equity
-        await PnLManager.shared.resetIfNeeded()
-        let snap = await PnLManager.shared.snapshot(price: price, position: pos, equity: eq)
-        await MainActor.run { 
-            self.pnl = snap
-            if aiManager.aiDebugMode {
-                print("🔄 Reset to real PnL data: equity=\(eq), realized=\(snap.realizedToday)")
+    private func refreshPredictionAsync() async {
+        // Throttle predictions
+        let timeSinceLastPrediction = Date().timeIntervalSince(lastPredictionTime)
+        guard timeSinceLastPrediction >= 0.5 else {
+            logger.debug("Throttling prediction, last was \(timeSinceLastPrediction)s ago")
+            return
+        }
+        
+        await MainActor.run {
+            isRefreshing = true
+        }
+        
+        defer {
+            Task { @MainActor in
+                isRefreshing = false
+                lastUpdated = Date()
             }
         }
+        
+        lastPredictionTime = Date()
+        
+        guard candles.count >= 50 else {
+            logger.warning("Insufficient candles for prediction: \(candles.count)")
+            return
+        }
+        
+        let verboseLogging = AppSettings.shared.verboseAILogs
+        
+        if AppSettings.shared.demoMode {
+            // Demo mode - generate synthetic signal
+            let demoSignal = generateDemoSignal()
+            await MainActor.run {
+                self.currentSignal = demoSignal
+            }
+            
+            if verboseLogging {
+                logger.info("Demo signal: \(demoSignal.direction) @ \(String(format: "%.1f%%", demoSignal.confidence * 100))")
+            }
+        } else {
+            // Live mode - use ensemble strategy engine
+            let startTime = CFAbsoluteTimeGetCurrent()
+            
+            // Get ensemble decision
+            let ensembleDecision = ensembleDecider.decide(
+                candles: candles,
+                verboseLogging: verboseLogging
+            )
+            
+            // Try to get CoreML prediction as well
+            var coreMLSignal: PredictionResult?
+            do {
+                coreMLSignal = try await aiModelManager.predict(
+                    kind: modelKindForTimeframe(timeframe),
+                    candles: candles,
+                    verbose: verboseLogging
+                )
+            } catch {
+                logger.error("CoreML prediction failed: \(error.localizedDescription)")
+            }
+            
+            // Combine ensemble and CoreML signals
+            let finalSignal = combineSignals(
+                ensemble: ensembleDecision,
+                coreML: coreMLSignal,
+                verboseLogging: verboseLogging
+            )
+            
+            let inferenceTime = (CFAbsoluteTimeGetCurrent() - startTime) * 1000
+            
+            if verboseLogging {
+                logger.info("Inference time: \(String(format: "%.1f", inferenceTime))ms")
+                logger.info("Final signal: \(finalSignal.direction) @ \(String(format: "%.1f%%", finalSignal.confidence * 100))")
+            }
+            
+            await MainActor.run {
+                self.currentSignal = finalSignal
+            }
+        }
+    }
+    
+    private func generateDemoSignal() -> SignalInfo {
+        let signals = ["BUY", "SELL", "HOLD"]
+        let direction = signals.randomElement()!
+        let confidence = Double.random(in: 0.5...0.95)
+        
+        let reasons = [
+            "BUY": "Strong bullish momentum detected",
+            "SELL": "Bearish reversal pattern identified",
+            "HOLD": "Market consolidating, wait for breakout"
+        ]
+        
+        return SignalInfo(
+            direction: direction,
+            confidence: confidence,
+            reason: reasons[direction] ?? "Demo signal",
+            timestamp: Date()
+        )
+    }
+    
+    private func combineSignals(ensemble: EnsembleDecision, 
+                               coreML: PredictionResult?,
+                               verboseLogging: Bool) -> SignalInfo {
+        // If no CoreML signal, use ensemble only
+        guard let coreML = coreML else {
+            return SignalInfo(
+                direction: directionToString(ensemble.direction),
+                confidence: ensemble.confidence,
+                reason: ensemble.reasoning,
+                timestamp: Date()
+            )
+        }
+        
+        // Weight: 60% ensemble, 40% CoreML
+        let ensembleWeight = 0.6
+        let coreMLWeight = 0.4
+        
+        // Convert to scores
+        var buyScore = 0.0
+        var sellScore = 0.0
+        var holdScore = 0.0
+        
+        // Add ensemble scores
+        switch ensemble.direction {
+        case .buy:
+            buyScore += ensemble.confidence * ensembleWeight
+        case .sell:
+            sellScore += ensemble.confidence * ensembleWeight
+        case .hold:
+            holdScore += ensemble.confidence * ensembleWeight
+        }
+        
+        // Add CoreML scores
+        switch coreML.signal {
+        case .buy:
+            buyScore += coreML.confidence * coreMLWeight
+        case .sell:
+            sellScore += coreML.confidence * coreMLWeight
+        case .hold:
+            holdScore += coreML.confidence * coreMLWeight
+        }
+        
+        // Determine final direction
+        let maxScore = max(buyScore, sellScore, holdScore)
+        let direction: String
+        let confidence: Double
+        
+        if maxScore == buyScore && buyScore > 0.4 {
+            direction = "BUY"
+            confidence = buyScore
+        } else if maxScore == sellScore && sellScore > 0.4 {
+            direction = "SELL"
+            confidence = sellScore
+        } else {
+            direction = "HOLD"
+            confidence = holdScore
+        }
+        
+        let reason = "\(ensemble.reasoning) + CoreML \(coreML.modelUsed)"
+        
+        if verboseLogging {
+            logger.info("Combined scores - Buy: \(String(format: "%.2f", buyScore)), Sell: \(String(format: "%.2f", sellScore)), Hold: \(String(format: "%.2f", holdScore))")
+        }
+        
+        return SignalInfo(
+            direction: direction,
+            confidence: confidence,
+            reason: reason,
+            timestamp: Date()
+        )
+    }
+    
+    private func directionToString(_ direction: StrategySignal.Direction) -> String {
+        switch direction {
+        case .buy: return "BUY"
+        case .sell: return "SELL"
+        case .hold: return "HOLD"
+        }
+    }
+    
+    private func modelKindForTimeframe(_ timeframe: Timeframe) -> ModelKind {
+        switch timeframe {
+        case .m5: return .m5
+        case .h1: return .h1
+        case .h4: return .h4
+        }
+    }
+    
+    // MARK: - Trading Actions
+    func executeBuy() {
+        guard !AppSettings.shared.autoTrading else { return }
+        
+        Haptics.impact(.medium)
+        
+        if AppSettings.shared.confirmTrades {
+            // Show confirmation dialog
+            logger.info("Buy order confirmation required")
+        } else {
+            // Execute immediately
+            logger.info("Executing buy order")
+            // TODO: Implement trade execution
+        }
+    }
+    
+    func executeSell() {
+        guard !AppSettings.shared.autoTrading else { return }
+        
+        Haptics.impact(.medium)
+        
+        if AppSettings.shared.confirmTrades {
+            // Show confirmation dialog
+            logger.info("Sell order confirmation required")
+        } else {
+            // Execute immediately
+            logger.info("Executing sell order")
+            // TODO: Implement trade execution
+        }
+    }
+    
+    // MARK: - Public Methods
+    func refreshData() {
+        Task {
+            isLoading = true
+            await loadMarketData()
+            await refreshPredictionAsync()
+            isLoading = false
+        }
+    }
+    
+    deinit {
+        refreshTimer?.invalidate()
+    }
+}
+
+// MARK: - Position Model (Temporary)
+struct Position: Identifiable {
+    let id: String
+    let symbol: String
+    let side: String
+    let size: String
+    let entryPrice: Double
+    let currentPrice: Double
+    let pnl: Double
+    let pnlPercent: Double
+    
+    var pnlString: String {
+        let sign = pnl >= 0 ? "+" : ""
+        return "\(sign)$\(String(format: "%.2f", pnl))"
     }
 }
