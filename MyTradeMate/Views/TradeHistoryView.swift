@@ -134,80 +134,82 @@ struct TradeHistoryView: View {
     private func exportCSV() {
         Task { @MainActor in
             isExporting = true
-            let fills = await TradeManager.shared.fillsSnapshot()
-            let filtered = filterFills(fills)
+            defer { isExporting = false }
+            
             do {
+                let fills = await TradeManager.shared.fillsSnapshot()
+                let filtered = filterFills(fills)
                 let url = try await CSVExporter.exportFills(filtered, fileName: "trades")
                 shareURL = url
                 showShare = true
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                await Haptics.success()
             } catch {
                 errorMessage = error.localizedDescription
                 showError = true
+                await Haptics.error()
             }
-            isExporting = false
         }
     }
     
     private func exportDailyPnL() {
-        isExporting = true
-        BackgroundExporter.runAsync(work: {
-            let all = await TradeManager.shared.fillsSnapshot()
-            let filtered = filterFills(all)
-            let rows = PnLAggregator.aggregateDaily(fills: filtered)
-            return try PnLCSVExporter.exportDaily(rows)
-        }, completion: { result in
-            isExporting = false
-            switch result {
-            case .success(let url):
+        Task { @MainActor in
+            isExporting = true
+            defer { isExporting = false }
+            
+            do {
+                let fills = await TradeManager.shared.fillsSnapshot()
+                let filtered = filterFills(fills)
+                let rows = PnLAggregator.aggregateDaily(fills: filtered)
+                let url = try PnLCSVExporter.exportDaily(rows)
                 shareURL = url
                 showShare = true
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            case .failure(let err):
-                errorMessage = err.localizedDescription
+                await Haptics.success()
+            } catch {
+                errorMessage = error.localizedDescription
                 showError = true
+                await Haptics.error()
             }
-        })
+        }
     }
     
     private func exportPnLMetrics() {
-        isExporting = true
-        BackgroundExporter.runAsync(work: {
-            let all = await TradeManager.shared.fillsSnapshot()
-            let filtered = filterFills(all)
-            let metrics = PnLMetricsAggregator.compute(from: filtered)
-            return try PnLMetricsCSVExporter.export(metrics)
-        }, completion: { result in
-            isExporting = false
-            switch result {
-            case .success(let url):
+        Task { @MainActor in
+            isExporting = true
+            defer { isExporting = false }
+            
+            do {
+                let fills = await TradeManager.shared.fillsSnapshot()
+                let filtered = filterFills(fills)
+                let metrics = PnLMetricsAggregator.compute(from: filtered)
+                let url = try PnLMetricsCSVExporter.export(metrics)
                 shareURL = url
                 showShare = true
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            case .failure(let err):
-                errorMessage = err.localizedDescription
+                await Haptics.success()
+            } catch {
+                errorMessage = error.localizedDescription
                 showError = true
+                await Haptics.error()
             }
-        })
+        }
     }
     
     private func exportJSON() {
-        isExporting = true
-        BackgroundExporter.runAsync(work: {
-            let all = await TradeManager.shared.fillsSnapshot()
-            let filtered = filterFills(all)
-            return try JSONExporter.export(filtered, fileName: "trades")
-        }, completion: { result in
-            isExporting = false
-            switch result {
-            case .success(let url):
+        Task { @MainActor in
+            isExporting = true
+            defer { isExporting = false }
+            
+            do {
+                let fills = await TradeManager.shared.fillsSnapshot()
+                let filtered = filterFills(fills)
+                let url = try await JSONExporter.exportFills(filtered, fileName: "trades")
                 shareURL = url
                 showShare = true
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            case .failure(let err):
-                errorMessage = err.localizedDescription
+                await Haptics.success()
+            } catch {
+                errorMessage = error.localizedDescription
                 showError = true
+                await Haptics.error()
             }
-        })
+        }
     }
 }
