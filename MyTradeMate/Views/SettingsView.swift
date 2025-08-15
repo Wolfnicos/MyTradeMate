@@ -14,8 +14,39 @@ struct SettingsView: View {
             }
             
             Section(header: Text("Experience")) {
-                Toggle("Haptics", isOn: $theme.isHapticsEnabled)
-                Toggle("Dark Mode", isOn: $theme.isDarkMode)
+                VStack(alignment: .leading, spacing: 8) {
+                    Toggle("Haptics", isOn: $theme.isHapticsEnabled)
+                    
+                    if theme.isHapticsEnabled {
+                        HStack(spacing: 12) {
+                            Button("✅ Success") {
+                                Haptics.play(.success)
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                            
+                            Button("⚠️ Warning") {
+                                Haptics.play(.warning)
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                            
+                            Button("❌ Error") {
+                                Haptics.play(.error)
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                        }
+                        .padding(.leading, 16)
+                    }
+                }
+                
+                Picker("Theme", selection: $theme.isDarkMode) {
+                    Text("Light").tag(false)
+                    Text("Dark").tag(true)
+                }
+                .pickerStyle(.segmented)
+                
                 Toggle("Confirm trades", isOn: $theme.isConfirmTradesEnabled)
             }
 
