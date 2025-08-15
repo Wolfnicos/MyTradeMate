@@ -35,6 +35,29 @@ actor KeychainStore {
         try delete(service: "apiSecret.\(exchange.rawValue)")
     }
     
+    // MARK: - Convenience Methods for Exchange Namespaces
+    
+    func hasCredentials(for exchange: Exchange) -> Bool {
+        do {
+            _ = try getAPIKey(for: exchange)
+            _ = try getAPISecret(for: exchange)
+            return true
+        } catch {
+            return false
+        }
+    }
+    
+    func saveExchangeCredentials(apiKey: String, apiSecret: String, for exchange: Exchange) throws {
+        try saveAPIKey(apiKey, for: exchange)
+        try saveAPISecret(apiSecret, for: exchange)
+    }
+    
+    func getExchangeCredentials(for exchange: Exchange) throws -> (apiKey: String, apiSecret: String) {
+        let apiKey = try getAPIKey(for: exchange)
+        let apiSecret = try getAPISecret(for: exchange)
+        return (apiKey: apiKey, apiSecret: apiSecret)
+    }
+    
     // MARK: - Private Methods
     
     private func saveItem(_ value: String, service: String) throws {

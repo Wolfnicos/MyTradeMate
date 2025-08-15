@@ -25,39 +25,42 @@ final class FeatureBuilder {
     }
     
     // MARK: - Feature Building
-    func buildFeatures(from candles: [Candle]) throws -> MLMultiArray {
-        guard candles.count >= Constants.lookbackPeriods.max() ?? 0 else {
-            throw AIModelError.invalidFeatureCount
+    func buildFeatures(from candles: [Candle]) throws -> [Float] {
+        guard candles.count >= 50 else {
+            throw FeatureError.notEnoughCandles
         }
         
-        let features = try MLMultiArray(shape: [1, Constants.featureCount as NSNumber], 
-                                      dataType: .double)
+        guard let lastCandle = candles.last else {
+            throw FeatureError.invalidInput("no candles provided")
+        }
+        
+        var features: [Float] = []
         
         // 1. Price momentum (close/close_prev - 1)
-        features[0] = calculateMomentum(candles: candles, period: 1)
+        features.append(calculateMomentum(candles: candles, period: 1))
         
         // 2. Price volatility (std dev of returns)
-        features[1] = calculateVolatility(candles: candles, period: 20)
+        features.append(calculateVolatility(candles: candles, period: 20))
         
         // 3-5. Moving averages crossovers
-        features[2] = calculateMACrossover(candles: candles, fast: 5, slow: 20)
-        features[3] = calculateMACrossover(candles: candles, fast: 10, slow: 50)
-        features[4] = calculateMACrossover(candles: candles, fast: 20, slow: 100)
+        features.append(calculateMACrossover(candles: candles, fast: 5, slow: 20))
+        features.append(calculateMACrossover(candles: candles, fast: 10, slow: 50))
+        features.append(calculateMACrossover(candles: candles, fast: 20, slow: 100))
         
         // 6-7. RSI indicators
-        features[5] = calculateRSI(candles: candles, period: 14)
-        features[6] = calculateRSI(candles: candles, period: 28)
+        features.append(calculateRSI(candles: candles, period: 14))
+        features.append(calculateRSI(candles: candles, period: 28))
         
         // 8. Volume trend
-        features[7] = calculateVolumeTrend(candles: candles)
+        features.append(calculateVolumeTrend(candles: candles))
         
         // 9. Price range position
-        features[8] = calculatePriceRangePosition(candles: candles)
+        features.append(calculatePriceRangePosition(candles: candles))
         
         // 10. Trend strength
-        features[9] = calculateTrendStrength(candles: candles)
+        features.append(calculateTrendStrength(candles: candles))
         
-        if settings.shouldLogVerbose {
+        if settings.verboseAILogs {
             Self.logger.debug("""
                 Built features vector:
                 1. Momentum: \(features[0])
@@ -77,64 +80,81 @@ final class FeatureBuilder {
     }
     
     // MARK: - Feature Calculations
-    private func calculateMomentum(candles: [Candle], period: Int) -> Double {
-        guard candles.count > period else { return 0 }
-        let current = candles.last!.close
-        let previous = candles[candles.count - 1 - period].close
-        return (current - previous) / previous
+    private func calculateMomentum(candles: [Candle], period: Int) -> Float {
+        guard candles.count > period,
+              let current = safeLast(candles)?.close,
+              let previous = safeIndex(candles, candles.count - 1 - period)?.close,
+              previous != 0 else { return 0 }
+        return Float((current - previous) / previous)
     }
     
-    private func calculateVolatility(candles: [Candle], period: Int) -> Double {
-        let returns = candles.suffix(period).windows(ofCount: 2).map { window in
+    private func calculateVolatility(candles: [Candle], period: Int) -> Float {
+        guard candles.count >= period else { return 0 }
+        let returns = candles.suffix(period).windows(ofCount: 2).compactMap { window -> Double? in
             let prices = Array(window)
+            guard prices.count == 2, prices[0].close != 0 else { return nil }
             return (prices[1].close - prices[0].close) / prices[0].close
         }
-        return returns.standardDeviation()
+        return Float(returns.standardDeviation())
     }
     
-    private func calculateMACrossover(candles: [Candle], fast: Int, slow: Int) -> Double {
+    private func calculateMACrossover(candles: [Candle], fast: Int, slow: Int) -> Float {
+        guard candles.count >= slow else { return 0 }
         let fastMA = candles.suffix(fast).map { $0.close }.average()
         let slowMA = candles.suffix(slow).map { $0.close }.average()
-        return (fastMA - slowMA) / slowMA
+        guard slowMA != 0 else { return 0 }
+        return Float((fastMA - slowMA) / slowMA)
     }
     
-    private func calculateRSI(candles: [Candle], period: Int) -> Double {
-        let changes = candles.suffix(period + 1).windows(ofCount: 2).map { window in
+    private func calculateRSI(candles: [Candle], period: Int) -> Float {
+        guard candles.count >= period + 1 else { return 50 }
+        let changes = candles.suffix(period + 1).windows(ofCount: 2).compactMap { window -> Double? in
             let prices = Array(window)
+            guard prices.count == 2 else { return nil }
             return prices[1].close - prices[0].close
         }
         
-        let gains = changes.filter { $0 > 0 }.average()
-        let losses = abs(changes.filter { $0 < 0 }.average())
+        let gains = changes.filter { $0 > 0 }
+        let losses = changes.filter { $0 < 0 }.map { abs($0) }
         
-        guard losses != 0 else { return 100 }
-        let rs = gains / losses
-        return 100 - (100 / (1 + rs))
+        let avgGain = gains.isEmpty ? 0 : gains.average()
+        let avgLoss = losses.isEmpty ? 0 : losses.average()
+        
+        guard avgLoss != 0 else { return 100 }
+        let rs = avgGain / avgLoss
+        return Float(100 - (100 / (1 + rs)))
     }
     
-    private func calculateVolumeTrend(candles: [Candle]) -> Double {
+    private func calculateVolumeTrend(candles: [Candle]) -> Float {
         let shortPeriod = 5
         let longPeriod = 20
+        
+        guard candles.count >= longPeriod else { return 0 }
         
         let shortVol = candles.suffix(shortPeriod).map { $0.volume }.average()
         let longVol = candles.suffix(longPeriod).map { $0.volume }.average()
         
-        return (shortVol - longVol) / longVol
+        guard longVol != 0 else { return 0 }
+        return Float((shortVol - longVol) / longVol)
     }
     
-    private func calculatePriceRangePosition(candles: [Candle]) -> Double {
+    private func calculatePriceRangePosition(candles: [Candle]) -> Float {
         let period = 50
+        guard candles.count >= period,
+              let current = safeLast(candles)?.close else { return 0.5 }
+        
         let recentCandles = Array(candles.suffix(period))
-        let high = recentCandles.map { $0.high }.max() ?? 0
-        let low = recentCandles.map { $0.low }.min() ?? 0
-        let current = candles.last?.close ?? 0
+        let high = recentCandles.map { $0.high }.max() ?? current
+        let low = recentCandles.map { $0.low }.min() ?? current
         
         guard high != low else { return 0.5 }
-        return (current - low) / (high - low)
+        return Float((current - low) / (high - low))
     }
     
-    private func calculateTrendStrength(candles: [Candle]) -> Double {
+    private func calculateTrendStrength(candles: [Candle]) -> Float {
         let period = 20
+        guard candles.count >= period else { return 0 }
+        
         let prices = candles.suffix(period).map { $0.close }
         let x = Array(0..<period).map(Double.init)
         
@@ -142,7 +162,8 @@ final class FeatureBuilder {
         let slope = linearRegressionSlope(y: prices, x: x)
         let averagePrice = prices.average()
         
-        return slope / averagePrice  // Normalized slope
+        guard averagePrice != 0 else { return 0 }
+        return Float(slope / averagePrice)  // Normalized slope
     }
 }
 

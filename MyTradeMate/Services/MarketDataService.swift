@@ -2,7 +2,7 @@ import Foundation
 import Combine
 import OSLog
 
-private let logger = Logger(subsystem: "com.mytrademate", category: "MarketData")
+private let logger = os.Logger(subsystem: "com.mytrademate", category: "MarketData")
 
 @MainActor
 final class MarketDataService: ObservableObject {
@@ -24,14 +24,19 @@ final class MarketDataService: ObservableObject {
         }
         
         // In demo mode, generate mock data
-        if AppSettings.shared.demoMode {
-            let mockCandles = generateMockCandles(symbol: symbol, timeframe: timeframe)
-            candles[key] = mockCandles
-            return mockCandles
-        }
+        // if AppSettings.shared.demoMode {
+        //     let mockCandles = generateMockCandles(symbol: symbol, timeframe: timeframe)
+        //     candles[key] = mockCandles
+        //     return mockCandles
+        // }
+        
+        // Generate mock data for now
+        let mockCandles = generateMockCandles(symbol: symbol, timeframe: timeframe)
+        candles[key] = mockCandles
+        return mockCandles
         
         // TODO: Implement real market data fetching
-        throw MarketDataError.notImplemented
+        // throw MarketDataError.notImplemented
     }
     
     private func generateMockCandles(symbol: String, timeframe: Timeframe) -> [Candle] {

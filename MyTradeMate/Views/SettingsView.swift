@@ -1,47 +1,117 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @State private var liveMarketDataEnabled = true
-    @State private var aiDebugMode = false
-    @State private var demoMode = false
-    @State private var verboseAILogs = false
-    @State private var pnlDemoMode = false
-    @State private var hapticsEnabled = true
-    @State private var darkMode = false
-    @State private var confirmTrades = true
-    @State private var defaultTimeframe: Timeframe = .m5
+    @ObservedObject private var settings = AppSettings.shared
     
     var body: some View {
-        NavigationView {
-            Form {
+        NavigationStack {
+            List {
                 Section("Market Data") {
-                    Toggle("Live Market Data", isOn: $liveMarketDataEnabled)
-                    Toggle("Demo Mode", isOn: $demoMode)
+                    Toggle("Live Market Data", isOn: $settings.liveMarketData)
+                        .help("Connect to live exchange data")
+                    
+                    HStack {
+                        Text("Default Symbol")
+                        Spacer()
+                        Text(settings.defaultSymbol)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    HStack {
+                        Text("Default Timeframe")
+                        Spacer()
+                        Text(settings.defaultTimeframe)
+                            .foregroundColor(.secondary)
+                    }
                 }
                 
                 Section("AI Settings") {
-                    Toggle("AI Debug Mode", isOn: $aiDebugMode)
-                    Toggle("Verbose AI Logs", isOn: $verboseAILogs)
+                    Toggle("Demo Mode", isOn: $settings.demoMode)
+                        .help("Use simulated AI predictions for testing")
+                    
+                    Toggle("AI Debug Mode", isOn: $settings.aiDebugMode)
+                        .help("Enable additional AI diagnostics")
+                    
+                    Toggle("Verbose AI Logs", isOn: $settings.verboseAILogs)
+                        .help("Show detailed AI processing logs")
+                    
+                    Toggle("PnL Demo Mode", isOn: $settings.pnlDemoMode)
+                        .help("Use synthetic PnL data for testing")
                 }
                 
                 Section("Trading") {
-                    Toggle("Confirm Trades", isOn: $confirmTrades)
-                    Toggle("PnL Demo Mode", isOn: $pnlDemoMode)
+                    Toggle("Confirm Trades", isOn: $settings.confirmTrades)
+                        .help("Show confirmation dialog before placing trades")
+                    
+                    Toggle("Paper Trading", isOn: $settings.paperTrading)
+                        .help("Simulate trades without real money")
+                    
+                    Toggle("Auto Trading", isOn: $settings.autoTrading)
+                        .help("Enable automated trading based on signals")
+                        .disabled(!settings.confirmTrades)
+                }
+                
+                Section("Strategies") {
+                    NavigationLink("RSI Strategy") {
+                        Text("RSI Configuration")
+                            .navigationTitle("RSI Strategy")
+                    }
+                    
+                    NavigationLink("EMA Strategy") {
+                        Text("EMA Configuration")
+                            .navigationTitle("EMA Strategy")
+                    }
+                    
+                    NavigationLink("ATR Strategy") {
+                        Text("ATR Configuration")
+                            .navigationTitle("ATR Strategy")
+                    }
+                }
+                
+                Section("Exchanges") {
+                    NavigationLink("Binance") {
+                        Text("Binance Configuration")
+                            .navigationTitle("Binance")
+                    }
+                    
+                    NavigationLink("Kraken") {
+                        Text("Kraken Configuration")
+                            .navigationTitle("Kraken")
+                    }
                 }
                 
                 Section("Interface") {
-                    Toggle("Haptics", isOn: $hapticsEnabled)
-                    Toggle("Dark Mode", isOn: $darkMode)
+                    Toggle("Dark Mode", isOn: $settings.darkMode)
+                        .help("Use dark color scheme")
                     
-                    Picker("Default Timeframe", selection: $defaultTimeframe) {
-                        Text("5m").tag(Timeframe.m5)
-                        Text("1h").tag(Timeframe.h1)
-                        Text("4h").tag(Timeframe.h4)
+                    Toggle("Haptic Feedback", isOn: $settings.haptics)
+                        .help("Enable tactile feedback for interactions")
+                }
+                
+                Section("Diagnostics") {
+                    HStack {
+                        Text("App Version")
+                        Spacer()
+                        Text(Bundle.main.appVersion)
+                            .foregroundColor(.secondary)
                     }
+                    
+                    HStack {
+                        Text("Build Number")
+                        Spacer()
+                        Text(Bundle.main.buildNumber)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Button("Export Diagnostics") {
+                        // Export functionality
+                    }
+                    .foregroundColor(.blue)
                 }
             }
             .navigationTitle("Settings")
         }
+        .preferredColorScheme(settings.darkMode ? .dark : .light)
     }
 }
 

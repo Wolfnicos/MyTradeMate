@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct RootTabs: View {
-    @StateObject private var settings = AppSettings.shared
+    // @StateObject private var settings = AppSettings.shared
     
     var body: some View {
         TabView {
@@ -12,12 +12,14 @@ struct RootTabs: View {
                 Label("Dashboard", systemImage: "chart.line.uptrend.xyaxis")
             }
             
+            /* // Temporarily disabled
             NavigationView {
                 TradesView()
             }
             .tabItem {
                 Label("Trades", systemImage: "arrow.left.arrow.right")
             }
+            */
             
             NavigationView {
                 PnLDetailView()
@@ -26,12 +28,14 @@ struct RootTabs: View {
                 Label("P&L", systemImage: "chart.bar.fill")
             }
             
+            /* // Temporarily disabled
             NavigationView {
                 StrategiesView()
             }
             .tabItem {
                 Label("Strategies", systemImage: "brain")
             }
+            */
             
             NavigationView {
                 SettingsView()
@@ -40,8 +44,8 @@ struct RootTabs: View {
                 Label("Settings", systemImage: "gearshape.fill")
             }
         }
-        .environmentObject(settings)
-        .preferredColorScheme(settings.darkMode ? .dark : .light)
+        // .environmentObject(settings)
+        // .preferredColorScheme(settings.darkMode ? .dark : .light)
     }
 }
 

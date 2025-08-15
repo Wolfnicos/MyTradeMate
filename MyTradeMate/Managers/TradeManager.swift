@@ -22,7 +22,7 @@ public final class TradeManager: ObservableObject {
     
     public func setExchange(_ ex: Exchange) async {
         exchangeClient = PaperExchangeClient(exchange: ex)
-        await MarketDataService.shared.setPaperExchange(ex)
+        // await MarketDataService.shared.setPaperExchange(ex)
     }
     
         public func manualOrder(_ req: OrderRequest) async throws -> OrderFill {

@@ -284,7 +284,7 @@ public final class WebSocketManager {
     
     private func log(_ message: String) {
         if configuration.verboseLogging {
-            print("🔗 [\(configuration.name)] \(message)")
+            Log.ws("[\(configuration.name)] \(message)")
         }
     }
 }

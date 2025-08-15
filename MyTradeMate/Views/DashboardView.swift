@@ -1,9 +1,57 @@
 import SwiftUI
 import Charts
+import UIKit
+
+// MARK: - Chart Data Models
+struct CandleData: Identifiable {
+    let id = UUID()
+    let timestamp: Date
+    let open: Double
+    let high: Double
+    let low: Double
+    let close: Double
+    let volume: Double
+}
+
+// MARK: - Simple Line Chart (simplified for now)
+struct CandleChartView: View {
+    let data: [CandleData]
+    
+    var body: some View {
+        Chart {
+            ForEach(data) { candle in
+                LineMark(
+                    x: .value("Time", candle.timestamp),
+                    y: .value("Price", candle.close)
+                )
+                .foregroundStyle(.blue)
+                .interpolationMethod(.catmullRom)
+            }
+        }
+        .frame(height: 280)
+        .chartXAxis {
+            AxisMarks(values: .automatic(desiredCount: 5)) { _ in
+                AxisGridLine()
+                AxisTick()
+                AxisValueLabel(format: .dateTime.hour().minute())
+            }
+        }
+        .chartYAxis {
+            AxisMarks(position: .trailing, values: .automatic(desiredCount: 6)) { value in
+                AxisGridLine()
+                AxisTick()
+                AxisValueLabel {
+                    if let price = value.as(Double.self) {
+                        Text("$\(price, specifier: "%.0f")")
+                    }
+                }
+            }
+        }
+    }
+}
 
 struct DashboardView: View {
     @StateObject private var vm = DashboardVM()
-    @EnvironmentObject var settings: AppSettings
     
     var body: some View {
         ScrollView {
@@ -19,7 +67,7 @@ struct DashboardView: View {
             }
             .padding()
         }
-        .background(Bg.primary)
+        .background(Color(.systemBackground))
         .navigationTitle("Dashboard")
         .onAppear {
             vm.refreshData()
@@ -31,180 +79,193 @@ struct DashboardView: View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text("BTC/USDT")
-                    .headingM()
-                    .foregroundColor(TextColor.primary)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.primary)
                 
                 Text("Binance")
-                    .captionStyle()
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)
             }
             
             Spacer()
-            
-            StatusBadge(status: settings.demoMode ? .demo : .live)
         }
     }
     
     // MARK: - Price Section
     private var priceSection: some View {
-        Card {
-            VStack(spacing: 8) {
-                Text("$\(vm.priceString)")
-                    .headingXL()
-                    .foregroundColor(TextColor.primary)
-                    .contentTransition(.numericText())
-                    .animation(.easeInOut(duration: 0.2), value: vm.price)
+        VStack(spacing: 8) {
+            Text("$\(vm.priceString)")
+                .font(.system(size: 32, weight: .bold))
+                .foregroundColor(.primary)
+            
+            HStack(spacing: 12) {
+                Text(vm.priceChangeString)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(vm.priceChangeColor)
                 
-                HStack(spacing: 12) {
-                    Text(vm.priceChangeString)
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(vm.priceChangeColor)
-                    
-                    Text("(\(vm.priceChangePercentString))")
-                        .font(.system(size: 14))
-                        .foregroundColor(vm.priceChangeColor.opacity(0.8))
-                }
+                Text("(\(vm.priceChangePercentString))")
+                    .font(.system(size: 14))
+                    .foregroundColor(vm.priceChangeColor.opacity(0.8))
             }
         }
+        .padding()
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(12)
     }
     
     // MARK: - Mini Chart Section
     private var miniChartSection: some View {
-        Card {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Price Chart")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(TextColor.primary)
-                
-                if vm.isLoading {
-                    ProgressView()
-                        .frame(height: 100)
-                        .frame(maxWidth: .infinity)
-                } else if !vm.chartPoints.isEmpty {
-                    SparklineChart(points: vm.chartPoints)
-                        .frame(height: 100)
-                } else {
-                    Text("No data available")
-                        .captionStyle()
-                        .frame(height: 100)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                }
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Price Chart")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(.primary)
+            
+            if vm.isLoading {
+                ProgressView()
+                    .frame(height: 280)
+                    .frame(maxWidth: .infinity)
+            } else if !vm.candles.isEmpty {
+                CandleChartView(data: vm.chartData)
+                    .background(Color(.secondarySystemBackground))
+                    .cornerRadius(8)
+            } else {
+                Text("No data available")
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)
+                    .frame(height: 280)
+                    .frame(maxWidth: .infinity, alignment: .center)
             }
         }
+        .padding()
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(12)
     }
     
     // MARK: - Controls Section
     private var controlsSection: some View {
-        Card {
-            VStack(spacing: 16) {
-                // Timeframe selector
-                HStack {
-                    Text("Timeframe")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(TextColor.secondary)
-                    
-                    Spacer()
-                    
-                    SegmentedPill(
-                        selection: $vm.timeframe,
-                        options: [
-                            ("5m", Timeframe.m5),
-                            ("1h", Timeframe.h1),
-                            ("4h", Timeframe.h4)
-                        ]
-                    )
-                }
+        VStack(spacing: 16) {
+            // Timeframe selector
+            HStack {
+                Text("Timeframe")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.secondary)
                 
-                // Mode selector
-                HStack {
-                    Text("Mode")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(TextColor.secondary)
-                    
-                    Spacer()
-                    
-                    SegmentedPill(
-                        selection: $vm.isPrecisionMode,
-                        options: [
-                            ("Normal", false),
-                            ("Precision", true)
-                        ]
-                    )
-                }
+                Spacer()
                 
-                // Auto/Manual switch
-                HStack {
-                    Text("Trading")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(TextColor.secondary)
-                    
-                    Spacer()
-                    
-                    AutoSwitch(isAuto: $settings.autoTrading)
+                Picker("Timeframe", selection: $vm.timeframe) {
+                    Text("5m").tag(Timeframe.m5)
+                    Text("1h").tag(Timeframe.h1)
+                    Text("4h").tag(Timeframe.h4)
                 }
+                .pickerStyle(.segmented)
+            }
+            
+            // Mode selector
+            HStack {
+                Text("Mode")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.secondary)
+                
+                Spacer()
+                
+                Picker("Mode", selection: $vm.isPrecisionMode) {
+                    Text("Normal").tag(false)
+                    Text("Precision").tag(true)
+                }
+                .pickerStyle(.segmented)
+            }
+            
+            // Auto/Manual switch
+            HStack {
+                Text("Trading Mode")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.secondary)
+                
+                Spacer()
+                
+                Picker("Trading", selection: $vm.tradingMode) {
+                    Text("Manual").tag(TradingMode.manual)
+                    Text("Auto").tag(TradingMode.auto)
+                }
+                .pickerStyle(.segmented)
             }
         }
         .onChange(of: vm.timeframe) { _ in
             vm.refreshData()
         }
+        .onChange(of: vm.tradingMode) { _ in
+            if AppSettings.shared.hapticsEnabled {
+                let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+                impactFeedback.impactOccurred()
+            }
+        }
     }
     
     // MARK: - Signal Card Section
     private var signalCardSection: some View {
-        Card {
-            VStack(spacing: 12) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack(spacing: 8) {
-                            Text(vm.currentSignal?.direction.uppercased() ?? "HOLD")
-                                .font(.system(size: 24, weight: .bold))
-                                .foregroundColor(signalColor)
-                            
-                            if settings.demoMode {
-                                Pill(text: "DEMO", color: Accent.yellow)
-                            }
-                        }
+        VStack(spacing: 12) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        Text(vm.currentSignal?.direction.uppercased() ?? "HOLD")
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundColor(signalColor)
                         
-                        HStack(spacing: 8) {
-                            Text("\(Int(vm.currentSignal?.confidence ?? 0))% confidence")
-                                .captionStyle()
-                            
-                            Text("•")
-                                .captionStyle()
-                            
-                            Text(vm.timeframe.rawValue)
-                                .captionStyle()
-                            
-                            Text("•")
-                                .captionStyle()
-                            
-                            Text(vm.lastUpdatedString)
-                                .captionStyle()
+                        /* // Temporarily disabled
+                        if settings.demoMode {
+                            Pill(text: "DEMO", color: Accent.yellow)
                         }
+                        */
                     }
                     
-                    Spacer()
-                    
-                    Button(action: {
-                        vm.refreshPrediction()
-                    }) {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(Brand.blue)
-                            .padding(8)
-                            .background(Brand.blue.opacity(0.1))
-                            .cornerRadius(8)
+                    HStack(spacing: 8) {
+                        Text("\(Int(vm.currentSignal?.confidence ?? 0))% confidence")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                        
+                        Text("•")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                        
+                        Text(vm.timeframe.rawValue)
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                        
+                        Text("•")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                        
+                        Text(vm.lastUpdatedString)
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
                     }
-                    .disabled(vm.isRefreshing)
                 }
                 
-                if let reason = vm.currentSignal?.reason {
-                    Text(reason)
-                        .font(.system(size: 13))
-                        .foregroundColor(TextColor.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                Spacer()
+                
+                Button(action: {
+                    vm.refreshPrediction()
+                }) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.blue)
+                        .padding(8)
+                        .background(.blue.opacity(0.1))
+                        .cornerRadius(8)
                 }
+                .disabled(vm.isRefreshing)
+            }
+            
+            if let reason = vm.currentSignal?.reason {
+                Text(reason)
+                    .font(.system(size: 13))
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
+        .padding()
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(12)
     }
     
     // MARK: - Quick Actions Section
@@ -218,10 +279,10 @@ struct DashboardView: View {
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .frame(height: 50)
-                    .background(Accent.green)
+                    .background(.green)
                     .cornerRadius(12)
             }
-            .disabled(settings.autoTrading)
+            .disabled(vm.tradingMode == .auto)
             
             Button(action: {
                 vm.executeSell()
@@ -231,83 +292,105 @@ struct DashboardView: View {
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .frame(height: 50)
-                    .background(Accent.red)
+                    .background(.red)
                     .cornerRadius(12)
             }
-            .disabled(settings.autoTrading)
+            .disabled(vm.tradingMode == .auto)
         }
-        .opacity(settings.autoTrading ? 0.5 : 1.0)
+        .opacity(vm.tradingMode == .auto ? 0.5 : 1.0)
     }
     
     // MARK: - Positions Preview Section
     private var positionsPreviewSection: some View {
-        Card {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Text("Open Positions")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(TextColor.primary)
-                    
-                    Spacer()
-                    
-                    NavigationLink(destination: TradesView()) {
-                        Text("View All")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(Brand.blue)
-                    }
-                }
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Open Positions")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.primary)
                 
-                if vm.openPositions.isEmpty {
-                    Text("No open positions")
-                        .captionStyle()
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(.vertical, 20)
-                } else {
-                    ForEach(vm.openPositions.prefix(2)) { position in
-                        PositionRow(position: position)
-                    }
+                Spacer()
+                
+                /* // Temporarily disabled
+                NavigationLink(destination: TradesView()) {
+                    Text("View All")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(Brand.blue)
+                }
+                */
+            }
+            
+            if vm.openPositions.isEmpty {
+                Text("No open positions")
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 20)
+            } else {
+                ForEach(Array(vm.openPositions.prefix(2).enumerated()), id: \.offset) { _, position in
+                    PositionRow(position: position)
                 }
             }
         }
+        .padding()
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(12)
     }
     
     // MARK: - Connection Status Section
     private var connectionStatusSection: some View {
-        Card {
-            HStack {
-                Image(systemName: vm.isConnected ? "wifi" : "wifi.slash")
-                    .font(.system(size: 14))
-                    .foregroundColor(vm.isConnected ? Accent.green : Accent.red)
+        HStack(spacing: 12) {
+            // Connection indicator
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(vm.isConnected ? .green : .red)
+                    .frame(width: 8, height: 8)
+                    .overlay(
+                        Circle()
+                            .stroke(vm.isConnected ? .green.opacity(0.3) : .red.opacity(0.3), lineWidth: 8)
+                            .scaleEffect(vm.isConnected ? 2 : 1.5)
+                            .opacity(vm.isConnected ? 0 : 0.5)
+                            .animation(.easeOut(duration: 1.5).repeatForever(autoreverses: false), value: vm.isConnected)
+                    )
                 
-                Text(vm.connectionStatus)
-                    .font(.system(size: 14))
-                    .foregroundColor(TextColor.secondary)
-                
-                Spacer()
-                
-                if vm.isConnected {
-                    Circle()
-                        .fill(Accent.green)
-                        .frame(width: 8, height: 8)
-                        .overlay(
-                            Circle()
-                                .stroke(Accent.green.opacity(0.3), lineWidth: 8)
-                                .scaleEffect(vm.isConnected ? 2 : 1)
-                                .opacity(vm.isConnected ? 0 : 1)
-                                .animation(.easeOut(duration: 1).repeatForever(autoreverses: false), value: vm.isConnected)
-                        )
-                }
+                Text(connectionStatusText)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(vm.isConnected ? .green : .orange)
             }
+            
+            Spacer()
+            
+            // Last updated
+            Text(vm.lastUpdatedString)
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color(.secondarySystemBackground))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(vm.isConnected ? .green.opacity(0.3) : .orange.opacity(0.3), lineWidth: 1)
+                )
+        )
+    }
+    
+    private var connectionStatusText: String {
+        if vm.isConnected {
+            return "Connected to Binance"
+        } else {
+            return "Connecting..."
         }
     }
     
     // MARK: - Helpers
     private var signalColor: Color {
-        guard let signal = vm.currentSignal else { return TextColor.secondary }
+        guard let signal = vm.currentSignal else { return .secondary }
         switch signal.direction {
-        case "BUY": return Accent.green
-        case "SELL": return Accent.red
-        default: return TextColor.secondary
+        case "BUY": return .green
+        case "SELL": return .red
+        default: return .secondary
         }
     }
 }
@@ -338,7 +421,7 @@ struct SparklineChart: View {
             }
             .stroke(
                 LinearGradient(
-                    colors: [Brand.blue, Brand.blue.opacity(0.5)],
+                    colors: [.blue, .blue.opacity(0.5)],
                     startPoint: .leading,
                     endPoint: .trailing
                 ),
@@ -355,20 +438,20 @@ struct PositionRow: View {
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text(position.symbol)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(TextColor.primary)
+                // Text(String(position.symbol))
+                //     .font(.system(size: 14, weight: .medium))
+                //     .foregroundColor(.primary)
                 
-                Text("\(position.side) • \(position.size)")
-                    .font(.system(size: 12))
-                    .foregroundColor(TextColor.secondary)
+                // Text("\(String(position.side)) • \(String(position.size))")
+                //     .font(.system(size: 12))
+                //     .foregroundColor(.secondary)
             }
             
             Spacer()
             
-            Text(position.pnlString)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(position.pnl >= 0 ? Accent.green : Accent.red)
+            // Text(String(position.pnlString))
+            //     .font(.system(size: 14, weight: .semibold))
+            //     .foregroundColor(position.pnl >= 0 ? .green : .red)
         }
         .padding(.vertical, 4)
     }
@@ -379,7 +462,7 @@ struct DashboardView_Previews: PreviewProvider {
     static var previews: some View {
         NavigationView {
             DashboardView()
-                .environmentObject(AppSettings.shared)
+                // .environmentObject(AppSettings.shared) // Temporarily disabled
         }
     }
 }

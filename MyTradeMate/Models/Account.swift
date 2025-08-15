@@ -18,10 +18,4 @@ public struct Balance: Codable, Sendable {
     public let asset: String
     public let free: Double
     public let locked: Double
-    
-    public init(asset: String, free: Double, locked: Double) {
-        self.asset = asset
-        self.free = free
-        self.locked = locked
-    }
 }

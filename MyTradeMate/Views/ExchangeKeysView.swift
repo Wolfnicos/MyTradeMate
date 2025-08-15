@@ -218,6 +218,7 @@ class ExchangeKeysViewModel: ObservableObject {
     }
 }
 
+@available(*, deprecated, message: "Use KeychainStore instead")
 class ExchangeKeychainManager {
     static let shared = ExchangeKeychainManager()
     private init() {}
