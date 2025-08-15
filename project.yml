@@ -14,6 +14,7 @@ targets:
       - path: MyTradeMate
         excludes:
           - "Info.plist"
+        createIntermediateGroups: true
     resources:
       - path: MyTradeMate/Info.plist
     settings:

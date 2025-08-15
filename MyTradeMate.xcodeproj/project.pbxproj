@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 63;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -123,7 +123,7 @@
 		9538B72AA42608EA2E2A6158 /* Exchange.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Exchange.swift; sourceTree = "<group>"; };
 		97D78EC7DDBD6907DAE75677 /* BinanceModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BinanceModels.swift; sourceTree = "<group>"; };
 		98B1313F448BCDC9B141396F /* DashboardVM.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardVM.swift; sourceTree = "<group>"; };
-		9B339B1573B30F6E26922690 /* MyTradeMate.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = MyTradeMate.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9B339B1573B30F6E26922690 /* MyTradeMate.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MyTradeMate.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A75EB17FE8011620AB0D1444 /* BinanceClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BinanceClient.swift; sourceTree = "<group>"; };
 		B9CA74A94FEA43149475350A /* ShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareSheet.swift; sourceTree = "<group>"; };
 		CB5E5920949F9D243E5C23A4 /* PnLVM.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PnLVM.swift; sourceTree = "<group>"; };
@@ -131,7 +131,7 @@
 		D70E8531CDF8FA9FA0427213 /* Account.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Account.swift; sourceTree = "<group>"; };
 		D89517480CB9B27A9FB8D488 /* RiskModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RiskModels.swift; sourceTree = "<group>"; };
 		DB4C37DF00897987AC873468 /* PnLMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PnLMetrics.swift; sourceTree = "<group>"; };
-		E21545BBE344ABF86E439DDD /* MyTradeMateTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = MyTradeMateTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		E21545BBE344ABF86E439DDD /* MyTradeMateTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MyTradeMateTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E472B4B6D85BA299687C89AD /* OrderTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrderTypes.swift; sourceTree = "<group>"; };
 		E6391099141B793CBC487938 /* Symbol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Symbol.swift; sourceTree = "<group>"; };
 		F23169C504C8F716BF8F2938 /* KrakenLiveClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KrakenLiveClient.swift; sourceTree = "<group>"; };
@@ -354,7 +354,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1430;
+				LastUpgradeCheck = 1640;
 				TargetAttributes = {
 					FD3ACD9E8FC8FB37F2187D6B = {
 						ProvisioningStyle = Automatic;
@@ -371,7 +371,6 @@
 			);
 			mainGroup = AB05F3B5FFA9DED67FB4CFE7;
 			minimizedProjectReferenceProxies = 1;
-			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -520,6 +519,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
@@ -553,6 +553,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -575,6 +576,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
@@ -608,6 +610,7 @@
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
