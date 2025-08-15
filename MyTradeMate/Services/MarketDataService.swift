@@ -5,6 +5,11 @@ import SwiftUI
 public final class MarketDataService: ObservableObject {
     public static let shared = MarketDataService()
     
+    @Published public var selectedSymbol: String = "BTCUSDT"
+    @Published public var lastTick: PriceTick?
+    @Published public var isLiveEnabled: Bool = false  // ✅ starts disabled
+    @Published public var isConnected: Bool = false    // ✅ connection state
+    
     private var task: URLSessionWebSocketTask?
     private var symbol: Symbol?
     private var onTick: ((PriceTick) -> Void)?
@@ -16,6 +21,23 @@ public final class MarketDataService: ObservableObject {
     
     public func subscribe(_ handler: @escaping (PriceTick) -> Void) {
         onTick = handler
+    }
+    
+    public func startLiveIfNeeded() {
+        guard isLiveEnabled else { 
+            Task { await stopLive() }
+            return 
+        }
+        Task { await connect() }
+    }
+    
+    public func setLiveEnabled(_ enabled: Bool) {
+        isLiveEnabled = enabled
+        if enabled { 
+            startLiveIfNeeded() 
+        } else { 
+            Task { await stopLive() }
+        }
     }
     
     public func start(symbol: Symbol) async {
@@ -33,9 +55,28 @@ public final class MarketDataService: ObservableObject {
         task = nil
         symbol = nil
         isConnecting = false
+        isConnected = false
+    }
+    
+    public func stopLive() async {
+        shouldReconnect = false
+        stopPingTimer()
+        task?.cancel(with: .goingAway, reason: nil)
+        task = nil
+        isConnected = false
+    }
+    
+    public func disconnect() async {
+        shouldReconnect = false
+        stopPingTimer()
+        task?.cancel(with: .goingAway, reason: nil)
+        task = nil
+        isConnected = false
+        reconnectAttempts = 0
     }
     
     private func connect() async {
+        guard isLiveEnabled else { return }
         guard let symbol = symbol, !isConnecting else { return }
         
         isConnecting = true
@@ -62,6 +103,7 @@ public final class MarketDataService: ObservableObject {
         }
         
         isConnecting = false
+        isConnected = true
         reconnectAttempts = 0
         startPingTimer()
         
@@ -95,20 +137,27 @@ public final class MarketDataService: ObservableObject {
     }
     
     private func handleConnectionLoss(error: Error) async {
+        isConnected = false
         print("🔌 WebSocket connection lost: \(error.localizedDescription)")
         
-        guard shouldReconnect && reconnectAttempts < maxReconnectAttempts else {
-            print("❌ Max reconnection attempts reached")
+        // Guard: Don't reconnect if Live WS is disabled or max attempts reached
+        guard isLiveEnabled && shouldReconnect && reconnectAttempts < maxReconnectAttempts else {
+            if !isLiveEnabled {
+                print("ℹ️ Live WebSocket disabled - not reconnecting")
+            } else {
+                print("❌ Max reconnection attempts reached")
+            }
             return
         }
         
         reconnectAttempts += 1
-        let delay = min(pow(2.0, Double(reconnectAttempts)), 30.0) // Exponential backoff, max 30s
+        let delay = min(Double(1 << min(reconnectAttempts, 5)), 30.0) // 2,4,8,16,32... cap 30s
         print("🔄 Reconnecting in \(delay)s (attempt \(reconnectAttempts)/\(maxReconnectAttempts))")
         
         try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
         
-        if shouldReconnect {
+        // Double-check isLiveEnabled after delay
+        if isLiveEnabled && shouldReconnect {
             stopPingTimer()
             task?.cancel(with: .abnormalClosure, reason: nil)
             task = nil
@@ -133,17 +182,13 @@ public final class MarketDataService: ObservableObject {
     private func sendPing() async {
         guard let task = task else { return }
         
-        do {
-            try await task.sendPing { [weak self] error in
-                if let error = error {
-                    print("🏓 Ping failed: \(error.localizedDescription)")
-                    Task {
-                        await self?.handleConnectionLoss(error: error)
-                    }
+        task.sendPing { [weak self] error in
+            if let error = error {
+                print("🏓 Ping failed: \(error.localizedDescription)")
+                Task {
+                    await self?.handleConnectionLoss(error: error)
                 }
             }
-        } catch {
-            await handleConnectionLoss(error: error)
         }
     }
     
@@ -162,6 +207,7 @@ public final class MarketDataService: ObservableObject {
                    let cStr = json["c"] as? String,
                    let price = Double(cStr) {
                     let tick = PriceTick(symbol: sym, price: price, change24h: nil, ts: Date())
+                    lastTick = tick
                     Task {
                         await MarketPriceCache.shared.update(price)
                         await StopMonitor.shared.onTick(price)
@@ -177,6 +223,7 @@ public final class MarketDataService: ObservableObject {
                    let last = cArr.first,
                    let price = Double(last) {
                     let tick = PriceTick(symbol: sym, price: price, change24h: nil, ts: Date())
+                    lastTick = tick
                     Task {
                         await MarketPriceCache.shared.update(price)
                         await StopMonitor.shared.onTick(price)

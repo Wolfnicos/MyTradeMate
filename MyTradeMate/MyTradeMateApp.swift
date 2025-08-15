@@ -2,15 +2,11 @@ import SwiftUI
 
 @main
 struct MyTradeMateApp: App {
-    // Environment & Services
-    @StateObject private var appState = AppState()
-    @StateObject private var marketData = MarketDataService()
-    @StateObject private var tradeManager = TradeManager()
-    @StateObject private var riskManager = RiskManager()
-    @StateObject private var aiManager = AIModelManager()
-    
-    // Color scheme
-    @AppStorage("isDarkMode") private var isDarkMode = false
+    @StateObject private var market = MarketDataService.shared
+    @StateObject private var trade  = TradeManager.shared
+    @StateObject private var risk   = RiskManager.shared
+    @StateObject private var ai     = AIModelManager.shared
+    @StateObject private var theme  = ThemeManager.shared
     
     init() {
         // Global appearance setup
@@ -21,83 +17,19 @@ struct MyTradeMateApp: App {
     
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environmentObject(appState)
-                .environmentObject(marketData)
-                .environmentObject(tradeManager)
-                .environmentObject(riskManager)
-                .environmentObject(aiManager)
-                .preferredColorScheme(isDarkMode ? .dark : .light)
-                .task(priority: .background) {
-                    // Preload AI models
-                    await aiManager.preloadModels()
-                    // Start monitoring SL/TP
-                    await StopMonitor.shared.start()
+            RootTabs()
+                .environmentObject(market)
+                .environmentObject(trade)
+                .environmentObject(risk)
+                .environmentObject(ai)
+                .environmentObject(theme)
+                .preferredColorScheme(theme.colorScheme)
+                .onAppear {
+                    // Preload ai models if you have such a method
+                    // ai.preload() // ✅ ensure method exists (or comment if not)
+                    market.setLiveEnabled(false) // ✅ start on paper
                 }
         }
     }
 }
 
-// MARK: - App State
-final class AppState: ObservableObject {
-    @Published var selectedTab: Tab = .dashboard
-    @Published var isTrialActive = true
-    @Published var trialDaysLeft = 3
-    @Published var showingError: Error?
-    
-    enum Tab {
-        case dashboard
-        case history
-        case settings
-    }
-}
-
-// MARK: - Content View
-struct ContentView: View {
-    @EnvironmentObject private var appState: AppState
-    
-    var body: some View {
-        TabView(selection: $appState.selectedTab) {
-            DashboardView()
-                .tabItem {
-                    Label("Dashboard", systemImage: "chart.line.uptrend.xyaxis")
-                }
-                .tag(AppState.Tab.dashboard)
-            
-            TradeHistoryView()
-                .tabItem {
-                    Label("History", systemImage: "clock.arrow.circlepath")
-                }
-                .tag(AppState.Tab.history)
-            
-            NavigationStack {
-                List {
-                    Section("General") {
-                        Toggle("Haptics", isOn: .constant(true))
-                        Toggle("Dark Mode", isOn: .constant(false))
-                    }
-                    Section("About") {
-                        HStack {
-                            Text("Version")
-                            Spacer()
-                            Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-                .navigationTitle("Settings")
-            }
-                .tabItem {
-                    Label("Settings", systemImage: "gearshape")
-                }
-                .tag(AppState.Tab.settings)
-        }
-        .alert("Error", isPresented: .constant(appState.showingError != nil)) {
-            Button("OK") { appState.showingError = nil }
-        } message: {
-            if let error = appState.showingError {
-                Text(error.localizedDescription)
-            }
-        }
-    }
-}

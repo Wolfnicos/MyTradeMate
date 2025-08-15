@@ -196,7 +196,7 @@ class KrakenExchangeClient: ExchangeClient {
     
     // MARK: - ExchangeClient Protocol
     
-    func normalized(symbol: Symbol) -> String {
+    nonisolated func normalized(symbol: Symbol) -> String {
         let symbol = symbol.raw.uppercased()
         // Convert BTC to XBT for Kraken
         if symbol.hasPrefix("BTC") {

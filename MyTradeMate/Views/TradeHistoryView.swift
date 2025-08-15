@@ -132,23 +132,21 @@ struct TradeHistoryView: View {
     }
     
     private func exportCSV() {
-        isExporting = true
-        BackgroundExporter.runAsync(work: {
-            let all = await TradeManager.shared.fillsSnapshot()
-            let filtered = filterFills(all)
-            return try await CSVExporter.exportFills(filtered, fileName: "trades")
-        }, completion: { result in
-            isExporting = false
-            switch result {
-            case .success(let url):
+        Task { @MainActor in
+            isExporting = true
+            let fills = await TradeManager.shared.fillsSnapshot()
+            let filtered = filterFills(fills)
+            do {
+                let url = try await CSVExporter.exportFills(filtered, fileName: "trades")
                 shareURL = url
                 showShare = true
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            case .failure(let err):
-                errorMessage = err.localizedDescription
+            } catch {
+                errorMessage = error.localizedDescription
                 showError = true
             }
-        })
+            isExporting = false
+        }
     }
     
     private func exportDailyPnL() {

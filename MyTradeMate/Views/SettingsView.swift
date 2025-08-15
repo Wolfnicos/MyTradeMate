@@ -1,24 +1,31 @@
 import SwiftUI
 
 struct SettingsView: View {
+    @EnvironmentObject private var market: MarketDataService
+    @StateObject private var theme = ThemeManager.shared
+
     var body: some View {
-        NavigationStack {
-            List {
-                Section("General") {
-                    Toggle("Haptics", isOn: .constant(true))
-                    Toggle("Dark Mode", isOn: .constant(false))
-                }
-                Section("About") {
-                    HStack {
-                        Text("Version")
-                        Spacer()
-                        Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")
-                            .foregroundStyle(.secondary)
-                    }
-                }
+        Form {
+            Section(header: Text("Data")) {
+                Toggle("Live market data (WebSocket)", isOn: Binding(
+                    get: { market.isLiveEnabled },
+                    set: { market.setLiveEnabled($0) }
+                ))
             }
-            .navigationTitle("Settings")
+            
+            Section(header: Text("Experience")) {
+                Toggle("Haptics", isOn: $theme.isHapticsEnabled)
+                Toggle("Dark Mode", isOn: $theme.isDarkMode)
+                Toggle("Confirm trades", isOn: $theme.isConfirmTradesEnabled)
+            }
+
+            Section(header: Text("About")) {
+                Text("MyTradeMate v1.0")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
         }
+        .navigationTitle("Settings")
     }
 }
 

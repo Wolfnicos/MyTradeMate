@@ -190,7 +190,7 @@ class BinanceExchangeClient: ExchangeClient {
     
     // MARK: - ExchangeClient Protocol
     
-    func normalized(symbol: Symbol) -> String {
+    nonisolated func normalized(symbol: Symbol) -> String {
         return symbol.raw.uppercased() // Binance uses BTCUSDT format
     }
     

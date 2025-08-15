@@ -1,28 +1,34 @@
 name: MyTradeMate
 options:
-  deploymentTarget:
-    iOS: "16.0"
-packages: {}
+  minimumXcodeGenVersion: 2.38.0
+
+fileGroups:
+  - MyTradeMate
+
 targets:
   MyTradeMate:
     type: application
     platform: iOS
+    deploymentTarget: "16.0"
     sources:
       - path: MyTradeMate
         excludes:
-          - Tests/**
+          - "Info.plist"
+    resources:
+      - path: MyTradeMate/Info.plist
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.yourdomain.MyTradeMate
-        DEVELOPMENT_TEAM: ""
+        PRODUCT_NAME: MyTradeMate
+        PRODUCT_BUNDLE_IDENTIFIER: com.gmail.mytrademate.app
         SWIFT_VERSION: 5.0
-        CODE_SIGN_STYLE: Automatic
         INFOPLIST_FILE: MyTradeMate/Info.plist
-        IPHONEOS_DEPLOYMENT_TARGET: 16.0
+        CODE_SIGN_STYLE: Automatic
+        CURRENT_PROJECT_VERSION: 1
+        MARKETING_VERSION: 1.0
     scheme:
       testTargets:
         - MyTradeMateTests
-    postCompileScripts: []
+
   MyTradeMateTests:
     type: bundle.unit-test
     platform: iOS
@@ -30,4 +36,6 @@ targets:
       - path: MyTradeMateTests
     settings:
       base:
-        SWIFT_VERSION: 5.0
+        PRODUCT_BUNDLE_IDENTIFIER: com.gmail.mytrademate.app.tests
+        BUNDLE_LOADER: $(BUILT_PRODUCTS_DIR)/MyTradeMate.app/MyTradeMate
+        TEST_HOST: $(BUNDLE_LOADER)
