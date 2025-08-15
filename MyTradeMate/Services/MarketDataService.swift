@@ -18,6 +18,10 @@ public final class MarketDataService: ObservableObject {
     private var reconnectAttempts = 0
     private let maxReconnectAttempts = 10
     private var pingTimer: Timer?
+    private var healthCheckTimer: Timer?
+    private var lastMessageTime: Date = Date()
+    private let healthCheckInterval: TimeInterval = 30.0
+    private let maxSilenceDuration: TimeInterval = 60.0
     
     public func subscribe(_ handler: @escaping (PriceTick) -> Void) {
         onTick = handler
@@ -51,6 +55,7 @@ public final class MarketDataService: ObservableObject {
     public func stop() async {
         shouldReconnect = false
         stopPingTimer()
+        stopHealthCheckTimer()
         task?.cancel(with: .goingAway, reason: nil)
         task = nil
         symbol = nil
@@ -61,6 +66,7 @@ public final class MarketDataService: ObservableObject {
     public func stopLive() async {
         shouldReconnect = false
         stopPingTimer()
+        stopHealthCheckTimer()
         task?.cancel(with: .goingAway, reason: nil)
         task = nil
         isConnected = false
@@ -69,6 +75,7 @@ public final class MarketDataService: ObservableObject {
     public func disconnect() async {
         shouldReconnect = false
         stopPingTimer()
+        stopHealthCheckTimer()
         task?.cancel(with: .goingAway, reason: nil)
         task = nil
         isConnected = false
@@ -105,7 +112,11 @@ public final class MarketDataService: ObservableObject {
         isConnecting = false
         isConnected = true
         reconnectAttempts = 0
+        lastMessageTime = Date()
         startPingTimer()
+        startHealthCheckTimer()
+        
+        print("✅ WebSocket connected successfully")
         
         // Start async receive loop
         Task {
@@ -119,6 +130,7 @@ public final class MarketDataService: ObservableObject {
         do {
             let message = try await task.receive()
             await MainActor.run {
+                self.lastMessageTime = Date()
                 self.handle(message: message)
             }
             
@@ -151,14 +163,22 @@ public final class MarketDataService: ObservableObject {
         }
         
         reconnectAttempts += 1
-        let delay = min(Double(1 << min(reconnectAttempts, 5)), 30.0) // 2,4,8,16,32... cap 30s
-        print("🔄 Reconnecting in \(delay)s (attempt \(reconnectAttempts)/\(maxReconnectAttempts))")
+        
+        // Exponential backoff with jitter: start at 2s, double each attempt, cap at 30s
+        let baseDelay = min(pow(2.0, Double(reconnectAttempts)), 30.0)
+        
+        // Add jitter (±20%)
+        let jitter = Double.random(in: 0.8...1.2)
+        let delay = baseDelay * jitter
+        
+        print("🔄 Reconnecting in \(String(format: "%.1f", delay))s (attempt \(reconnectAttempts)/\(maxReconnectAttempts))")
         
         try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
         
         // Double-check isLiveEnabled after delay
         if isLiveEnabled && shouldReconnect {
             stopPingTimer()
+            stopHealthCheckTimer()
             task?.cancel(with: .abnormalClosure, reason: nil)
             task = nil
             await connect()
@@ -177,6 +197,35 @@ public final class MarketDataService: ObservableObject {
     private func stopPingTimer() {
         pingTimer?.invalidate()
         pingTimer = nil
+    }
+    
+    private func startHealthCheckTimer() {
+        stopHealthCheckTimer()
+        healthCheckTimer = Timer.scheduledTimer(withTimeInterval: healthCheckInterval, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                await self?.performHealthCheck()
+            }
+        }
+    }
+    
+    private func stopHealthCheckTimer() {
+        healthCheckTimer?.invalidate()
+        healthCheckTimer = nil
+    }
+    
+    private func performHealthCheck() async {
+        let timeSinceLastMessage = Date().timeIntervalSince(lastMessageTime)
+        
+        if timeSinceLastMessage > maxSilenceDuration {
+            print("🩺 Health check failed: No messages received for \(String(format: "%.1f", timeSinceLastMessage))s")
+            
+            if shouldReconnect && isLiveEnabled {
+                let healthError = NSError(domain: "MarketDataService", code: 1001, userInfo: [
+                    NSLocalizedDescriptionKey: "Connection health check failed - no data received"
+                ])
+                await handleConnectionLoss(error: healthError)
+            }
+        }
     }
     
     private func sendPing() async {
