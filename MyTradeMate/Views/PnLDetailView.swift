@@ -18,17 +18,49 @@ struct PnLDetailView: View {
                 }
             }
             
-            VStack(alignment: .leading) {
-                Text("Unrealized").font(.caption)
-                Text(formatPnL(vm.unrealized))
-                    .font(.headline)
-                    .foregroundStyle(vm.unrealized >= 0 ? .green : .red)
+            HStack {
+                VStack(alignment: .leading) {
+                    Text("Unrealized").font(.caption)
+                    Text(formatPnL(vm.unrealized))
+                        .font(.headline)
+                        .foregroundStyle(vm.unrealized >= 0 ? .green : .red)
+                }
+                
+                Spacer()
+                
+                Picker("Timeframe", selection: $vm.timeframe) {
+                    ForEach(PnLVM.Timeframe.allCases, id: \.rawValue) { tf in
+                        Text(tf.rawValue).tag(tf)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .frame(maxWidth: 200)
+                .onChange(of: vm.timeframe) { newValue in
+                    vm.setTimeframe(newValue)
+                }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
             
             Chart {
-                ForEach(Array(vm.history.enumerated()), id: \.offset) { _, item in
-                    LineMark(x: .value("Time", item.0), y: .value("Equity", item.1))
+                ForEach(Array(vm.history.enumerated()), id: \.offset) { index, item in
+                    LineMark(
+                        x: .value("Time", item.0),
+                        y: .value("Equity", item.1)
+                    )
+                    .foregroundStyle(vm.equity >= 10000 ? .green : .red)
+                }
+            }
+            .chartXAxis {
+                AxisMarks(values: .stride(by: .hour, count: vm.timeframeHours)) { value in
+                    AxisGridLine()
+                    AxisTick()
+                    AxisValueLabel(format: .dateTime.hour(.defaultDigits(amPM: .omitted)).minute())
+                }
+            }
+            .chartYAxis {
+                AxisMarks(position: .leading) { value in
+                    AxisGridLine()
+                    AxisTick()
+                    AxisValueLabel(format: .currency(code: "USD"))
                 }
             }
             .frame(height: 220)
