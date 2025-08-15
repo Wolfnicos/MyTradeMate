@@ -7,8 +7,7 @@ final class KrakenExchangeClient: ExchangeClient {
     private let baseURL = URL(string: "https://api.kraken.com")!
     private let wsURL = URL(string: "wss://ws.kraken.com")!
     
-    private var wsTask: Task<Void, Error>?
-    private var wsStream: URLSessionWebSocketTask?
+    private var webSocketManager: WebSocketManager?
     private var continuation: AsyncStream<Ticker>.Continuation?
     
     lazy var liveTickerStream: AsyncStream<Ticker> = {
@@ -20,49 +19,106 @@ final class KrakenExchangeClient: ExchangeClient {
     // MARK: - WebSocket Methods
     
     func wsConnect(symbol: String) async {
-        wsStream = URLSession.shared.webSocketTask(with: wsURL)
-        wsStream?.resume()
+        // Disconnect any existing connection
+        await wsDisconnect()
         
-        // Subscribe to ticker
-        let message = """
+        // Convert symbol to Kraken format (e.g., BTCUSDT -> XBT/USDT)
+        let krakenSymbol = krakenPairName(symbol)
+        
+        // Subscribe message for ticker
+        let subscribeMessage = """
         {
             "event": "subscribe",
-            "pair": ["\(symbol)"],
+            "pair": ["\(krakenSymbol)"],
             "subscription": {
                 "name": "ticker"
             }
         }
         """
-        try? await wsStream?.send(.string(message))
         
-        // Start receiving messages
-        wsTask = Task {
-            while !Task.isCancelled {
-                guard let message = try await wsStream?.receive() else { continue }
+        // Get verbose logging preference
+        let verboseLogging = await AppSettings.shared.verboseAILogs
+        
+        // Create configuration
+        let config = WebSocketManager.Configuration(
+            url: wsURL,
+            subscribeMessage: subscribeMessage,
+            name: "Kraken-\(symbol)",
+            verboseLogging: verboseLogging
+        )
+        
+        // Create and configure WebSocket manager
+        let manager = WebSocketManager(configuration: config)
+        
+        manager.onMessage = { [weak self] message in
+            Task { @MainActor in
+                await self?.handleWebSocketMessage(message, symbol: symbol)
+            }
+        }
+        
+        manager.onConnectionStateChange = { [weak self] isConnected in
+            if !isConnected {
+                // Connection lost - could add additional logic here
+                print("🔌 Kraken WebSocket connection state changed: \(isConnected)")
+            }
+        }
+        
+        webSocketManager = manager
+        
+        // Start connection with robust reconnection
+        await manager.connect()
+    }
+    
+    func wsDisconnect() async {
+        await webSocketManager?.disconnect()
+        webSocketManager = nil
+        continuation?.finish()
+    }
+    
+    @MainActor
+    private func handleWebSocketMessage(_ message: String, symbol: String) async {
+        guard let data = message.data(using: .utf8) else { return }
+        
+        do {
+            // Parse Kraken ticker message format: [channelID, {"c":["67890.1", ...]}, "ticker", "XBT/USDT"]
+            if let array = try? JSONSerialization.jsonObject(with: data) as? [Any],
+               array.count >= 4,
+               let tickerData = array[1] as? [String: Any],
+               let cArray = tickerData["c"] as? [String],
+               let lastPriceStr = cArray.first,
+               let price = Double(lastPriceStr) {
                 
-                switch message {
-                case .string(let text):
-                    if let data = text.data(using: .utf8),
-                       let ticker = try? JSONDecoder().decode(KrakenTicker.self, from: data) {
-                        let price = Double(ticker.c[0]) ?? 0
-                        continuation?.yield(Ticker(
-                            id: UUID(),
-                            symbol: symbol,
-                            price: price,
-                            time: Date()
-                        ))
-                    }
-                default:
-                    break
+                let ticker = Ticker(
+                    id: UUID(),
+                    symbol: symbol,
+                    price: price,
+                    time: Date()
+                )
+                continuation?.yield(ticker)
+                
+                if await AppSettings.shared.verboseAILogs {
+                    print("💰 Kraken ticker update: \(symbol) = $\(price)")
                 }
+            }
+        } catch {
+            if await AppSettings.shared.verboseAILogs {
+                print("⚠️ Failed to parse Kraken message: \(error)")
             }
         }
     }
     
-    func wsDisconnect() async {
-        wsTask?.cancel()
-        wsStream?.cancel()
-        continuation?.finish()
+    private func krakenPairName(_ symbol: String) -> String {
+        // Convert BTCUSDT -> XBT/USDT, ETHUSDT -> ETH/USDT etc.
+        let upperSymbol = symbol.uppercased()
+        if upperSymbol.hasPrefix("BTC") { 
+            return "XBT/\(upperSymbol.suffix(4))" 
+        }
+        if upperSymbol.count >= 6 {
+            let base = String(upperSymbol.prefix(upperSymbol.count - 4))
+            let quote = String(upperSymbol.suffix(4))
+            return "\(base)/\(quote)"
+        }
+        return "XBT/USDT"
     }
     
     // MARK: - Market Data

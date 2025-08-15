@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct MyTradeMateApp: App {
+    @StateObject private var appSettings = AppSettings.shared
     @StateObject private var market = MarketDataService.shared
     @StateObject private var trade  = TradeManager.shared
     @StateObject private var risk   = RiskManager.shared
@@ -18,6 +19,7 @@ struct MyTradeMateApp: App {
     var body: some Scene {
         WindowGroup {
             RootTabs()
+                .environmentObject(appSettings)
                 .environmentObject(market)
                 .environmentObject(trade)
                 .environmentObject(risk)
@@ -25,9 +27,24 @@ struct MyTradeMateApp: App {
                 .environmentObject(theme)
                 .preferredColorScheme(theme.colorScheme)
                 .onAppear {
-                    // Preload ai models if you have such a method
-                    // ai.preload() // ✅ ensure method exists (or comment if not)
-                    market.setLiveEnabled(false) // ✅ start on paper
+                    // Initialize market data based on settings
+                    market.setLiveEnabled(appSettings.liveMarketData)
+                    
+                    if appSettings.shouldShowAIDebug {
+                        print("🧪 Demo Mode: \(appSettings.demoMode ? "ON" : "OFF")")
+                        print("📊 PnL Demo Mode: \(appSettings.pnlDemoMode ? "ON" : "OFF")")
+                        
+                        // Run CoreML model sanity check when AI debug is enabled
+                        runModelSanityCheck()
+                    }
+                    
+                    // RUN DIAGNOSTIC AUDIT
+                    Task {
+                        await Audit.run()
+                    }
+                }
+                .onDisappear {
+                    appSettings.saveSettings()
                 }
         }
     }

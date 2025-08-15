@@ -18,6 +18,19 @@ final class PnLVM: ObservableObject {
     
     func start() {
         timer?.cancel()
+        
+        // Initialize with some baseline data if history is empty
+        if rawHistory.isEmpty {
+            let now = Date()
+            let baseEquity = 10000.0
+            // Add 20 data points going back in time for initial display
+            for i in (0..<20).reversed() {
+                let timestamp = now.addingTimeInterval(-Double(i * 60)) // 1 minute intervals
+                rawHistory.append((timestamp, baseEquity))
+            }
+            aggregateHistory()
+        }
+        
         timer = Timer.publish(every: 1.0, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in self?.refresh() }

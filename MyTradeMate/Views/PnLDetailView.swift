@@ -5,40 +5,56 @@ struct PnLDetailView: View {
     @StateObject private var vm = PnLVM()
     
     var body: some View {
-        VStack(spacing: 16) {
-            HStack {
-                VStack(alignment: .leading) {
-                    Text("Equity").font(.caption)
-                    Text(vm.equity, format: .currency(code: "USD")).font(.title2).bold()
-                }
-                Spacer()
-                VStack(alignment: .trailing) {
-                    Text("Today (realized)").font(.caption)
-                    Text(formatPnL(vm.today)).font(.title3).bold().foregroundStyle(vm.today >= 0 ? .green : .red)
-                }
-            }
-            
-            HStack {
-                VStack(alignment: .leading) {
-                    Text("Unrealized").font(.caption)
-                    Text(formatPnL(vm.unrealized))
-                        .font(.headline)
-                        .foregroundStyle(vm.unrealized >= 0 ? .green : .red)
-                }
-                
-                Spacer()
-                
-                Picker("Timeframe", selection: $vm.timeframe) {
-                    ForEach(Timeframe.allCases, id: \.rawValue) { tf in
-                        Text(tf.rawValue).tag(tf)
+        ScrollView {
+            VStack(spacing: 16) {
+                // Header with equity information
+                HStack {
+                    VStack(alignment: .leading) {
+                        Text("Equity").font(.caption)
+                        Text(vm.equity, format: .currency(code: "USD"))
+                            .font(.system(size: 28, weight: .bold, design: .rounded))
+                            .minimumScaleFactor(0.8)
+                            .lineLimit(1)
+                            .monospacedDigit()
+                    }
+                    Spacer()
+                    VStack(alignment: .trailing) {
+                        Text("Today (realized)").font(.caption)
+                        Text(formatPnL(vm.today))
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(vm.today >= 0 ? .green : .red)
+                            .minimumScaleFactor(0.8)
+                            .lineLimit(1)
+                            .monospacedDigit()
                     }
                 }
-                .pickerStyle(.segmented)
-                .frame(maxWidth: 200)
-                .onChange(of: vm.timeframe) { newValue in
-                    vm.setTimeframe(newValue)
+            
+                // Unrealized PnL and timeframe picker
+                HStack {
+                    VStack(alignment: .leading) {
+                        Text("Unrealized").font(.caption)
+                        Text(formatPnL(vm.unrealized))
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(vm.unrealized >= 0 ? .green : .red)
+                            .minimumScaleFactor(0.8)
+                            .lineLimit(1)
+                            .monospacedDigit()
+                    }
+                    
+                    Spacer()
+                    
+                    Picker("Timeframe", selection: $vm.timeframe) {
+                        ForEach(Timeframe.allCases, id: \.rawValue) { tf in
+                            Text(tf.rawValue).tag(tf)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(maxWidth: 200)
+                    .onChange(of: vm.timeframe) { newValue in
+                        vm.setTimeframe(newValue)
+                        print("🖥️ PnL timeframe=\(newValue.rawValue)")
+                    }
                 }
-            }
             
             Chart {
                 ForEach(Array(vm.history.enumerated()), id: \.offset) { index, item in
@@ -63,14 +79,18 @@ struct PnLDetailView: View {
                     AxisValueLabel(format: .currency(code: "USD"))
                 }
             }
-            .frame(height: 220)
+            .frame(height: 280)
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .padding(.top, 8)
+            .padding(.bottom, 20)
             
-            Spacer()
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
         }
-        .padding()
+        .safeAreaInset(edge: .top) { Color.clear.frame(height: 0) }
         .navigationTitle("PnL")
+        .navigationBarTitleDisplayMode(.inline)
         .onAppear { vm.start() }
         .onDisappear { vm.stop() }
     }

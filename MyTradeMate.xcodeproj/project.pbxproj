@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 63;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -38,6 +38,7 @@
 		841F18C52A1E8BCCB0E13B15 /* DateFormatter+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A5B1DB6A76209FBF0F015DB /* DateFormatter+Extensions.swift */; };
 		8CCABCDD6CA5696871FE4029 /* KrakenClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23F807F27BDB6BEF21709EB9 /* KrakenClient.swift */; };
 		8DE4DAB48FC6E6B5ABDBEF09 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83903179D6020FE706376861 /* SettingsView.swift */; };
+		EXCBUILD1234567890ABCDEF /* ExchangeKeysView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EXCHANGE1234567890ABCDEF /* ExchangeKeysView.swift */; };
 		8E18B8ACBB1810DB9F63A736 /* CSVExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7F80FEB6C8CF4E2E351F67D /* CSVExporter.swift */; };
 		8EFDDAC64672740895533567 /* ExchangeClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2CC7F904B4517BBDF29A8F1 /* ExchangeClient.swift */; };
 		8F7601ADED45C99C78DF74F2 /* MarketPriceCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 167BC3BEB3768E9346045B5A /* MarketPriceCache.swift */; };
@@ -115,6 +116,7 @@
 		7A5B1DB6A76209FBF0F015DB /* DateFormatter+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DateFormatter+Extensions.swift"; sourceTree = "<group>"; };
 		80D2FFD6763F60543DE2E538 /* StopMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StopMonitor.swift; sourceTree = "<group>"; };
 		83903179D6020FE706376861 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		EXCHANGE1234567890ABCDEF /* ExchangeKeysView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExchangeKeysView.swift; sourceTree = "<group>"; };
 		895689E6EEF015070730DE88 /* SafeTask.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafeTask.swift; sourceTree = "<group>"; };
 		89751A0ABF2482C636EC05C6 /* SymbolCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SymbolCatalog.swift; sourceTree = "<group>"; };
 		8A3DE31882AB6A4B55C316F0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -140,6 +142,10 @@
 		F7FABB1DE36EC7C758CF85D7 /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
 		FBCCCE5B8A05D8213D09281E /* PaperExchangeClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaperExchangeClient.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		D15818662E4F3AE50090D8D5 /* AIModels */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = AIModels; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXGroup section */
 		0D71655C14BE585E2C2ACA7C /* Core */ = {
@@ -193,6 +199,7 @@
 			isa = PBXGroup;
 			children = (
 				41F14D65ECCE7BCA644CC4C6 /* DashboardView.swift */,
+				EXCHANGE1234567890ABCDEF /* ExchangeKeysView.swift */,
 				6AD50731CC5DAB983165636D /* PnLDetailView.swift */,
 				1096A89C1C175CD4E21BDD56 /* RootTabs.swift */,
 				83903179D6020FE706376861 /* SettingsView.swift */,
@@ -246,6 +253,7 @@
 		9F87B2EC6E5E9C5890A295E6 /* MyTradeMate */ = {
 			isa = PBXGroup;
 			children = (
+				D15818662E4F3AE50090D8D5 /* AIModels */,
 				8A3DE31882AB6A4B55C316F0 /* Info.plist */,
 				58528D3A6A6637E837834C77 /* MyTradeMateApp.swift */,
 				0D71655C14BE585E2C2ACA7C /* Core */,
@@ -339,6 +347,9 @@
 			buildRules = (
 			);
 			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				D15818662E4F3AE50090D8D5 /* AIModels */,
 			);
 			name = MyTradeMate;
 			packageProductDependencies = (
@@ -441,6 +452,7 @@
 				73D456EB70EAF7066B571457 /* SafeTask.swift in Sources */,
 				E5A8ABFFCB27D7FDEDB148B7 /* SettingsVM.swift in Sources */,
 				8DE4DAB48FC6E6B5ABDBEF09 /* SettingsView.swift in Sources */,
+				EXCBUILD1234567890ABCDEF /* ExchangeKeysView.swift in Sources */,
 				C14066B8B4E19F1793A49633 /* ShareSheet.swift in Sources */,
 				D2A8DC87B89A5211B0D608A0 /* Signal.swift in Sources */,
 				ED0BF8C07233A2A6925D446B /* SignalEngine.swift in Sources */,

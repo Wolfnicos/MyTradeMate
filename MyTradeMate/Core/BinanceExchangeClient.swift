@@ -7,8 +7,7 @@ final class BinanceExchangeClient: ExchangeClient {
     private let baseURL = URL(string: "https://api.binance.com")!
     private let wsURL = URL(string: "wss://stream.binance.com:9443/ws")!
     
-    private var wsTask: Task<Void, Error>?
-    private var wsStream: URLSessionWebSocketTask?
+    private var webSocketManager: WebSocketManager?
     private var continuation: AsyncStream<Ticker>.Continuation?
     
     lazy var liveTickerStream: AsyncStream<Ticker> = {
@@ -20,47 +19,88 @@ final class BinanceExchangeClient: ExchangeClient {
     // MARK: - WebSocket Methods
     
     func wsConnect(symbol: String) async {
-        wsStream = URLSession.shared.webSocketTask(with: wsURL)
-        wsStream?.resume()
+        // Disconnect any existing connection
+        await wsDisconnect()
         
-        // Subscribe to trade stream
-        let message = """
+        // Create WebSocket URL for trade stream
+        let stream = "\(symbol.lowercased())@trade"
+        guard let url = URL(string: "wss://stream.binance.com:9443/ws/\(stream)") else {
+            print("❌ Invalid Binance WebSocket URL for symbol: \(symbol)")
+            return
+        }
+        
+        // Subscribe message for trade stream
+        let subscribeMessage = """
         {
             "method": "SUBSCRIBE",
-            "params": ["\(symbol.lowercased())@trade"],
+            "params": ["\(stream)"],
             "id": 1
         }
         """
-        try? await wsStream?.send(.string(message))
         
-        // Start receiving messages
-        wsTask = Task {
-            while !Task.isCancelled {
-                guard let message = try await wsStream?.receive() else { continue }
-                
-                switch message {
-                case .string(let text):
-                    if let data = text.data(using: .utf8),
-                       let trade = try? JSONDecoder().decode(BinanceTrade.self, from: data) {
-                        let ticker = Ticker(
-                            id: UUID(),
-                            symbol: symbol,
-                            price: Double(trade.price) ?? 0,
-                            time: Date(timeIntervalSince1970: Double(trade.time) / 1000)
-                        )
-                        continuation?.yield(ticker)
-                    }
-                default:
-                    break
-                }
+        // Get verbose logging preference
+        let verboseLogging = await AppSettings.shared.verboseAILogs
+        
+        // Create configuration
+        let config = WebSocketManager.Configuration(
+            url: url,
+            subscribeMessage: subscribeMessage,
+            name: "Binance-\(symbol)",
+            verboseLogging: verboseLogging
+        )
+        
+        // Create and configure WebSocket manager
+        let manager = WebSocketManager(configuration: config)
+        
+        manager.onMessage = { [weak self] message in
+            Task { @MainActor in
+                await self?.handleWebSocketMessage(message, symbol: symbol)
             }
         }
+        
+        manager.onConnectionStateChange = { [weak self] isConnected in
+            if !isConnected {
+                // Connection lost - could add additional logic here
+                print("🔌 Binance WebSocket connection state changed: \(isConnected)")
+            }
+        }
+        
+        webSocketManager = manager
+        
+        // Start connection with robust reconnection
+        await manager.connect()
     }
     
     func wsDisconnect() async {
-        wsTask?.cancel()
-        wsStream?.cancel()
+        await webSocketManager?.disconnect()
+        webSocketManager = nil
         continuation?.finish()
+    }
+    
+    @MainActor
+    private func handleWebSocketMessage(_ message: String, symbol: String) async {
+        guard let data = message.data(using: .utf8) else { return }
+        
+        do {
+            // Parse Binance trade message
+            if let trade = try? JSONDecoder().decode(BinanceTrade.self, from: data) {
+                let ticker = Ticker(
+                    id: UUID(),
+                    symbol: symbol,
+                    price: Double(trade.price) ?? 0,
+                    time: Date(timeIntervalSince1970: Double(trade.time) / 1000)
+                )
+                continuation?.yield(ticker)
+                
+                if await AppSettings.shared.verboseAILogs {
+                    print("💰 Binance trade update: \(symbol) = $\(ticker.price)")
+                }
+            }
+        } catch {
+            if await AppSettings.shared.verboseAILogs {
+                print("⚠️ Failed to parse Binance message: \(error)")
+            }
+        }
     }
     
     // MARK: - Market Data

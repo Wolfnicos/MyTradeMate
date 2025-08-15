@@ -86,6 +86,14 @@ public final class MarketDataService: ObservableObject {
         guard isLiveEnabled else { return }
         guard let symbol = symbol, !isConnecting else { return }
         
+        // Prevent double connections - cancel existing task first
+        if let existingTask = task {
+            existingTask.cancel(with: .goingAway, reason: nil)
+            task = nil
+            stopPingTimer()
+            stopHealthCheckTimer()
+        }
+        
         isConnecting = true
         let (url, subscribeMessage) = wsSpec(for: symbol)
         
@@ -116,7 +124,7 @@ public final class MarketDataService: ObservableObject {
         startPingTimer()
         startHealthCheckTimer()
         
-        print("✅ WebSocket connected successfully")
+        print("✅ WebSocket connected successfully to \(url)")
         
         // Start async receive loop
         Task {
@@ -164,14 +172,17 @@ public final class MarketDataService: ObservableObject {
         
         reconnectAttempts += 1
         
-        // Exponential backoff with jitter: start at 2s, double each attempt, cap at 30s
-        let baseDelay = min(pow(2.0, Double(reconnectAttempts)), 30.0)
+        // Exponential backoff with jitter: start at 3s, double each attempt, cap at 60s
+        let baseDelay = min(pow(2.0, Double(reconnectAttempts)) + 1.0, 60.0)
         
-        // Add jitter (±20%)
-        let jitter = Double.random(in: 0.8...1.2)
+        // Add jitter (±30%) to reduce thundering herd
+        let jitter = Double.random(in: 0.7...1.3)
         let delay = baseDelay * jitter
         
-        print("🔄 Reconnecting in \(String(format: "%.1f", delay))s (attempt \(reconnectAttempts)/\(maxReconnectAttempts))")
+        // Reduce log spam - only log every few attempts or longer delays
+        if reconnectAttempts <= 3 || reconnectAttempts % 3 == 0 || delay > 20 {
+            print("🔄 Reconnecting in \(String(format: "%.1f", delay))s (attempt \(reconnectAttempts)/\(maxReconnectAttempts))")
+        }
         
         try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
         
@@ -233,7 +244,10 @@ public final class MarketDataService: ObservableObject {
         
         task.sendPing { [weak self] error in
             if let error = error {
-                print("🏓 Ping failed: \(error.localizedDescription)")
+                // Only log ping failures if verbose logging enabled
+                if AIModelManager.shared.verboseAILogs {
+                    print("🏓 Ping failed: \(error.localizedDescription)")
+                }
                 Task {
                     await self?.handleConnectionLoss(error: error)
                 }
@@ -244,7 +258,16 @@ public final class MarketDataService: ObservableObject {
     private func handle(message: URLSessionWebSocketTask.Message) {
         guard case let .string(text) = message,
               let data = text.data(using: .utf8) ?? text.replacingOccurrences(of: "\n", with: "").data(using: .utf8)
-        else { return }
+        else { 
+            if AIModelManager.shared.verboseAILogs {
+                print("📨 Received non-string WebSocket message")
+            }
+            return 
+        }
+        
+        if AIModelManager.shared.verboseAILogs {
+            print("📨 WS message: \(text.prefix(200))")
+        }
         
         if let sym = symbol {
             switch sym.exchange {
@@ -262,6 +285,10 @@ public final class MarketDataService: ObservableObject {
                         await StopMonitor.shared.onTick(price)
                     }
                     onTick?(tick)
+                    
+                    if AIModelManager.shared.verboseAILogs {
+                        print("💰 Price update: \(sym.raw) = $\(price)")
+                    }
                 }
             case .kraken:
                 // [channelID, {"c":"67890.1", ...}, "ticker", "XBT/USDT"]
@@ -278,6 +305,10 @@ public final class MarketDataService: ObservableObject {
                         await StopMonitor.shared.onTick(price)
                     }
                     onTick?(tick)
+                    
+                    if AIModelManager.shared.verboseAILogs {
+                        print("💰 Price update: \(sym.raw) = $\(price)")
+                    }
                 }
             }
         }
