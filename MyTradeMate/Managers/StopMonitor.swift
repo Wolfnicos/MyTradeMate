@@ -25,7 +25,7 @@ public actor StopMonitor {
     
     private func evaluate(currentPrice: Double? = nil) async {
         let pos = await TradeManager.shared.position
-        guard let p = pos, p.quantity > 0 else { return }
+        guard let p = pos, !p.isFlat else { return }
         
         // Prefer latest tick pushed; else compute mid
         let lastPrice: Double
@@ -37,13 +37,29 @@ public actor StopMonitor {
         
         // Read current SL/TP from RiskManager
         let risk = await RiskManager.shared.params
-        let sl = p.avgPrice * (1.0 - risk.defaultSLPercent/100.0)
-        let tp = p.avgPrice * (1.0 + risk.defaultTPPercent/100.0)
+        let slPercent = risk.defaultSLPercent / 100.0
+        let tpPercent = risk.defaultTPPercent / 100.0
         
-        if lastPrice <= sl {
-            await TradeManager.shared.close(reason: .stopLoss, execPrice: lastPrice)
-        } else if lastPrice >= tp {
-            await TradeManager.shared.close(reason: .takeProfit, execPrice: lastPrice)
+        if p.quantity > 0 {
+            // Long position: SL below, TP above
+            let sl = p.avgPrice * (1.0 - slPercent)
+            let tp = p.avgPrice * (1.0 + tpPercent)
+            
+            if lastPrice <= sl {
+                await TradeManager.shared.close(reason: .stopLoss, execPrice: lastPrice)
+            } else if lastPrice >= tp {
+                await TradeManager.shared.close(reason: .takeProfit, execPrice: lastPrice)
+            }
+        } else {
+            // Short position: SL above, TP below
+            let sl = p.avgPrice * (1.0 + slPercent)
+            let tp = p.avgPrice * (1.0 - tpPercent)
+            
+            if lastPrice >= sl {
+                await TradeManager.shared.close(reason: .stopLoss, execPrice: lastPrice)
+            } else if lastPrice <= tp {
+                await TradeManager.shared.close(reason: .takeProfit, execPrice: lastPrice)
+            }
         }
     }
 }

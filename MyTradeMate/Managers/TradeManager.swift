@@ -35,37 +35,94 @@ public final class TradeManager: ObservableObject {
         fills.append(fill)
 
         var pos = position ?? Position(symbol: req.symbol, quantity: 0, avgPrice: 0)
-        switch req.side {
-        case .buy:
-            let totalCost = pos.avgPrice * pos.quantity + fill.price * fill.quantity
-            pos.quantity += fill.quantity
-            pos.avgPrice = pos.quantity > 0 ? totalCost / pos.quantity : 0
-        case .sell:
-            let qtyToClose = min(pos.quantity, fill.quantity)
-            let average = pos.avgPrice
-            // realized pnl for the closed portion
-            let realized = (fill.price - average) * qtyToClose
+        let (newPos, realized) = applyFill(fill: fill, to: pos)
+        
+        if realized != 0 {
             equity += realized
             await risk.record(realizedPnL: realized, equity: equity)
             await PnLManager.shared.addRealized(realized)
-
-            pos.quantity -= fill.quantity
-            if pos.quantity <= 0 { pos.quantity = 0; pos.avgPrice = 0 }
         }
-        position = pos
+        
+        position = newPos.isFlat ? nil : newPos
         return fill
     }
     
+    /// Apply a fill to a position, correctly handling both long and short positions
+    private func applyFill(fill: OrderFill, to position: Position) -> (Position, Double) {
+        var pos = position
+        var realizedPnL = 0.0
+        
+        let fillValue = fill.quantity * fill.price
+        
+        switch fill.side {
+        case .buy:
+            if pos.quantity >= 0 {
+                // Long position: add to position
+                let totalCost = pos.avgPrice * pos.quantity + fillValue
+                pos.quantity += fill.quantity
+                pos.avgPrice = pos.quantity > 0 ? totalCost / pos.quantity : 0
+            } else {
+                // Short position: buying to cover
+                let qtyToCover = min(abs(pos.quantity), fill.quantity)
+                realizedPnL = (pos.avgPrice - fill.price) * qtyToCover
+                
+                pos.quantity += qtyToCover
+                let remainingFillQty = fill.quantity - qtyToCover
+                
+                if remainingFillQty > 0 {
+                    // Flip to long position
+                    pos.quantity = remainingFillQty
+                    pos.avgPrice = fill.price
+                } else if pos.quantity == 0 {
+                    pos.avgPrice = 0
+                }
+            }
+            
+        case .sell:
+            if pos.quantity > 0 {
+                // Long position: selling to close or flip short
+                let qtyToClose = min(pos.quantity, fill.quantity)
+                realizedPnL = (fill.price - pos.avgPrice) * qtyToClose
+                
+                pos.quantity -= qtyToClose
+                let remainingFillQty = fill.quantity - qtyToClose
+                
+                if remainingFillQty > 0 {
+                    // Flip to short position
+                    pos.quantity = -remainingFillQty
+                    pos.avgPrice = fill.price
+                } else if pos.quantity == 0 {
+                    pos.avgPrice = 0
+                }
+            } else {
+                // Short position: add to short position
+                let totalValue = abs(pos.quantity) * pos.avgPrice + fillValue
+                pos.quantity -= fill.quantity
+                pos.avgPrice = pos.quantity < 0 ? totalValue / abs(pos.quantity) : 0
+            }
+        }
+        
+        return (pos, realizedPnL)
+    }
+    
     public func close(reason: CloseReason, execPrice: Double) async {
-        guard var p = position, p.quantity > 0 else { return }
-        let realized = (execPrice - p.avgPrice) * p.quantity
+        guard let p = position, !p.isFlat else { return }
+        
+        let (side, quantity, realized) = if p.quantity > 0 {
+            // Close long position by selling
+            (OrderSide.sell, p.quantity, (execPrice - p.avgPrice) * p.quantity)
+        } else {
+            // Close short position by buying
+            (OrderSide.buy, abs(p.quantity), (p.avgPrice - execPrice) * abs(p.quantity))
+        }
+        
         equity += realized
         await PnLManager.shared.addRealized(realized)
         fills.append(OrderFill(
             id: UUID(),
             symbol: p.symbol,
-            side: .sell,
-            quantity: p.quantity,
+            side: side,
+            quantity: quantity,
             price: execPrice,
             timestamp: Date()
         ))
