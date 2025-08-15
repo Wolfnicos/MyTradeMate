@@ -1,7 +1,7 @@
 import Foundation
 import CryptoKit
 
-class BinanceExchangeClient: ExchangeClient {
+final class BinanceExchangeClient: ExchangeClient {
     let id: Exchange = .binance
     let exchange: Exchange = .binance
     private let baseURL = URL(string: "https://api.binance.com")!
@@ -190,7 +190,7 @@ class BinanceExchangeClient: ExchangeClient {
     
     // MARK: - ExchangeClient Protocol
     
-    nonisolated func normalized(symbol: Symbol) -> String {
+    func normalized(symbol: Symbol) -> String {
         return symbol.raw.uppercased() // Binance uses BTCUSDT format
     }
     

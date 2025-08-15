@@ -1,7 +1,7 @@
 import Foundation
 import CryptoKit
 
-class KrakenExchangeClient: ExchangeClient {
+final class KrakenExchangeClient: ExchangeClient {
     let id: Exchange = .kraken
     let exchange: Exchange = .kraken
     private let baseURL = URL(string: "https://api.kraken.com")!
@@ -196,7 +196,7 @@ class KrakenExchangeClient: ExchangeClient {
     
     // MARK: - ExchangeClient Protocol
     
-    nonisolated func normalized(symbol: Symbol) -> String {
+    func normalized(symbol: Symbol) -> String {
         let symbol = symbol.raw.uppercased()
         // Convert BTC to XBT for Kraken
         if symbol.hasPrefix("BTC") {

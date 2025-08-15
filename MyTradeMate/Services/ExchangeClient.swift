@@ -8,9 +8,9 @@ public enum ExchangeError: Error, Sendable {
     case serverError(String)
 }
 
-public protocol ExchangeClient: Sendable {
+public protocol ExchangeClient {
     var exchange: Exchange { get }
-    nonisolated func normalized(symbol: Symbol) -> String
+    func normalized(symbol: Symbol) -> String
     func bestPrice(for symbol: Symbol) async throws -> Double
     func placeMarketOrder(_ req: OrderRequest) async throws -> OrderFill
 }

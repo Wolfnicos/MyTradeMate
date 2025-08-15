@@ -66,22 +66,26 @@ public enum RequestOrderType: String, Codable, Sendable {
 
 // MARK: - AI Core Protocols
 
-public protocol SignalCore: Sendable {
+@MainActor
+public protocol SignalCore {
     func inferSignal(symbol: String, timeframe: Timeframe, candles: [Candle]) async throws -> SignalDecision
 }
 
-public protocol RiskCore: Sendable {
+@MainActor
+public protocol RiskCore {
     func sizePosition(equity: Decimal, price: Decimal, riskPct: Decimal, symbol: String) -> PositionPlan
 }
 
-public protocol ExecCore: Sendable {
+@MainActor
+public protocol ExecCore {
     func buildOrder(from plan: PositionPlan, side: OrderSide, symbol: String, price: Decimal) -> AIOrderRequest
 }
 
 // MARK: - Mock Implementations
 
-public actor MockSignalCore: SignalCore {
+public struct MockSignalCore: SignalCore {
     public static let shared = MockSignalCore()
+    public init() {}
     
     public func inferSignal(symbol: String, timeframe: Timeframe, candles: [Candle]) async throws -> SignalDecision {
         // Deterministic mock based on timeframe and recent candle data
@@ -118,8 +122,9 @@ public actor MockSignalCore: SignalCore {
     }
 }
 
-public actor MockRiskCore: RiskCore {
+public struct MockRiskCore: RiskCore {
     public static let shared = MockRiskCore()
+    public init() {}
     
     public func sizePosition(equity: Decimal, price: Decimal, riskPct: Decimal, symbol: String) -> PositionPlan {
         let maxRisk = equity * (riskPct / 100)
@@ -141,8 +146,9 @@ public actor MockRiskCore: RiskCore {
     }
 }
 
-public actor MockExecCore: ExecCore {
+public struct MockExecCore: ExecCore {
     public static let shared = MockExecCore()
+    public init() {}
     
     public func buildOrder(from plan: PositionPlan, side: OrderSide, symbol: String, price: Decimal) -> AIOrderRequest {
         return AIOrderRequest(
@@ -217,9 +223,9 @@ public final class AIModelManager: ObservableObject {
     public enum Mode: String, Codable, Sendable { case normal, precision }
     
     // AI Cores
-    private let signalCore: any SignalCore = MockSignalCore.shared
-    private let riskCore: any RiskCore = MockRiskCore.shared
-    private let execCore: any ExecCore = MockExecCore.shared
+    private let signalCore: MockSignalCore = MockSignalCore.shared
+    private let riskCore: MockRiskCore = MockRiskCore.shared
+    private let execCore: MockExecCore = MockExecCore.shared
     
     public func preloadModels() async {
         // Preload all models by accessing their shared instances
