@@ -7,35 +7,10 @@ final class PnLVM: ObservableObject {
     @Published var unrealized: Double = 0
     @Published var equity: Double = 10_000
     @Published var history: [(Date, Double)] = []
-    @Published var timeframe: Timeframe = .hour1
+    @Published var timeframe: Timeframe = .h1
     
     private var timer: AnyCancellable?
     private var rawHistory: [(Date, Double)] = []
-    
-    enum Timeframe: String, CaseIterable {
-        case minute1 = "1m"
-        case minute5 = "5m"
-        case hour1 = "1h"
-        case day1 = "1D"
-        
-        var seconds: TimeInterval {
-            switch self {
-            case .minute1: return 60
-            case .minute5: return 300
-            case .hour1: return 3600
-            case .day1: return 86400
-            }
-        }
-        
-        var maxPoints: Int {
-            switch self {
-            case .minute1: return 120  // 2 hours
-            case .minute5: return 288  // 24 hours
-            case .hour1: return 168    // 1 week
-            case .day1: return 90      // 3 months
-            }
-        }
-    }
     
     var timeframeHours: Int {
         max(1, Int(timeframe.seconds / 3600))

@@ -13,7 +13,13 @@
       "Bash(timeout 45 xcodebuild:*)",
       "Bash(swiftc:*)",
       "Bash(./_scan.sh:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(git checkout:*)",
+      "Bash(chmod:*)",
+      "Bash(cat:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git tag:*)"
     ],
     "deny": []
   }

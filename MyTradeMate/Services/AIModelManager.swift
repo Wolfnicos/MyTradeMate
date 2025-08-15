@@ -1,6 +1,165 @@
 import Foundation
 import SwiftUI
 
+// MARK: - AI Core Data Models
+
+public struct SignalDecision: Codable, Sendable {
+    public let signal: SignalType
+    public let confidence: Double  // 0.0 to 1.0
+    public let reasoning: String?
+    public let timestamp: Date
+    
+    public init(signal: SignalType, confidence: Double, reasoning: String? = nil, timestamp: Date = Date()) {
+        self.signal = signal
+        self.confidence = confidence
+        self.reasoning = reasoning
+        self.timestamp = timestamp
+    }
+}
+
+public struct PositionPlan: Codable, Sendable {
+    public let quantity: Decimal
+    public let stopLoss: Decimal?
+    public let takeProfit: Decimal?
+    public let maxRisk: Decimal
+    public let estimatedCost: Decimal
+    public let riskPercentage: Decimal
+    
+    public init(quantity: Decimal, stopLoss: Decimal? = nil, takeProfit: Decimal? = nil, maxRisk: Decimal, estimatedCost: Decimal, riskPercentage: Decimal) {
+        self.quantity = quantity
+        self.stopLoss = stopLoss
+        self.takeProfit = takeProfit
+        self.maxRisk = maxRisk
+        self.estimatedCost = estimatedCost
+        self.riskPercentage = riskPercentage
+    }
+}
+
+public struct AIOrderRequest: Codable, Sendable {
+    public let symbol: String
+    public let side: OrderSide
+    public let quantity: Decimal
+    public let orderType: RequestOrderType
+    public let price: Decimal?
+    public let stopLoss: Decimal?
+    public let takeProfit: Decimal?
+    public let timeInForce: String?
+    
+    public init(symbol: String, side: OrderSide, quantity: Decimal, orderType: RequestOrderType = .market, price: Decimal? = nil, stopLoss: Decimal? = nil, takeProfit: Decimal? = nil, timeInForce: String? = nil) {
+        self.symbol = symbol
+        self.side = side
+        self.quantity = quantity
+        self.orderType = orderType
+        self.price = price
+        self.stopLoss = stopLoss
+        self.takeProfit = takeProfit
+        self.timeInForce = timeInForce
+    }
+}
+
+public enum RequestOrderType: String, Codable, Sendable {
+    case market = "MARKET"
+    case limit = "LIMIT"
+    case stopLoss = "STOP_LOSS"
+    case takeProfit = "TAKE_PROFIT"
+}
+
+// MARK: - AI Core Protocols
+
+public protocol SignalCore: Sendable {
+    func inferSignal(symbol: String, timeframe: Timeframe, candles: [Candle]) async throws -> SignalDecision
+}
+
+public protocol RiskCore: Sendable {
+    func sizePosition(equity: Decimal, price: Decimal, riskPct: Decimal, symbol: String) -> PositionPlan
+}
+
+public protocol ExecCore: Sendable {
+    func buildOrder(from plan: PositionPlan, side: OrderSide, symbol: String, price: Decimal) -> AIOrderRequest
+}
+
+// MARK: - Mock Implementations
+
+public actor MockSignalCore: SignalCore {
+    public static let shared = MockSignalCore()
+    
+    public func inferSignal(symbol: String, timeframe: Timeframe, candles: [Candle]) async throws -> SignalDecision {
+        // Deterministic mock based on timeframe and recent candle data
+        let confidence: Double
+        let signal: SignalType
+        
+        if candles.isEmpty {
+            return SignalDecision(signal: .hold, confidence: 0.5, reasoning: "No candle data available")
+        }
+        
+        let recentCandle = candles.last!
+        let priceChange = recentCandle.close - recentCandle.open
+        
+        // Simple mock logic based on timeframe and price movement
+        switch timeframe {
+        case .m5:
+            confidence = min(0.85, abs(priceChange / recentCandle.open) * 100 + 0.3)
+            signal = priceChange > 0 ? .buy : (priceChange < 0 ? .sell : .hold)
+            
+        case .h1:
+            confidence = min(0.80, abs(priceChange / recentCandle.open) * 50 + 0.4)
+            signal = priceChange > recentCandle.open * 0.01 ? .buy : (priceChange < -recentCandle.open * 0.01 ? .sell : .hold)
+            
+        case .h4:
+            confidence = min(0.75, abs(priceChange / recentCandle.open) * 25 + 0.5)
+            signal = priceChange > recentCandle.open * 0.02 ? .buy : (priceChange < -recentCandle.open * 0.02 ? .sell : .hold)
+        }
+        
+        return SignalDecision(
+            signal: signal,
+            confidence: confidence,
+            reasoning: "Mock analysis: \(timeframe.rawValue) timeframe, price change: \(String(format: "%.4f", priceChange))"
+        )
+    }
+}
+
+public actor MockRiskCore: RiskCore {
+    public static let shared = MockRiskCore()
+    
+    public func sizePosition(equity: Decimal, price: Decimal, riskPct: Decimal, symbol: String) -> PositionPlan {
+        let maxRisk = equity * (riskPct / 100)
+        let quantity = maxRisk / price * 0.95 // Conservative 95% of max risk
+        
+        // Simple SL/TP based on 2% and 4% moves
+        let stopLoss = price * 0.98
+        let takeProfit = price * 1.04
+        let estimatedCost = quantity * price
+        
+        return PositionPlan(
+            quantity: quantity,
+            stopLoss: stopLoss,
+            takeProfit: takeProfit,
+            maxRisk: maxRisk,
+            estimatedCost: estimatedCost,
+            riskPercentage: riskPct
+        )
+    }
+}
+
+public actor MockExecCore: ExecCore {
+    public static let shared = MockExecCore()
+    
+    public func buildOrder(from plan: PositionPlan, side: OrderSide, symbol: String, price: Decimal) -> AIOrderRequest {
+        return AIOrderRequest(
+            symbol: symbol,
+            side: side,
+            quantity: plan.quantity,
+            orderType: .market,
+            price: nil, // Market order, no price needed
+            stopLoss: plan.stopLoss,
+            takeProfit: plan.takeProfit,
+            timeInForce: "GTC"
+        )
+    }
+}
+
+// MARK: - Legacy Signal Models
+
 public protocol TradingSignalModel: Sendable {
     func signal(symbol: Symbol, mark: Double) async -> Signal
 }
@@ -56,6 +215,11 @@ public final class AIModelManager: ObservableObject {
     public static let shared = AIModelManager()
     
     public enum Mode: String, Codable, Sendable { case normal, precision }
+    
+    // AI Cores
+    private let signalCore: any SignalCore = MockSignalCore.shared
+    private let riskCore: any RiskCore = MockRiskCore.shared
+    private let execCore: any ExecCore = MockExecCore.shared
     
     public func preloadModels() async {
         // Preload all models by accessing their shared instances
@@ -116,5 +280,22 @@ public final class AIModelManager: ObservableObject {
         case .h1: return H1Model.shared
         case .h4: return H4Model.shared
         }
+    }
+    
+    // MARK: - AI Core Integration
+    
+    public func makeDecision(symbol: Symbol, timeframe: Timeframe, candles: [Candle] = []) async throws -> SignalDecision {
+        print("📊 AIModelManager: Making decision for \(symbol.raw) on \(timeframe.rawValue)")
+        return try await signalCore.inferSignal(symbol: symbol.raw, timeframe: timeframe, candles: candles)
+    }
+    
+    public func planPosition(equity: Decimal, price: Decimal, side: OrderSide, riskPct: Decimal, symbol: Symbol) -> PositionPlan {
+        print("⚖️ AIModelManager: Planning position for \(symbol.raw), risk: \(riskPct)%")
+        return riskCore.sizePosition(equity: equity, price: price, riskPct: riskPct, symbol: symbol.raw)
+    }
+    
+    public func requestOrder(plan: PositionPlan, side: OrderSide, symbol: Symbol, price: Decimal) -> AIOrderRequest {
+        print("📋 AIModelManager: Building order request for \(symbol.raw)")
+        return execCore.buildOrder(from: plan, side: side, symbol: symbol.raw, price: price)
     }
 }

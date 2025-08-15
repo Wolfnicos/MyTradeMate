@@ -29,7 +29,7 @@ struct PnLDetailView: View {
                 Spacer()
                 
                 Picker("Timeframe", selection: $vm.timeframe) {
-                    ForEach(PnLVM.Timeframe.allCases, id: \.rawValue) { tf in
+                    ForEach(Timeframe.allCases, id: \.rawValue) { tf in
                         Text(tf.rawValue).tag(tf)
                     }
                 }
