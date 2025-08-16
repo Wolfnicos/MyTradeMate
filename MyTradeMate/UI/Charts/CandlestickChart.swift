@@ -23,6 +23,9 @@ struct CandlestickChart: View {
                     volumeChartView
                 }
                 chartControlsView
+                
+                // Chart legend to clarify meanings
+                chartLegendView
             }
         }
         .themedBackground()
@@ -74,32 +77,49 @@ struct CandlestickChart: View {
     }
     
     private func candleInfoView(_ candle: Candle) -> some View {
-        HStack(spacing: 16) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("O: \(candle.open, specifier: "%.2f")")
+        VStack(alignment: .leading, spacing: 8) {
+            // Enhanced header with tooltip explanation
+            HStack {
+                Text("OHLC Data")
                     .font(.caption)
+                    .fontWeight(.medium)
                     .themedSecondaryForeground()
-                Text("H: \(candle.high, specifier: "%.2f")")
-                    .font(.caption)
+                
+                Spacer()
+                
+                Text("Tap candles for details")
+                    .font(.caption2)
                     .themedSecondaryForeground()
+                    .opacity(0.7)
             }
             
-            VStack(alignment: .leading, spacing: 2) {
-                Text("L: \(candle.low, specifier: "%.2f")")
-                    .font(.caption)
-                    .themedSecondaryForeground()
-                Text("C: \(candle.close, specifier: "%.2f")")
-                    .font(.caption)
-                    .foregroundColor(candle.close >= candle.open ? themeManager.candleUpColor : themeManager.candleDownColor)
-            }
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Vol: \(formatVolume(candle.volume))")
-                    .font(.caption)
-                    .themedSecondaryForeground()
-                Text(formatTime(candle.openTime))
-                    .font(.caption)
-                    .themedSecondaryForeground()
+            HStack(spacing: 16) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Open: \(candle.open, specifier: "%.2f")")
+                        .font(.caption)
+                        .themedSecondaryForeground()
+                    Text("High: \(candle.high, specifier: "%.2f")")
+                        .font(.caption)
+                        .themedSecondaryForeground()
+                }
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Low: \(candle.low, specifier: "%.2f")")
+                        .font(.caption)
+                        .themedSecondaryForeground()
+                    Text("Close: \(candle.close, specifier: "%.2f")")
+                        .font(.caption)
+                        .foregroundColor(candle.close >= candle.open ? themeManager.candleUpColor : themeManager.candleDownColor)
+                }
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Volume: \(formatVolume(candle.volume))")
+                        .font(.caption)
+                        .themedSecondaryForeground()
+                    Text(formatTime(candle.openTime))
+                        .font(.caption)
+                        .themedSecondaryForeground()
+                }
             }
         }
     }
@@ -266,6 +286,72 @@ struct CandlestickChart: View {
         .padding(.top, 8)
     }
     
+    // MARK: - Chart Legend
+    
+    private var chartLegendView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Chart Legend")
+                .font(.caption)
+                .fontWeight(.medium)
+                .themedSecondaryForeground()
+            
+            LazyVGrid(columns: [
+                GridItem(.flexible()),
+                GridItem(.flexible())
+            ], alignment: .leading, spacing: 8) {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(themeManager.candleUpColor)
+                        .frame(width: 8, height: 8)
+                    Text("Bullish Candle")
+                        .font(.caption2)
+                        .themedSecondaryForeground()
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                }
+                
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(themeManager.candleDownColor)
+                        .frame(width: 8, height: 8)
+                    Text("Bearish Candle")
+                        .font(.caption2)
+                        .themedSecondaryForeground()
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                }
+                
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(Color.blue.opacity(0.6))
+                        .frame(width: 8, height: 8)
+                    Text("Volume")
+                        .font(.caption2)
+                        .themedSecondaryForeground()
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                }
+                
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.up.arrow.down")
+                        .font(.system(size: 10))
+                        .themedSecondaryForeground()
+                    Text("Price Range")
+                        .font(.caption2)
+                        .themedSecondaryForeground()
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(8)
+        .padding(.horizontal)
+        .padding(.top, 8)
+    }
+    
     // MARK: - Helper Methods
     
     private var candleWidth: CGFloat {
@@ -319,14 +405,6 @@ struct CandlestickChart: View {
 // MARK: - Timeframe Extension
 
 extension Timeframe {
-    var displayName: String {
-        switch self {
-        case .m5: return "5 minutes"
-        case .h1: return "1 hour"
-        case .h4: return "4 hours"
-        }
-    }
-    
     var timeFormat: String {
         switch self {
         case .m5: return "HH:mm"

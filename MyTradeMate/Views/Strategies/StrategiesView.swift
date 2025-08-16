@@ -81,48 +81,66 @@ struct StrategiesView: View {
     }
     
     private var ensembleSignalView: some View {
-        Group {
-            if let ensembleSignal = strategyManager.ensembleSignal {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Ensemble Signal")
-                        .font(.headline)
-                        .fontWeight(.semibold)
-                    
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(ensembleSignal.direction.description.uppercased())
-                                .font(.title2)
-                                .fontWeight(.bold)
-                                .foregroundColor(signalColor(for: ensembleSignal.direction))
-                            
-                            Text("\(Int(ensembleSignal.confidence * 100))% confidence")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Ensemble Signal")
+                .font(.headline)
+                .fontWeight(.semibold)
+            
+            if strategyManager.isGeneratingSignals {
+                LoadingStateView(message: "Generating strategy signals...")
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+            } else if let ensembleSignal = strategyManager.ensembleSignal {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(ensembleSignal.direction.description.uppercased())
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .foregroundColor(signalColor(for: ensembleSignal.direction))
                         
-                        Spacer()
-                        
-                        VStack(alignment: .trailing, spacing: 4) {
-                            Text("\(ensembleSignal.contributingStrategies.count) strategies")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            
-                            Text(ensembleSignal.timestamp.formatted(date: .omitted, time: .shortened))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
+                        Text("\(Int(ensembleSignal.confidence * 100))% confidence")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
                     }
                     
-                    Text(ensembleSignal.reason)
+                    Spacer()
+                    
+                    VStack(alignment: .trailing, spacing: 4) {
+                        Text("\(ensembleSignal.contributingStrategies.count) strategies")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        Text(ensembleSignal.timestamp.formatted(date: .omitted, time: .shortened))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                Text(ensembleSignal.reason)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .padding(.top, 4)
+            } else {
+                VStack(spacing: 8) {
+                    Image(systemName: "brain")
+                        .font(.system(size: 24))
+                        .foregroundColor(.secondary)
+                    
+                    Text("No ensemble signal available")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    
+                    Text("Enable strategies to generate signals")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                        .padding(.top, 4)
                 }
-                .padding()
-                .background(Color(.secondarySystemBackground))
-                .cornerRadius(12)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
             }
         }
+        .padding()
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(12)
     }
     
     private func signalColor(for direction: StrategySignal.Direction) -> Color {

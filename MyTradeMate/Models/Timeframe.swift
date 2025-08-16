@@ -20,4 +20,12 @@ public enum Timeframe: String, Codable, CaseIterable, Sendable {
         case .h4: return 100
         }
     }
+    
+    var displayName: String {
+        switch self {
+        case .m5: return "5m"
+        case .h1: return "1h"
+        case .h4: return "4h"
+        }
+    }
 }

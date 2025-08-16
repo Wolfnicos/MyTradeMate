@@ -18,31 +18,60 @@ struct CandleChartView: View {
     let data: [CandleData]
     
     var body: some View {
-        Chart {
-            ForEach(data) { candle in
-                LineMark(
-                    x: .value("Time", candle.timestamp),
-                    y: .value("Price", candle.close)
-                )
-                .foregroundStyle(.blue)
-                .interpolationMethod(.catmullRom)
-            }
-        }
-        .frame(height: 280)
-        .chartXAxis {
-            AxisMarks(values: .automatic(desiredCount: 5)) { _ in
-                AxisGridLine()
-                AxisTick()
-                AxisValueLabel(format: .dateTime.hour().minute())
-            }
-        }
-        .chartYAxis {
-            AxisMarks(position: .trailing, values: .automatic(desiredCount: 6)) { value in
-                AxisGridLine()
-                AxisTick()
-                AxisValueLabel {
-                    if let price = value.as(Double.self) {
-                        Text("$\(price, specifier: "%.0f")")
+        Group {
+            if data.isEmpty {
+                // Empty state for charts when no data is available
+                VStack(spacing: 16) {
+                    Image(systemName: "chart.line.uptrend.xyaxis")
+                        .font(.system(size: 48))
+                        .foregroundColor(.secondary)
+                    
+                    VStack(spacing: 8) {
+                        Text("No Chart Data")
+                            .font(.headline)
+                            .fontWeight(.medium)
+                            .foregroundColor(.primary)
+                        
+                        Text("No price data available for the selected timeframe")
+                            .font(.body)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .lineLimit(3)
+                    }
+                }
+                .padding()
+                .frame(maxWidth: .infinity)
+                .frame(height: 280)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("No Chart Data. No price data available for the selected timeframe")
+            } else {
+                Chart {
+                    ForEach(data) { candle in
+                        LineMark(
+                            x: .value("Time", candle.timestamp),
+                            y: .value("Price", candle.close)
+                        )
+                        .foregroundStyle(.blue)
+                        .interpolationMethod(.catmullRom)
+                    }
+                }
+                .frame(height: 280)
+                .chartXAxis {
+                    AxisMarks(values: .automatic(desiredCount: 5)) { _ in
+                        AxisGridLine()
+                        AxisTick()
+                        AxisValueLabel(format: .dateTime.hour().minute())
+                    }
+                }
+                .chartYAxis {
+                    AxisMarks(position: .trailing, values: .automatic(desiredCount: 6)) { value in
+                        AxisGridLine()
+                        AxisTick()
+                        AxisValueLabel {
+                            if let price = value.as(Double.self) {
+                                Text("$\(price, specifier: "%.0f")")
+                            }
+                        }
                     }
                 }
             }
@@ -217,7 +246,7 @@ struct DashboardView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 8) {
-                        Text(vm.currentSignal?.direction.uppercased() ?? "HOLD")
+                        Text(signalDisplayText)
                             .font(.system(size: 24, weight: .bold))
                             .foregroundColor(signalColor)
                         
@@ -229,7 +258,7 @@ struct DashboardView: View {
                     }
                     
                     HStack(spacing: 8) {
-                        Text("\(Int(vm.currentSignal?.confidence ?? 0))% confidence")
+                        Text(confidenceDisplayText)
                             .font(.system(size: 14))
                             .foregroundColor(.secondary)
                         
@@ -237,7 +266,7 @@ struct DashboardView: View {
                             .font(.system(size: 14))
                             .foregroundColor(.secondary)
                         
-                        Text(vm.timeframe.rawValue)
+                        Text(vm.timeframe.displayName)
                             .font(.system(size: 14))
                             .foregroundColor(.secondary)
                         
@@ -402,6 +431,32 @@ struct DashboardView: View {
         case "SELL": return .red
         default: return .secondary
         }
+    }
+    
+    private var signalDisplayText: String {
+        guard let signal = vm.currentSignal else {
+            return "No clear signal right now"
+        }
+        
+        // If confidence is very low (0% or close to 0), show user-friendly text
+        if signal.confidence < 0.01 {
+            return "No clear signal right now"
+        }
+        
+        return signal.direction.uppercased()
+    }
+    
+    private var confidenceDisplayText: String {
+        guard let signal = vm.currentSignal else {
+            return "Monitoring market conditions"
+        }
+        
+        // If confidence is very low (0% or close to 0), show user-friendly text
+        if signal.confidence < 0.01 {
+            return "Monitoring market conditions"
+        }
+        
+        return "\(Int(signal.confidence * 100))% confidence"
     }
 }
 

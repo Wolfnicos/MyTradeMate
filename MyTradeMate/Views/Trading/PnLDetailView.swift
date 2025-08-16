@@ -56,30 +56,101 @@ struct PnLDetailView: View {
                     }
                 }
             
-            Chart {
-                ForEach(Array(vm.history.enumerated()), id: \.offset) { index, item in
-                    LineMark(
-                        x: .value("Time", item.0),
-                        y: .value("Equity", item.1)
-                    )
-                    .foregroundStyle(vm.equity >= 10000 ? .green : .red)
+            Group {
+                if vm.history.isEmpty {
+                    // Empty state for P&L charts when no trading data exists
+                    VStack(spacing: 16) {
+                        Image(systemName: "dollarsign.circle")
+                            .font(.system(size: 48))
+                            .foregroundColor(.secondary)
+                        
+                        VStack(spacing: 8) {
+                            Text("No P&L History")
+                                .font(.headline)
+                                .fontWeight(.medium)
+                                .foregroundColor(.primary)
+                            
+                            Text("Your profit and loss chart will appear here once you start trading")
+                                .font(.body)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .lineLimit(3)
+                        }
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 280)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("No P&L History. Your profit and loss chart will appear here once you start trading")
+                } else {
+                    VStack(spacing: 12) {
+                        // Chart legend explaining what the chart shows
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Equity Over Time")
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.primary)
+                                
+                                Text("Shows your account balance changes over time")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            Spacer()
+                            
+                            HStack(spacing: 12) {
+                                HStack(spacing: 4) {
+                                    Circle()
+                                        .fill(.green)
+                                        .frame(width: 8, height: 8)
+                                    Text("Profit")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                HStack(spacing: 4) {
+                                    Circle()
+                                        .fill(.red)
+                                        .frame(width: 8, height: 8)
+                                    Text("Loss")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Color(.secondarySystemBackground))
+                        .cornerRadius(8)
+                        
+                        Chart {
+                            ForEach(Array(vm.history.enumerated()), id: \.offset) { index, item in
+                                LineMark(
+                                    x: .value("Time", item.0),
+                                    y: .value("Equity", item.1)
+                                )
+                                .foregroundStyle(vm.equity >= 10000 ? .green : .red)
+                            }
+                        }
+                        .chartXAxis {
+                            AxisMarks(values: .stride(by: .hour, count: vm.timeframeHours)) { value in
+                                AxisGridLine()
+                                AxisTick()
+                                AxisValueLabel(format: .dateTime.hour(.defaultDigits(amPM: .omitted)).minute())
+                            }
+                        }
+                        .chartYAxis {
+                            AxisMarks(position: .leading) { value in
+                                AxisGridLine()
+                                AxisTick()
+                                AxisValueLabel(format: .currency(code: "USD"))
+                            }
+                        }
+                        .frame(height: 280)
+                    }
                 }
             }
-            .chartXAxis {
-                AxisMarks(values: .stride(by: .hour, count: vm.timeframeHours)) { value in
-                    AxisGridLine()
-                    AxisTick()
-                    AxisValueLabel(format: .dateTime.hour(.defaultDigits(amPM: .omitted)).minute())
-                }
-            }
-            .chartYAxis {
-                AxisMarks(position: .leading) { value in
-                    AxisGridLine()
-                    AxisTick()
-                    AxisValueLabel(format: .currency(code: "USD"))
-                }
-            }
-            .frame(height: 280)
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .padding(.top, 8)
             .padding(.bottom, 20)

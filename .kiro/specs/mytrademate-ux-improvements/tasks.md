@@ -13,7 +13,7 @@
 - [ ] Create `EmptyStateView` component with icon, title, description
 - [ ] Add empty state for trades list ("Start trading to see performance here")
 - [ ] Add empty state for AI signals ("No clear signal right now")
-- [ ] Add empty state for P&L charts ("No trading data available")
+- [x] Add empty state for P&L charts ("No trading data available")
 - [ ] Create empty state for strategy list
 - [ ] Add unit tests for empty state components
 
@@ -78,9 +78,9 @@
 **Dependencies:** Task 1, Task 2
 
 **Subtasks:**
-- [ ] Replace "HOLD – 0% confidence" with user-friendly text
-- [ ] Standardize timeframe labels (5m, 1h, 4h) across all views
-- [ ] Add loading spinner for AI signal generation
+- [x] Replace "HOLD – 0% confidence" with user-friendly text
+- [x] Standardize timeframe labels (5m, 1h, 4h) across all views
+- [x] Add loading spinner for AI signal generation
 - [ ] Implement better signal visualization
 - [ ] Add signal confidence indicators
 - [ ] Add signal reasoning display

@@ -10,6 +10,7 @@ final class StrategyManager: ObservableObject {
     @Published var activeStrategies: [any Strategy] = []
     @Published var lastSignals: [String: StrategySignal] = [:]
     @Published var ensembleSignal: EnsembleSignal?
+    @Published var isGeneratingSignals: Bool = false
     
     private var cancellables = Set<AnyCancellable>()
     
@@ -75,6 +76,9 @@ final class StrategyManager: ObservableObject {
     // MARK: - Signal Generation
     
     func generateSignals(from candles: [Candle]) async -> EnsembleSignal {
+        isGeneratingSignals = true
+        defer { isGeneratingSignals = false }
+        
         let performanceLogger = PerformanceLogger("Strategy signal generation", category: .ai)
         
         var signals: [StrategySignal] = []

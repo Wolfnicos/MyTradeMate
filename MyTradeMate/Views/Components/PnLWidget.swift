@@ -12,10 +12,16 @@ struct PnLWidget: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("Equity: \(snapshot.equity, format: .currency(code: "USD"))")
-                    .font(.headline)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Equity: \(snapshot.equity, format: .currency(code: "USD"))")
+                        .font(.headline)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                    
+                    Text("Total account value")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
                 
                 Spacer()
                 
@@ -33,32 +39,44 @@ struct PnLWidget: View {
             .padding(.top, 8)
             
             HStack(spacing: 12) {
-                VStack(alignment: .leading) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text("Realized Today")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                     Text(snapshot.realizedToday, format: .currency(code: "USD"))
                         .font(.subheadline.monospacedDigit())
                         .foregroundColor(snapshot.realizedToday >= 0 ? .green : .red)
+                    Text("Closed positions")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                        .opacity(0.7)
                 }
                 
-                VStack(alignment: .leading) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text("Unrealized")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                     Text(snapshot.unrealized, format: .currency(code: "USD"))
                         .font(.subheadline.monospacedDigit())
                         .foregroundColor(snapshot.unrealized >= 0 ? .green : .red)
+                    Text("Open positions")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                        .opacity(0.7)
                 }
                 
                 Spacer()
                 
-                VStack(alignment: .trailing) {
+                VStack(alignment: .trailing, spacing: 2) {
                     Text("Updated")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                     Text(snapshot.ts, style: .time)
                         .font(.subheadline.monospacedDigit())
+                    Text("Live data")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                        .opacity(0.7)
                 }
             }
             .padding(.horizontal)

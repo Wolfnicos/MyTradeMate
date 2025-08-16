@@ -16,36 +16,164 @@ struct CandleData: Identifiable {
 // MARK: - Simple Line Chart (simplified for now)
 struct CandleChartView: View {
     let data: [CandleData]
+    @State private var selectedPoint: CandleData?
     
     var body: some View {
-        Chart {
-            ForEach(data) { candle in
-                LineMark(
-                    x: .value("Time", candle.timestamp),
-                    y: .value("Price", candle.close)
-                )
-                .foregroundStyle(.blue)
-                .interpolationMethod(.catmullRom)
-            }
-        }
-        .frame(height: 280)
-        .chartXAxis {
-            AxisMarks(values: .automatic(desiredCount: 5)) { _ in
-                AxisGridLine()
-                AxisTick()
-                AxisValueLabel(format: .dateTime.hour().minute())
-            }
-        }
-        .chartYAxis {
-            AxisMarks(position: .trailing, values: .automatic(desiredCount: 6)) { value in
-                AxisGridLine()
-                AxisTick()
-                AxisValueLabel {
-                    if let price = value.as(Double.self) {
-                        Text("$\(price, specifier: "%.0f")")
+        VStack(spacing: 12) {
+            if data.isEmpty {
+                // Empty state for charts when no data is available
+                VStack(spacing: 16) {
+                    Image(systemName: "chart.line.uptrend.xyaxis")
+                        .font(.system(size: 48))
+                        .foregroundColor(.secondary)
+                    
+                    VStack(spacing: 8) {
+                        Text("No Chart Data")
+                            .font(.headline)
+                            .fontWeight(.medium)
+                            .foregroundColor(.primary)
+                        
+                        Text("No price data available for the selected timeframe")
+                            .font(.body)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .lineLimit(3)
+                    }
+                }
+                .padding()
+                .frame(maxWidth: .infinity)
+                .frame(height: 280)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("No Chart Data. No price data available for the selected timeframe")
+            } else {
+                VStack(spacing: 8) {
+                    // Chart legend
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Price Movement")
+                                .font(.caption)
+                                .fontWeight(.medium)
+                                .foregroundColor(.primary)
+                            
+                            Text("Shows closing price over time")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        HStack(spacing: 8) {
+                            HStack(spacing: 4) {
+                                Circle()
+                                    .fill(.blue)
+                                    .frame(width: 8, height: 8)
+                                Text("Price Line")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            Text("Tap for details")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                                .opacity(0.7)
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color(.secondarySystemBackground))
+                    .cornerRadius(8)
+                    
+                    Chart {
+                        ForEach(data) { candle in
+                            LineMark(
+                                x: .value("Time", candle.timestamp),
+                                y: .value("Price", candle.close)
+                            )
+                            .foregroundStyle(.blue)
+                            .interpolationMethod(.catmullRom)
+                        }
+                        
+                        // Selection indicator
+                        if let selectedPoint = selectedPoint {
+                            RuleMark(x: .value("Selected", selectedPoint.timestamp))
+                                .foregroundStyle(.blue.opacity(0.5))
+                                .lineStyle(StrokeStyle(lineWidth: 1, dash: [5, 5]))
+                        }
+                    }
+                    .frame(height: 280)
+                    .chartXAxis {
+                        AxisMarks(values: .automatic(desiredCount: 5)) { _ in
+                            AxisGridLine()
+                            AxisTick()
+                            AxisValueLabel(format: .dateTime.hour().minute())
+                        }
+                    }
+                    .chartYAxis {
+                        AxisMarks(position: .trailing, values: .automatic(desiredCount: 6)) { value in
+                            AxisGridLine()
+                            AxisTick()
+                            AxisValueLabel {
+                                if let price = value.as(Double.self) {
+                                    Text("$\(price, specifier: "%.0f")")
+                                }
+                            }
+                        }
+                    }
+                    .chartBackground { chartProxy in
+                        GeometryReader { geometry in
+                            Rectangle()
+                                .fill(.clear)
+                                .contentShape(Rectangle())
+                                .onTapGesture { location in
+                                    handleChartTap(at: location, in: geometry, chartProxy: chartProxy)
+                                }
+                        }
+                    }
+                    
+                    // Selected point info
+                    if let selectedPoint = selectedPoint {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Selected Point")
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.primary)
+                                
+                                Text("Price: $\(selectedPoint.close, specifier: "%.2f")")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            Spacer()
+                            
+                            VStack(alignment: .trailing, spacing: 2) {
+                                Text(selectedPoint.timestamp, style: .time)
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                
+                                Text(selectedPoint.timestamp, style: .date)
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Color(.tertiarySystemBackground))
+                        .cornerRadius(6)
                     }
                 }
             }
+        }
+    }
+    
+    private func handleChartTap(at location: CGPoint, in geometry: GeometryProxy, chartProxy: ChartProxy) {
+        let frame = geometry.frame(in: .local)
+        let relativeX = location.x / frame.width
+        
+        if !data.isEmpty {
+            let index = Int(relativeX * CGFloat(data.count))
+            let clampedIndex = max(0, min(data.count - 1, index))
+            selectedPoint = data[clampedIndex]
         }
     }
 }
@@ -116,6 +244,30 @@ struct DashboardView: View {
     // MARK: - Mini Chart Section
     private var miniChartSection: some View {
         VStack(alignment: .leading, spacing: 12) {
+            // Chart section header with explanation
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Price Chart")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.primary)
+                    
+                    Text("Real-time candlestick data with volume")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                if !vm.isLoading && !vm.candles.isEmpty {
+                    Text("Interactive • Tap to explore")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                        .opacity(0.7)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+            
             if vm.isLoading {
                 VStack {
                     ProgressView()
@@ -214,63 +366,69 @@ struct DashboardView: View {
     // MARK: - Signal Card Section
     private var signalCardSection: some View {
         VStack(spacing: 12) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 8) {
-                        Text(vm.currentSignal?.direction.uppercased() ?? "HOLD")
-                            .font(.system(size: 24, weight: .bold))
-                            .foregroundColor(signalColor)
-                        
-                        /* // Temporarily disabled
-                        if settings.demoMode {
-                            Pill(text: "DEMO", color: Accent.yellow)
+            if vm.isRefreshing {
+                LoadingStateView(message: "Analyzing market...")
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+            } else {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 8) {
+                            Text(signalDisplayText)
+                                .font(.system(size: 24, weight: .bold))
+                                .foregroundColor(signalColor)
+                            
+                            /* // Temporarily disabled
+                            if settings.demoMode {
+                                Pill(text: "DEMO", color: Accent.yellow)
+                            }
+                            */
                         }
-                        */
+                        
+                        HStack(spacing: 8) {
+                            Text(confidenceDisplayText)
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                            
+                            Text("•")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                            
+                            Text(vm.timeframe.displayName)
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                            
+                            Text("•")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                            
+                            Text(vm.lastUpdatedString)
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                        }
                     }
                     
-                    HStack(spacing: 8) {
-                        Text("\(Int(vm.currentSignal?.confidence ?? 0))% confidence")
-                            .font(.system(size: 14))
-                            .foregroundColor(.secondary)
-                        
-                        Text("•")
-                            .font(.system(size: 14))
-                            .foregroundColor(.secondary)
-                        
-                        Text(vm.timeframe.rawValue)
-                            .font(.system(size: 14))
-                            .foregroundColor(.secondary)
-                        
-                        Text("•")
-                            .font(.system(size: 14))
-                            .foregroundColor(.secondary)
-                        
-                        Text(vm.lastUpdatedString)
-                            .font(.system(size: 14))
-                            .foregroundColor(.secondary)
+                    Spacer()
+                    
+                    Button(action: {
+                        vm.refreshPrediction()
+                    }) {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.blue)
+                            .padding(8)
+                            .background(.blue.opacity(0.1))
+                            .cornerRadius(8)
                     }
+                    .disabled(vm.isRefreshing)
                 }
                 
-                Spacer()
-                
-                Button(action: {
-                    vm.refreshPrediction()
-                }) {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.blue)
-                        .padding(8)
-                        .background(.blue.opacity(0.1))
-                        .cornerRadius(8)
+                if let reason = vm.currentSignal?.reason {
+                    Text(reason)
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .disabled(vm.isRefreshing)
-            }
-            
-            if let reason = vm.currentSignal?.reason {
-                Text(reason)
-                    .font(.system(size: 13))
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .padding()
@@ -402,6 +560,32 @@ struct DashboardView: View {
         case "SELL": return .red
         default: return .secondary
         }
+    }
+    
+    private var signalDisplayText: String {
+        guard let signal = vm.currentSignal else {
+            return "No clear signal right now"
+        }
+        
+        // If confidence is very low (0% or close to 0), show user-friendly text
+        if signal.confidence < 0.01 {
+            return "No clear signal right now"
+        }
+        
+        return signal.direction.uppercased()
+    }
+    
+    private var confidenceDisplayText: String {
+        guard let signal = vm.currentSignal else {
+            return "Monitoring market conditions"
+        }
+        
+        // If confidence is very low (0% or close to 0), show user-friendly text
+        if signal.confidence < 0.01 {
+            return "Monitoring market conditions"
+        }
+        
+        return "\(Int(signal.confidence * 100))% confidence"
     }
 }
 

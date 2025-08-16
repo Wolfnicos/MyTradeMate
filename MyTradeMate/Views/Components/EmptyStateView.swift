@@ -1,0 +1,129 @@
+import SwiftUI
+
+/// A reusable empty state view component for charts and other content
+struct EmptyStateView: View {
+    let icon: String
+    let title: String
+    let description: String
+    let actionButton: (() -> Void)?
+    let actionButtonTitle: String?
+    
+    init(
+        icon: String,
+        title: String,
+        description: String,
+        actionButton: (() -> Void)? = nil,
+        actionButtonTitle: String? = nil
+    ) {
+        self.icon = icon
+        self.title = title
+        self.description = description
+        self.actionButton = actionButton
+        self.actionButtonTitle = actionButtonTitle
+    }
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: icon)
+                .font(.system(size: 48))
+                .foregroundColor(.secondary)
+            
+            VStack(spacing: 8) {
+                Text(title)
+                    .font(.headline)
+                    .fontWeight(.medium)
+                    .foregroundColor(.primary)
+                
+                Text(description)
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(3)
+            }
+            
+            if let action = actionButton, let buttonTitle = actionButtonTitle {
+                Button(buttonTitle, action: action)
+                    .buttonStyle(.borderedProminent)
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title). \(description)")
+    }
+}
+
+// MARK: - Convenience Initializers
+
+extension EmptyStateView {
+    /// Empty state for charts when no data is available
+    static func chartNoData(
+        title: String = "No Chart Data",
+        description: String = "Market data is loading or unavailable",
+        actionButton: (() -> Void)? = nil,
+        actionButtonTitle: String? = nil
+    ) -> EmptyStateView {
+        EmptyStateView(
+            icon: "chart.line.uptrend.xyaxis",
+            title: title,
+            description: description,
+            actionButton: actionButton,
+            actionButtonTitle: actionButtonTitle
+        )
+    }
+    
+    /// Empty state for P&L charts when no trading data exists
+    static func pnlNoData(
+        title: String = "No Trading Data",
+        description: String = "Start trading to see performance here",
+        actionButton: (() -> Void)? = nil,
+        actionButtonTitle: String? = nil
+    ) -> EmptyStateView {
+        EmptyStateView(
+            icon: "dollarsign.circle",
+            title: title,
+            description: description,
+            actionButton: actionButton,
+            actionButtonTitle: actionButtonTitle
+        )
+    }
+    
+    /// Empty state for trade history
+    static func tradesNoData(
+        title: String = "No Trades Yet",
+        description: String = "Your trading history will appear here",
+        actionButton: (() -> Void)? = nil,
+        actionButtonTitle: String? = nil
+    ) -> EmptyStateView {
+        EmptyStateView(
+            icon: "list.bullet.rectangle",
+            title: title,
+            description: description,
+            actionButton: actionButton,
+            actionButtonTitle: actionButtonTitle
+        )
+    }
+}
+
+#Preview {
+    VStack(spacing: 32) {
+        EmptyStateView.chartNoData()
+            .frame(height: 200)
+            .background(Color(.systemGray6))
+            .cornerRadius(12)
+        
+        EmptyStateView.pnlNoData(
+            actionButton: { print("Get started tapped") },
+            actionButtonTitle: "Get Started"
+        )
+        .frame(height: 200)
+        .background(Color(.systemGray6))
+        .cornerRadius(12)
+        
+        EmptyStateView.tradesNoData()
+            .frame(height: 200)
+            .background(Color(.systemGray6))
+            .cornerRadius(12)
+    }
+    .padding()
+}
