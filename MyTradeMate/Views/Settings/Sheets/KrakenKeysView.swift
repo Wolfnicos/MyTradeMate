@@ -10,6 +10,8 @@ struct KrakenKeysView: View {
     @State private var errorMessage = ""
     @State private var isValidating = false
     @State private var validationState: ValidationState = .none
+    @State private var showAPIKeyHelp = false
+    @State private var showAPISecretHelp = false
     
     var body: some View {
         NavigationStack {
@@ -17,9 +19,19 @@ struct KrakenKeysView: View {
                 Section {
                     VStack(alignment: .leading, spacing: 12) {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("API Key")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
+                            HStack {
+                                Text("API Key")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                Button(action: {
+                                    showAPIKeyHelp = true
+                                }) {
+                                    Image(systemName: "questionmark.circle")
+                                        .font(.system(size: 16))
+                                        .foregroundColor(.secondary)
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
                             
                             TextField("Paste your Kraken API key here", text: $apiKey)
                                 .textFieldStyle(.roundedBorder)
@@ -35,9 +47,19 @@ struct KrakenKeysView: View {
                         }
                         
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("API Secret")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
+                            HStack {
+                                Text("API Secret")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                Button(action: {
+                                    showAPISecretHelp = true
+                                }) {
+                                    Image(systemName: "questionmark.circle")
+                                        .font(.system(size: 16))
+                                        .foregroundColor(.secondary)
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
                             
                             HStack {
                                 if showSecret {
@@ -126,37 +148,62 @@ struct KrakenKeysView: View {
                 }
                 
                 Section {
-                    Button("Test Connection") {
-                        testConnection()
-                    }
-                    .disabled(apiKey.isEmpty || apiSecret.isEmpty)
+                    PrimaryButton(
+                        "Test Connection",
+                        icon: "network",
+                        size: .medium,
+                        isDisabled: apiKey.isEmpty || apiSecret.isEmpty,
+                        isLoading: isValidating,
+                        fullWidth: false,
+                        action: testConnection
+                    )
                     
-                    Button("Clear Credentials", role: .destructive) {
-                        clearCredentials()
-                    }
-                    .disabled(apiKey.isEmpty && apiSecret.isEmpty)
+                    DestructiveButton(
+                        "Clear Credentials",
+                        icon: "trash",
+                        size: .medium,
+                        isDisabled: apiKey.isEmpty && apiSecret.isEmpty,
+                        fullWidth: false,
+                        action: clearCredentials
+                    )
                 }
             }
             .navigationTitle("Kraken API Keys")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
+                    GhostButton(
+                        "Cancel",
+                        size: .medium,
+                        fullWidth: false,
+                        action: { dismiss() }
+                    )
                 }
                 
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Save") {
-                        saveCredentials()
-                    }
-                    .disabled(apiKey.isEmpty || apiSecret.isEmpty)
+                    PrimaryButton(
+                        "Save",
+                        size: .medium,
+                        isDisabled: apiKey.isEmpty || apiSecret.isEmpty,
+                        fullWidth: false,
+                        action: saveCredentials
+                    )
                 }
             }
             .alert("Error", isPresented: $showError) {
                 Button("OK") { }
             } message: {
                 Text(errorMessage)
+            }
+            .alert("API Key Help", isPresented: $showAPIKeyHelp) {
+                Button("OK") { }
+            } message: {
+                Text("Your Kraken API Key is a unique identifier for your account access. It should be at least 56 characters long.\n\nTo create an API key:\n1. Go to Kraken Security Settings\n2. Generate a new API key\n3. Enable only 'Query Funds' and 'Query Open Orders'\n4. Restrict to your IP address\n5. Never enable withdrawal permissions")
+            }
+            .alert("API Secret Help", isPresented: $showAPISecretHelp) {
+                Button("OK") { }
+            } message: {
+                Text("Your API Secret is a base64-encoded private key that authenticates your requests. It should be at least 88 characters long.\n\nSecurity tips:\n• Keep this completely secret\n• Never share with anyone\n• Stored securely in iOS Keychain\n• Regenerate if compromised\n• Contains base64 characters (A-Z, a-z, 0-9, +, /, =)")
             }
         }
     }

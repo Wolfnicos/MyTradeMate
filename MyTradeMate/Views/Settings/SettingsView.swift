@@ -1,169 +1,738 @@
 import SwiftUI
 
+// MARK: - Settings Toggle Styles (using standardized components from DesignSystem)
+
+// MARK: - Design System Extensions (Deprecated - use Typography from DesignSystem)
+@available(*, deprecated, message: "Use Typography from DesignSystem instead")
+extension Font {
+    static let settingsTitle = Typography.title2
+    static let settingsHeadline = Typography.headline
+    static let settingsBody = Typography.body
+    static let settingsCaption = Typography.caption1Medium
+    static let settingsFootnote = Typography.footnote
+}
+
+@available(*, deprecated, message: "Use TextColor from DesignSystem instead")
+extension Color {
+    static let settingsPrimary = Color.primary
+    static let settingsSecondary = Color.secondary
+    static let settingsTertiary = Color(.tertiaryLabel)
+    static let settingsBackground = Color(.systemBackground)
+    static let settingsGroupedBackground = Color(.systemGroupedBackground)
+    static let settingsSecondaryBackground = Color(.secondarySystemBackground)
+}
+
+// Use standardized spacing system
+private struct Spacing {
+    static let xxs: CGFloat = 2
+    static let xs: CGFloat = 4
+    static let sm: CGFloat = 8
+    static let md: CGFloat = 12
+    static let lg: CGFloat = 16
+    static let xl: CGFloat = 20
+    static let xxl: CGFloat = 24
+    static let xxxl: CGFloat = 32
+    static let sectionSpacing: CGFloat = 20
+    static let cardPadding: CGFloat = 16
+    static let elementSpacing: CGFloat = 12
+    static let formSpacing: CGFloat = 12
+    static let listItemSpacing: CGFloat = 8
+}
+
+/// A reusable help icon component that displays a tooltip when tapped
+struct HelpIconView: View {
+    let helpText: String
+    @State private var showTooltip = false
+    
+    var body: some View {
+        Button(action: {
+            showTooltip.toggle()
+        }) {
+            Image(systemName: "questionmark.circle")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(.settingsSecondary)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .popover(isPresented: $showTooltip, arrowEdge: .top) {
+            VStack(alignment: .leading, spacing: Spacing.sm) {
+                Text(helpText)
+                    .bodyStyle()
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(Spacing.md)
+            .frame(maxWidth: 280)
+            .presentationCompactAdaptation(.popover)
+        }
+        .accessibilityLabel("Help")
+        .accessibilityHint("Tap to show help information")
+    }
+}
+
 struct SettingsView: View {
     @ObservedObject private var settings = AppSettings.shared
     @EnvironmentObject private var navigationCoordinator: NavigationCoordinator
+    @EnvironmentObject private var toastManager: ToastManager
+    @State private var searchText = ""
+    @State private var isExporting = false
+    @State private var showShareSheet = false
+    @State private var exportedLogURL: URL?
+    
+    // MARK: - Computed Properties
+    private var filteredSections: [SettingsSection] {
+        let allSections = [tradingSection, securitySection, diagnosticsSection]
+        
+        if searchText.isEmpty {
+            return allSections
+        }
+        
+        return allSections.compactMap { section in
+            let filteredItems = section.items.filter { item in
+                item.title.localizedCaseInsensitiveContains(searchText) ||
+                item.description.localizedCaseInsensitiveContains(searchText) ||
+                section.title.localizedCaseInsensitiveContains(searchText)
+            }
+            
+            if !filteredItems.isEmpty {
+                return SettingsSection(
+                    title: section.title,
+                    icon: section.icon,
+                    footer: section.footer,
+                    items: filteredItems
+                )
+            }
+            return nil
+        }
+    }
     
     var body: some View {
         NavigationStack {
             List {
-                // MARK: - Trading Section
-                Section {
-                    // Enhanced trading mode display
-                    HStack {
-                        Text("Current Mode")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                        
-                        Spacer()
-                        
-                        HStack(spacing: 8) {
-                            Circle()
-                                .fill(settings.demoMode ? .orange : .green)
-                                .frame(width: 8, height: 8)
+                ForEach(filteredSections, id: \.title) { section in
+                    Section {
+                        ForEach(section.items, id: \.title) { item in
+                            SettingsRowView(item: item)
+                        }
+                    } header: {
+                        HStack(spacing: Spacing.sm) {
+                            Image(systemName: section.icon)
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.accentColor)
+                                .frame(width: 20)
                             
-                            Text(settings.demoMode ? "DEMO MODE" : "LIVE MODE")
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundColor(settings.demoMode ? .orange : .green)
+                            Text(section.title)
+                                .font(.settingsHeadline)
+                                .foregroundColor(.settingsPrimary)
                         }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(
-                            Capsule()
-                                .fill((settings.demoMode ? Color.orange : Color.green).opacity(0.15))
-                        )
-                    }
-                    .padding(.vertical, 4)
-                    
-                    Toggle("Demo Mode", isOn: $settings.demoMode)
-                        .help("Use simulated trading for testing")
-                    
-                    Toggle("Auto Trading", isOn: $settings.autoTrading)
-                        .help("Allow AI strategies to place trades automatically when conditions are met")
-                    
-                    Toggle("Confirm Trades", isOn: $settings.confirmTrades)
-                        .help("Show confirmation dialog before placing trades")
-                    
-                    Toggle("Paper Trading", isOn: $settings.paperTrading)
-                        .help("Simulate trades without real money")
-                        .disabled(settings.demoMode)
-                    
-                    Toggle("Live Market Data", isOn: $settings.liveMarketData)
-                        .help("Connect to live exchange data")
-                    
-                    HStack {
-                        Text("Default Symbol")
-                        Spacer()
-                        Text(settings.defaultSymbol)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    HStack {
-                        Text("Default Timeframe")
-                        Spacer()
-                        Text(settings.defaultTimeframe)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    NavigationLink("Strategy Configuration") {
-                        List {
-                            Section {
-                                Text("Strategy configuration will be implemented in a future update")
-                                    .foregroundColor(.secondary)
-                            } header: {
-                                Text("Available Strategies")
-                            }
+                        .padding(.top, Spacing.xs)
+                    } footer: {
+                        if !section.footer.isEmpty {
+                            Text(section.footer)
+                                .font(.settingsFootnote)
+                                .foregroundColor(.settingsTertiary)
+                                .padding(.horizontal, Spacing.xs)
                         }
-                        .navigationTitle("Strategy Configuration")
-                        .navigationBarTitleDisplayMode(.inline)
                     }
-                } header: {
-                    Label("Trading", systemImage: "chart.line.uptrend.xyaxis")
-                } footer: {
-                    Text("Configure trading behavior, market data sources, and strategy settings.")
-                }
-                
-                // MARK: - Security Section
-                Section {
-                    Button("Manage API Keys") {
-                        navigationCoordinator.navigate(to: .exchangeKeys, in: .settings)
-                    }
-                    .foregroundColor(.primary)
-                    
-                    NavigationLink("Binance Configuration") {
-                        BinanceKeysView()
-                    }
-                    
-                    NavigationLink("Kraken Configuration") {
-                        KrakenKeysView()
-                    }
-                    
-                    Toggle("Dark Mode", isOn: $settings.darkMode)
-                        .help("Use dark color scheme")
-                    
-                    Toggle("Haptic Feedback", isOn: $settings.haptics)
-                        .help("Enable tactile feedback for interactions")
-                } header: {
-                    Label("Security", systemImage: "key")
-                } footer: {
-                    Text("Manage exchange API credentials and app security settings.")
-                }
-                
-                // MARK: - Diagnostics Section
-                Section {
-                    HStack {
-                        Text("App Version")
-                        Spacer()
-                        Text(Bundle.main.appVersion)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    HStack {
-                        Text("Build Number")
-                        Spacer()
-                        Text(Bundle.main.buildNumber)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    Toggle("AI Debug Mode", isOn: $settings.aiDebugMode)
-                        .help("Enable additional AI diagnostics")
-                    
-                    Toggle("Verbose AI Logs", isOn: $settings.verboseAILogs)
-                        .help("Show detailed AI processing logs")
-                    
-                    Toggle("PnL Demo Mode", isOn: $settings.pnlDemoMode)
-                        .help("Use synthetic PnL data for testing")
-                    
-                    Button("Export Logs") {
-                        exportDiagnosticLogs()
-                    }
-                    .foregroundColor(.blue)
-                    
-                    Button("Run System Check") {
-                        runSystemDiagnostics()
-                    }
-                    .foregroundColor(.blue)
-                } header: {
-                    Label("Diagnostics", systemImage: "stethoscope")
-                } footer: {
-                    Text("Debug settings, system information, and diagnostic tools for troubleshooting.")
                 }
             }
+            .listStyle(.insetGrouped)
+            .searchable(text: $searchText, prompt: "Search settings...")
             .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.large)
         }
         .preferredColorScheme(settings.darkMode ? .dark : .light)
+        .sheet(isPresented: $showShareSheet) {
+            if let url = exportedLogURL {
+                ShareSheet(items: [url])
+            }
+        }
+    }
+    
+    // MARK: - Settings Sections
+    private var tradingSection: SettingsSection {
+        SettingsSection(
+            title: "Trading",
+            icon: "chart.line.uptrend.xyaxis",
+            footer: "Configure trading behavior, market data sources, and strategy settings. Demo Mode is recommended for new users to test strategies safely.",
+            items: [
+                SettingsItem(
+                    title: "Current Mode",
+                    description: "Trading mode indicator",
+                    view: AnyView(currentModeView)
+                ),
+                SettingsItem(
+                    title: "Demo Mode",
+                    description: "Use simulated trading environment for testing strategies without real money. All trades will be virtual.",
+                    view: AnyView(
+                        SettingsToggleRow(
+                            title: "Demo Mode",
+                            description: "Use simulated trading environment for testing strategies without real money. All trades will be virtual.",
+                            helpText: "Demo Mode creates a completely simulated trading environment where you can test strategies without any risk. All trades are virtual and no real money is involved. This is perfect for learning and testing new strategies.",
+                            isOn: $settings.demoMode,
+                            style: .warning
+                        )
+                    )
+                ),
+                SettingsItem(
+                    title: "Auto Trading",
+                    description: "Allow AI strategies to automatically place trades when conditions are met. Requires valid API keys and live mode.",
+                    view: AnyView(
+                        SettingsToggleRow(
+                            title: "Auto Trading",
+                            description: "Allow AI strategies to automatically place trades when conditions are met. Requires valid API keys and live mode.",
+                            helpText: "Auto Trading allows the AI to execute trades automatically based on strategy signals. This requires:\n\n• Valid exchange API keys\n• Live trading mode enabled\n• Sufficient account balance\n\nThe AI will place buy/sell orders when conditions are met. Always monitor your positions when auto trading is enabled.",
+                            isOn: $settings.autoTrading,
+                            style: .success
+                        )
+                    )
+                ),
+                SettingsItem(
+                    title: "Confirm Trades",
+                    description: "Show confirmation dialog before placing any trade. Recommended for beginners and live trading.",
+                    view: AnyView(
+                        SettingsToggleRow(
+                            title: "Confirm Trades",
+                            description: "Show confirmation dialog before placing any trade. Recommended for beginners and live trading.",
+                            isOn: $settings.confirmTrades
+                        )
+                    )
+                ),
+                SettingsItem(
+                    title: "Paper Trading",
+                    description: "Simulate trades with real market data but without actual money. Disabled when Demo Mode is active.",
+                    view: AnyView(
+                        SettingsToggleRow(
+                            title: "Paper Trading",
+                            description: "Simulate trades with real market data but without actual money. Disabled when Demo Mode is active.",
+                            helpText: "Paper Trading simulates real trades using live market data without risking actual money. Unlike Demo Mode, it uses real-time prices and market conditions.\n\nKey differences:\n• Uses live market data\n• Simulates real order execution\n• Tracks realistic performance\n• Disabled when Demo Mode is active",
+                            isOn: $settings.paperTrading,
+                            style: .prominent,
+                            isDisabled: settings.demoMode
+                        )
+                    )
+                ),
+                SettingsItem(
+                    title: "Live Market Data",
+                    description: "Connect to real-time exchange data feeds. Disable to use cached data and reduce API usage.",
+                    view: AnyView(
+                        SettingsToggleRow(
+                            title: "Live Market Data",
+                            description: "Connect to real-time exchange data feeds. Disable to use cached data and reduce API usage.",
+                            helpText: "Live Market Data connects to real-time exchange feeds for the most current prices and market information.\n\nWhen enabled:\n• Real-time price updates\n• Current market conditions\n• Higher API usage\n\nWhen disabled:\n• Uses cached/historical data\n• Reduced API calls\n• May affect trading accuracy",
+                            isOn: $settings.liveMarketData,
+                            style: .default
+                        )
+                    )
+                ),
+                SettingsItem(
+                    title: "Default Symbol",
+                    description: "Default trading symbol",
+                    view: AnyView(
+                        SettingsInfoRow(title: "Default Symbol", value: settings.defaultSymbol)
+                    )
+                ),
+                SettingsItem(
+                    title: "Default Timeframe",
+                    description: "Default chart timeframe",
+                    view: AnyView(
+                        SettingsInfoRow(title: "Default Timeframe", value: settings.defaultTimeframe)
+                    )
+                ),
+                SettingsItem(
+                    title: "Strategy Configuration",
+                    description: "Configure trading strategies",
+                    view: AnyView(
+                        SettingsNavigationRow(
+                            title: "Strategy Configuration",
+                            description: "Configure trading strategies",
+                            destination: AnyView(
+                                List {
+                                    Section {
+                                        Text("Strategy configuration will be implemented in a future update")
+                                            .font(.settingsBody)
+                                            .foregroundColor(.settingsSecondary)
+                                    } header: {
+                                        Text("Available Strategies")
+                                            .font(.settingsHeadline)
+                                    }
+                                }
+                                .navigationTitle("Strategy Configuration")
+                                .navigationBarTitleDisplayMode(.inline)
+                            )
+                        )
+                    )
+                )
+            ]
+        )
+    }
+    
+    private var securitySection: SettingsSection {
+        SettingsSection(
+            title: "Security",
+            icon: "key",
+            footer: "Manage exchange API credentials and app security settings. API keys are required for live trading and real-time data.",
+            items: [
+                SettingsItem(
+                    title: "Manage API Keys",
+                    description: "Configure exchange API credentials for live trading. Keys are stored securely in Keychain.",
+                    view: AnyView(
+                        SettingsButtonRow(
+                            title: "Manage API Keys",
+                            description: "Configure exchange API credentials for live trading. Keys are stored securely in Keychain.",
+                            action: {
+                                navigationCoordinator.navigate(to: .exchangeKeys, in: .settings)
+                            },
+                            style: .primary
+                        )
+                    )
+                ),
+                SettingsItem(
+                    title: "Binance Configuration",
+                    description: "Set up Binance API keys for trading and market data access.",
+                    view: AnyView(
+                        SettingsNavigationRow(
+                            title: "Binance Configuration",
+                            description: "Set up Binance API keys for trading and market data access.",
+                            destination: AnyView(
+                                BinanceKeysView()
+                                    .navigationTitle("Binance Configuration")
+                                    .navigationBarTitleDisplayMode(.inline)
+                            )
+                        )
+                    )
+                ),
+                SettingsItem(
+                    title: "Kraken Configuration",
+                    description: "Set up Kraken API keys for trading and market data access.",
+                    view: AnyView(
+                        SettingsNavigationRow(
+                            title: "Kraken Configuration",
+                            description: "Set up Kraken API keys for trading and market data access.",
+                            destination: AnyView(
+                                KrakenKeysView()
+                                    .navigationTitle("Kraken Configuration")
+                                    .navigationBarTitleDisplayMode(.inline)
+                            )
+                        )
+                    )
+                ),
+                SettingsItem(
+                    title: "Dark Mode",
+                    description: "Use dark color scheme throughout the app. Follows system setting when disabled.",
+                    view: AnyView(
+                        SettingsToggleRow(
+                            title: "Dark Mode",
+                            description: "Use dark color scheme throughout the app. Follows system setting when disabled.",
+                            isOn: $settings.darkMode,
+                            style: .minimal
+                        )
+                    )
+                ),
+                SettingsItem(
+                    title: "Haptic Feedback",
+                    description: "Enable tactile feedback for button presses, trade confirmations, and other interactions.",
+                    view: AnyView(
+                        SettingsToggleRow(
+                            title: "Haptic Feedback",
+                            description: "Enable tactile feedback for button presses, trade confirmations, and other interactions.",
+                            isOn: $settings.haptics,
+                            style: .default
+                        )
+                    )
+                )
+            ]
+        )
+    }
+    
+    private var diagnosticsSection: SettingsSection {
+        SettingsSection(
+            title: "Diagnostics",
+            icon: "stethoscope",
+            footer: "Debug settings, system information, and diagnostic tools for troubleshooting. Enable verbose logging only when needed as it may impact performance.",
+            items: [
+                SettingsItem(
+                    title: "App Version",
+                    description: "Current app version",
+                    view: AnyView(
+                        SettingsInfoRow(title: "App Version", value: Bundle.main.appVersion)
+                    )
+                ),
+                SettingsItem(
+                    title: "Build Number",
+                    description: "Current build number",
+                    view: AnyView(
+                        SettingsInfoRow(title: "Build Number", value: Bundle.main.buildNumber)
+                    )
+                ),
+                SettingsItem(
+                    title: "AI Debug Mode",
+                    description: "Enable additional AI diagnostics and debugging information. May impact performance.",
+                    view: AnyView(
+                        SettingsToggleRow(
+                            title: "AI Debug Mode",
+                            description: "Enable additional AI diagnostics and debugging information. May impact performance.",
+                            helpText: "AI Debug Mode provides detailed information about AI decision-making processes:\n\n• Model input/output data\n• Confidence scores\n• Processing times\n• Strategy reasoning\n\nWarning: This may impact app performance and should only be enabled when troubleshooting AI behavior.",
+                            isOn: $settings.aiDebugMode,
+                            style: .warning
+                        )
+                    )
+                ),
+                SettingsItem(
+                    title: "Verbose AI Logs",
+                    description: "Show detailed AI processing logs including model inputs, outputs, and decision reasoning.",
+                    view: AnyView(
+                        SettingsToggleRow(
+                            title: "Verbose AI Logs",
+                            description: "Show detailed AI processing logs including model inputs, outputs, and decision reasoning.",
+                            helpText: "Verbose AI Logs capture extensive details about AI processing:\n\n• Raw market data inputs\n• Feature calculations\n• Model predictions\n• Decision trees\n• Execution timing\n\nThis generates large log files and may significantly impact performance. Only enable for detailed troubleshooting.",
+                            isOn: $settings.verboseAILogs,
+                            style: .danger
+                        )
+                    )
+                ),
+                SettingsItem(
+                    title: "PnL Demo Mode",
+                    description: "Use synthetic profit/loss data for testing charts and calculations without real trading history.",
+                    view: AnyView(
+                        SettingsToggleRow(
+                            title: "PnL Demo Mode",
+                            description: "Use synthetic profit/loss data for testing charts and calculations without real trading history.",
+                            isOn: $settings.pnlDemoMode,
+                            style: .minimal
+                        )
+                    )
+                ),
+                SettingsItem(
+                    title: "Export Logs",
+                    description: "Export diagnostic logs for troubleshooting",
+                    view: AnyView(
+                        SettingsExportButtonRow(
+                            title: "Export Logs",
+                            description: "Export diagnostic logs for troubleshooting and support. Includes system logs, app settings, and device information.",
+                            action: exportDiagnosticLogs,
+                            isLoading: isExporting
+                        )
+                    )
+                ),
+                SettingsItem(
+                    title: "Run System Check",
+                    description: "Run system diagnostics",
+                    view: AnyView(
+                        SettingsButtonRow(
+                            title: "Run System Check",
+                            description: "Run system diagnostics",
+                            action: runSystemDiagnostics,
+                            style: .secondary
+                        )
+                    )
+                )
+            ]
+        )
+    }
+    
+    private var currentModeView: some View {
+        HStack(alignment: .center, spacing: Spacing.md) {
+            VStack(alignment: .leading, spacing: Spacing.xs) {
+                Text("Current Mode")
+                    .font(.settingsBody)
+                    .fontWeight(.medium)
+                    .foregroundColor(.settingsPrimary)
+                
+                Text("Active trading environment")
+                    .font(.settingsCaption)
+                    .foregroundColor(.settingsSecondary)
+            }
+            
+            Spacer()
+            
+            HStack(spacing: Spacing.sm) {
+                Circle()
+                    .fill(settings.demoMode ? .orange : .green)
+                    .frame(width: 10, height: 10)
+                
+                Text(settings.demoMode ? "DEMO MODE" : "LIVE MODE")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(settings.demoMode ? .orange : .green)
+            }
+            .padding(.horizontal, Spacing.md)
+            .padding(.vertical, Spacing.sm)
+            .background(
+                Capsule()
+                    .fill((settings.demoMode ? Color.orange : Color.green).opacity(0.12))
+            )
+        }
+        .padding(.vertical, Spacing.xs)
     }
     
     // MARK: - Helper Methods
     private func exportDiagnosticLogs() {
-        // Export functionality will be implemented in a separate task
-        print("Export diagnostic logs requested")
+        guard !isExporting else { return }
+        
+        isExporting = true
+        
+        Task {
+            do {
+                let logURL = try await LogExporter.exportDiagnosticLogs()
+                
+                await MainActor.run {
+                    self.exportedLogURL = logURL
+                    self.showShareSheet = true
+                    self.isExporting = false
+                    
+                    // Show success toast
+                    toastManager.showDataExported(type: "Diagnostic logs")
+                }
+            } catch {
+                await MainActor.run {
+                    self.isExporting = false
+                    
+                    // Show error toast
+                    toastManager.showDataExportFailed(
+                        type: "diagnostic logs",
+                        error: error.localizedDescription
+                    )
+                }
+            }
+        }
     }
     
     private func runSystemDiagnostics() {
         // System diagnostics functionality
         print("System diagnostics requested")
     }
+}
+
+// MARK: - Supporting Views
+struct SettingsRowView: View {
+    let item: SettingsItem
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.xs) {
+            item.view
+        }
+        .padding(.vertical, Spacing.xs)
+    }
+}
+
+struct SettingsToggleRow: View {
+    let title: String
+    let description: String
+    let helpText: String?
+    @Binding var isOn: Bool
+    let style: ToggleStyle
+    let isDisabled: Bool
+    
+    init(
+        title: String, 
+        description: String, 
+        helpText: String? = nil, 
+        isOn: Binding<Bool>, 
+        style: ToggleStyle = .default,
+        isDisabled: Bool = false
+    ) {
+        self.title = title
+        self.description = description
+        self.helpText = helpText
+        self._isOn = isOn
+        self.style = style
+        self.isDisabled = isDisabled
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            HStack(alignment: .center, spacing: Spacing.sm) {
+                VStack(alignment: .leading, spacing: Spacing.xs) {
+                    Text(title)
+                        .font(.settingsBody)
+                        .fontWeight(.medium)
+                        .foregroundColor(isDisabled ? .settingsSecondary : .settingsPrimary)
+                    
+                    if !description.isEmpty {
+                        Text(description)
+                            .font(.settingsCaption)
+                            .foregroundColor(.settingsSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                
+                Spacer()
+                
+                HStack(spacing: Spacing.sm) {
+                    if let helpText = helpText {
+                        HelpIconView(helpText: helpText)
+                    }
+                    
+                    StandardToggle(
+                        isOn: $isOn,
+                        style: style,
+                        size: .medium,
+                        isDisabled: isDisabled,
+                        hapticFeedback: true
+                    )
+                }
+            }
+        }
+        .padding(.vertical, Spacing.xs)
+    }
+}
+
+struct SettingsNavigationRow: View {
+    let title: String
+    let description: String
+    let destination: AnyView
+    
+    var body: some View {
+        NavigationLink(destination: destination) {
+            VStack(alignment: .leading, spacing: Spacing.xs) {
+                Text(title)
+                    .font(.settingsBody)
+                    .fontWeight(.medium)
+                    .foregroundColor(.settingsPrimary)
+                
+                if !description.isEmpty {
+                    Text(description)
+                        .font(.settingsCaption)
+                        .foregroundColor(.settingsSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .padding(.vertical, Spacing.xs)
+    }
+}
+
+struct SettingsInfoRow: View {
+    let title: String
+    let value: String
+    
+    var body: some View {
+        HStack {
+            Text(title)
+                .font(.settingsBody)
+                .fontWeight(.medium)
+                .foregroundColor(.settingsPrimary)
+            
+            Spacer()
+            
+            Text(value)
+                .font(.settingsBody)
+                .foregroundColor(.settingsSecondary)
+        }
+        .padding(.vertical, Spacing.xs)
+    }
+}
+
+struct SettingsButtonRow: View {
+    let title: String
+    let description: String
+    let action: () -> Void
+    let style: SettingsButtonStyle
+    
+    enum SettingsButtonStyle {
+        case primary
+        case secondary
+        case destructive
+        
+        var buttonStyle: ButtonStyle {
+            switch self {
+            case .primary: return .primary
+            case .secondary: return .ghost
+            case .destructive: return .destructive
+            }
+        }
+        
+        var color: Color {
+            switch self {
+            case .primary: return .accentColor
+            case .secondary: return .settingsSecondary
+            case .destructive: return .red
+            }
+        }
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.xs) {
+            Button(action: action) {
+                HStack {
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
+                        Text(title)
+                            .font(.settingsBody)
+                            .fontWeight(.medium)
+                            .foregroundColor(style.color)
+                        
+                        if !description.isEmpty {
+                            Text(description)
+                                .font(.settingsCaption)
+                                .foregroundColor(.settingsSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    
+                    Spacer()
+                }
+            }
+            .buttonStyle(PlainButtonStyle())
+        }
+        .padding(.vertical, Spacing.xs)
+    }
+}
+
+struct SettingsExportButtonRow: View {
+    let title: String
+    let description: String
+    let action: () -> Void
+    let isLoading: Bool
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.xs) {
+            Button(action: action) {
+                HStack {
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
+                        Text(title)
+                            .font(.settingsBody)
+                            .fontWeight(.medium)
+                            .foregroundColor(isLoading ? .settingsSecondary : .accentColor)
+                        
+                        if !description.isEmpty {
+                            Text(description)
+                                .font(.settingsCaption)
+                                .foregroundColor(.settingsSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    
+                    Spacer()
+                    
+                    if isLoading {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                            .progressViewStyle(CircularProgressViewStyle(tint: .accentColor))
+                    } else {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.accentColor)
+                    }
+                }
+            }
+            .buttonStyle(PlainButtonStyle())
+            .disabled(isLoading)
+        }
+        .padding(.vertical, Spacing.xs)
+    }
+}
+
+// MARK: - Supporting Types
+struct SettingsSection {
+    let title: String
+    let icon: String
+    let footer: String
+    let items: [SettingsItem]
+}
+
+struct SettingsItem {
+    let title: String
+    let description: String
+    let view: AnyView
 }
 
 // MARK: - Bundle Extension

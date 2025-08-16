@@ -54,15 +54,12 @@ struct ConfirmationDialog: View {
                 }
                 
                 Text(title)
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.primary)
+                    .title2Style()
                     .multilineTextAlignment(.center)
                 
                 if let message = message {
                     Text(message)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .subheadlineStyle()
                         .multilineTextAlignment(.center)
                 }
             }
@@ -78,34 +75,34 @@ struct ConfirmationDialog: View {
                     LoadingStateView(message: "Processing...")
                     
                     Text("Please wait...")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .caption1Style()
                         .multilineTextAlignment(.center)
                 }
                 .frame(height: 50)
             } else {
                 HStack(spacing: 12) {
-                    Button(action: onCancel) {
-                        Text(cancelButtonText)
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.primary)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 50)
-                            .background(Color(.secondarySystemBackground))
-                            .cornerRadius(12)
-                    }
-                    .disabled(isExecuting)
+                    SecondaryButton(
+                        cancelButtonText,
+                        isDisabled: isExecuting,
+                        action: onCancel
+                    )
                     
-                    Button(action: onConfirm) {
-                        Text(confirmButtonText)
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 50)
-                            .background(isDestructive ? .red : confirmButtonColor)
-                            .cornerRadius(12)
+                    if isDestructive {
+                        DestructiveButton(
+                            confirmButtonText,
+                            isDisabled: isExecuting,
+                            action: onConfirm
+                        )
+                    } else {
+                        StandardButton(
+                            confirmButtonText,
+                            style: confirmButtonColor == .green ? .success : 
+                                   confirmButtonColor == .red ? .destructive : .primary,
+                            isDisabled: isExecuting,
+                            fullWidth: true,
+                            action: onConfirm
+                        )
                     }
-                    .disabled(isExecuting)
                 }
             }
         }

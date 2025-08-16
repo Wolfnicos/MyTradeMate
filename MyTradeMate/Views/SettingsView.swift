@@ -40,21 +40,41 @@ struct SettingsView: View {
                     }
                     .padding(.vertical, 4)
                     
-                    Toggle("Demo Mode", isOn: $settings.demoMode)
-                        .help("Use simulated trading for testing")
+                    StandardToggleRow(
+                        title: "Demo Mode",
+                        description: "Use simulated trading environment for testing strategies without real money. All trades will be virtual.",
+                        isOn: $settings.demoMode,
+                        style: .warning
+                    )
                     
-                    Toggle("Auto Trading", isOn: $settings.autoTrading)
-                        .help("Allow AI strategies to place trades automatically when conditions are met")
+                    StandardToggleRow(
+                        title: "Auto Trading",
+                        description: "Allow AI strategies to automatically place trades when conditions are met. Requires valid API keys and live mode.",
+                        isOn: $settings.autoTrading,
+                        style: .success
+                    )
                     
-                    Toggle("Confirm Trades", isOn: $settings.confirmTrades)
-                        .help("Show confirmation dialog before placing trades")
+                    StandardToggleRow(
+                        title: "Confirm Trades",
+                        description: "Show confirmation dialog before placing any trade. Recommended for beginners and live trading.",
+                        isOn: $settings.confirmTrades,
+                        style: .default
+                    )
                     
-                    Toggle("Paper Trading", isOn: $settings.paperTrading)
-                        .help("Simulate trades without real money")
-                        .disabled(settings.demoMode)
+                    StandardToggleRow(
+                        title: "Paper Trading",
+                        description: "Simulate trades with real market data but without actual money. Disabled when Demo Mode is active.",
+                        isOn: $settings.paperTrading,
+                        style: .prominent,
+                        isDisabled: settings.demoMode
+                    )
                     
-                    Toggle("Live Market Data", isOn: $settings.liveMarketData)
-                        .help("Connect to live exchange data")
+                    StandardToggleRow(
+                        title: "Live Market Data",
+                        description: "Connect to real-time exchange data feeds. Disable to use cached data and reduce API usage.",
+                        isOn: $settings.liveMarketData,
+                        style: .default
+                    )
                     
                     HStack {
                         Text("Default Symbol")
@@ -85,33 +105,56 @@ struct SettingsView: View {
                 } header: {
                     Label("Trading", systemImage: "chart.line.uptrend.xyaxis")
                 } footer: {
-                    Text("Configure trading behavior, market data sources, and strategy settings.")
+                    Text("Configure trading behavior, market data sources, and strategy settings. Demo Mode is recommended for new users to test strategies safely.")
                 }
                 
                 // MARK: - Security Section
                 Section {
-                    Button("Manage API Keys") {
-                        navigationCoordinator.navigate(to: .exchangeKeys, in: .settings)
-                    }
-                    .foregroundColor(.primary)
-                    
-                    NavigationLink("Binance Configuration") {
-                        BinanceKeysView()
-                    }
-                    
-                    NavigationLink("Kraken Configuration") {
-                        KrakenKeysView()
+                    VStack(alignment: .leading, spacing: 4) {
+                        Button("Manage API Keys") {
+                            navigationCoordinator.navigate(to: .exchangeKeys, in: .settings)
+                        }
+                        .foregroundColor(.primary)
+                        Text("Configure exchange API credentials for live trading. Keys are stored securely in Keychain.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
                     
-                    Toggle("Dark Mode", isOn: $settings.darkMode)
-                        .help("Use dark color scheme")
+                    VStack(alignment: .leading, spacing: 4) {
+                        NavigationLink("Binance Configuration") {
+                            BinanceKeysView()
+                        }
+                        Text("Set up Binance API keys for trading and market data access.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                     
-                    Toggle("Haptic Feedback", isOn: $settings.haptics)
-                        .help("Enable tactile feedback for interactions")
+                    VStack(alignment: .leading, spacing: 4) {
+                        NavigationLink("Kraken Configuration") {
+                            KrakenKeysView()
+                        }
+                        Text("Set up Kraken API keys for trading and market data access.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    StandardToggleRow(
+                        title: "Dark Mode",
+                        description: "Use dark color scheme throughout the app. Follows system setting when disabled.",
+                        isOn: $settings.darkMode,
+                        style: .minimal
+                    )
+                    
+                    StandardToggleRow(
+                        title: "Haptic Feedback",
+                        description: "Enable tactile feedback for button presses, trade confirmations, and other interactions.",
+                        isOn: $settings.haptics,
+                        style: .default
+                    )
                 } header: {
                     Label("Security", systemImage: "key")
                 } footer: {
-                    Text("Manage exchange API credentials and app security settings.")
+                    Text("Manage exchange API credentials and app security settings. API keys are required for live trading and real-time data.")
                 }
                 
                 // MARK: - Diagnostics Section
@@ -130,14 +173,26 @@ struct SettingsView: View {
                             .foregroundColor(.secondary)
                     }
                     
-                    Toggle("AI Debug Mode", isOn: $settings.aiDebugMode)
-                        .help("Enable additional AI diagnostics")
+                    StandardToggleRow(
+                        title: "AI Debug Mode",
+                        description: "Enable additional AI diagnostics and debugging information. May impact performance.",
+                        isOn: $settings.aiDebugMode,
+                        style: .warning
+                    )
                     
-                    Toggle("Verbose AI Logs", isOn: $settings.verboseAILogs)
-                        .help("Show detailed AI processing logs")
+                    StandardToggleRow(
+                        title: "Verbose AI Logs",
+                        description: "Show detailed AI processing logs including model inputs, outputs, and decision reasoning.",
+                        isOn: $settings.verboseAILogs,
+                        style: .danger
+                    )
                     
-                    Toggle("PnL Demo Mode", isOn: $settings.pnlDemoMode)
-                        .help("Use synthetic PnL data for testing")
+                    StandardToggleRow(
+                        title: "PnL Demo Mode",
+                        description: "Use synthetic profit/loss data for testing charts and calculations without real trading history.",
+                        isOn: $settings.pnlDemoMode,
+                        style: .minimal
+                    )
                     
                     Button("Export Logs") {
                         exportDiagnosticLogs()
@@ -151,7 +206,7 @@ struct SettingsView: View {
                 } header: {
                     Label("Diagnostics", systemImage: "stethoscope")
                 } footer: {
-                    Text("Debug settings, system information, and diagnostic tools for troubleshooting.")
+                    Text("Debug settings, system information, and diagnostic tools for troubleshooting. Enable verbose logging only when needed as it may impact performance.")
                 }
             }
             .navigationTitle("Settings")

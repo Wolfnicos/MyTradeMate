@@ -34,12 +34,10 @@ struct PerformanceMonitorView: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Text("Memory Usage")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
+                        .subheadlineMediumStyle()
                     Spacer()
                     Text("\(String(format: "%.1f", memoryUsage.usedMemoryMB))MB / \(String(format: "%.1f", memoryUsage.totalMemoryMB))MB")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .caption1Style()
                 }
                 
                 ProgressView(value: memoryUsage.usagePercentage / 100.0)

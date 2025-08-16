@@ -7,15 +7,22 @@ struct StrategiesSection: View {
         Section {
             ForEach(strategyStore.strategies) { strategy in
                 VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Toggle(strategy.kind.rawValue, isOn: Binding(
-                            get: { strategy.enabled },
-                            set: { newValue in
-                                if let index = strategyStore.strategies.firstIndex(where: { $0.id == strategy.id }) {
-                                    strategyStore.strategies[index].enabled = newValue
+                    VStack(alignment: .leading, spacing: 4) {
+                        StandardToggleRow(
+                            title: strategy.kind.rawValue,
+                            description: "Enable this AI trading strategy. Parameters can be adjusted when enabled.",
+                            isOn: Binding(
+                                get: { strategy.enabled },
+                                set: { newValue in
+                                    if let index = strategyStore.strategies.firstIndex(where: { $0.id == strategy.id }) {
+                                        strategyStore.strategies[index].enabled = newValue
+                                    }
                                 }
-                            }
-                        ))
+                            ),
+                            style: strategy.enabled ? .success : .default,
+                            showDivider: false
+                        )
+
                     }
                     
                     if strategy.enabled {

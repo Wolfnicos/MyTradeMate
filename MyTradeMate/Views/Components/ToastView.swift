@@ -1,5 +1,24 @@
 import SwiftUI
 
+// Temporary Spacing and CornerRadius structs for this file until DesignSystem is properly imported
+private struct Spacing {
+    static let xs: CGFloat = 4
+    static let sm: CGFloat = 8
+    static let md: CGFloat = 12
+    static let lg: CGFloat = 16
+    static let xl: CGFloat = 20
+    static let xxl: CGFloat = 24
+}
+
+private struct CornerRadius {
+    static let xs: CGFloat = 4
+    static let sm: CGFloat = 6
+    static let md: CGFloat = 8
+    static let lg: CGFloat = 12
+    static let xl: CGFloat = 16
+    static let xxl: CGFloat = 20
+}
+
 /// Toast notification types
 enum ToastType {
     case success
@@ -67,20 +86,18 @@ struct ToastView: View {
     }
     
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: Spacing.md) {
             Image(systemName: type.icon)
                 .font(.system(size: 20, weight: .medium))
                 .foregroundColor(type.color)
             
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: Spacing.xs) {
                 Text(title)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.primary)
+                    .footnoteMediumStyle()
                 
                 if let message = message {
                     Text(message)
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
+                        .caption1Style()
                         .lineLimit(2)
                 }
             }
@@ -96,14 +113,14 @@ struct ToastView: View {
                 .buttonStyle(PlainButtonStyle())
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.horizontal, Spacing.lg)
+        .padding(.vertical, Spacing.md)
         .background(type.backgroundColor)
         .overlay(
-            RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: CornerRadius.md)
                 .stroke(type.color.opacity(0.3), lineWidth: 1)
         )
-        .cornerRadius(8)
+        .cornerRadius(CornerRadius.md)
         .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)

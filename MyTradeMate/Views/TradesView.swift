@@ -28,7 +28,7 @@ struct TradesView: View {
                             .frame(width: 6, height: 6)
                         
                         Text(settings.demoMode ? "DEMO" : "LIVE")
-                            .font(.system(size: 11, weight: .bold))
+                            .caption2MediumStyle()
                             .foregroundColor(settings.demoMode ? .orange : .green)
                     }
                     .padding(.horizontal, 8)
@@ -64,8 +64,7 @@ struct TradesView: View {
                 .scaleEffect(1.2)
             
             Text("Loading trades...")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+                .subheadlineStyle()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.top, 100)
@@ -79,12 +78,10 @@ struct TradesView: View {
             
             VStack(spacing: 8) {
                 Text("No Trades Yet")
-                    .font(.title2)
-                    .fontWeight(.semibold)
+                    .title2Style()
                 
                 Text("Start trading to see performance here")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .subheadlineStyle()
                     .multilineTextAlignment(.center)
             }
             
@@ -96,14 +93,12 @@ struct TradesView: View {
                         .frame(width: 8, height: 8)
                     
                     Text(settings.demoMode ? "Demo Mode Active" : "Live Trading Mode")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
+                        .subheadlineMediumStyle()
                         .foregroundColor(settings.demoMode ? .orange : .green)
                 }
                 
                 Text(settings.demoMode ? "Trades will be simulated" : "Real trades with actual funds")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .caption1Style()
                     .multilineTextAlignment(.center)
             }
             .padding(.horizontal, 16)

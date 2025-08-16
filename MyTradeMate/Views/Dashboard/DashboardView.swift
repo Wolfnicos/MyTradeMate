@@ -2,6 +2,28 @@ import SwiftUI
 import Charts
 import UIKit
 
+// Temporary Spacing and CornerRadius structs for this file until DesignSystem is properly imported
+private struct Spacing {
+    static let xs: CGFloat = 4
+    static let sm: CGFloat = 8
+    static let md: CGFloat = 12
+    static let lg: CGFloat = 16
+    static let xl: CGFloat = 20
+    static let xxl: CGFloat = 24
+    static let xxxl: CGFloat = 32
+    static let sectionSpacing: CGFloat = 20
+    static let cardPadding: CGFloat = 16
+}
+
+private struct CornerRadius {
+    static let xs: CGFloat = 4
+    static let sm: CGFloat = 6
+    static let md: CGFloat = 8
+    static let lg: CGFloat = 12
+    static let xl: CGFloat = 16
+    static let xxl: CGFloat = 20
+}
+
 // MARK: - Chart Data Models
 struct CandleData: Identifiable {
     let id = UUID()
@@ -19,69 +41,62 @@ struct CandleChartView: View {
     @State private var selectedPoint: CandleData?
     
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: Spacing.md) {
             if data.isEmpty {
                 // Empty state for charts when no data is available
-                VStack(spacing: 16) {
+                VStack(spacing: Spacing.lg) {
                     Image(systemName: "chart.line.uptrend.xyaxis")
                         .font(.system(size: 48))
                         .foregroundColor(.secondary)
                     
-                    VStack(spacing: 8) {
+                    VStack(spacing: Spacing.sm) {
                         Text("No Chart Data")
-                            .font(.headline)
-                            .fontWeight(.medium)
-                            .foregroundColor(.primary)
+                            .headlineStyle()
                         
                         Text("No price data available for the selected timeframe")
-                            .font(.body)
-                            .foregroundColor(.secondary)
+                            .bodyStyle()
                             .multilineTextAlignment(.center)
                             .lineLimit(3)
                     }
                 }
-                .padding()
+                .padding(Spacing.lg)
                 .frame(maxWidth: .infinity)
                 .frame(height: 280)
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel("No Chart Data. No price data available for the selected timeframe")
             } else {
-                VStack(spacing: 8) {
+                VStack(spacing: Spacing.sm) {
                     // Chart legend
                     HStack {
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .leading, spacing: Spacing.xs) {
                             Text("Price Movement")
-                                .font(.caption)
-                                .fontWeight(.medium)
+                                .caption1MediumStyle()
                                 .foregroundColor(.primary)
                             
                             Text("Shows closing price over time")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
+                                .caption2Style()
                         }
                         
                         Spacer()
                         
-                        HStack(spacing: 8) {
-                            HStack(spacing: 4) {
+                        HStack(spacing: Spacing.sm) {
+                            HStack(spacing: Spacing.xs) {
                                 Circle()
                                     .fill(.blue)
                                     .frame(width: 8, height: 8)
                                 Text("Price Line")
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
+                                    .caption2Style()
                             }
                             
                             Text("Tap for details")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
+                                .caption2Style()
                                 .opacity(0.7)
                         }
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, Spacing.md)
+                    .padding(.vertical, Spacing.sm)
                     .background(Color(.secondarySystemBackground))
-                    .cornerRadius(8)
+                    .cornerRadius(CornerRadius.sm)
                     
                     Chart {
                         ForEach(data) { candle in
@@ -133,33 +148,29 @@ struct CandleChartView: View {
                     // Selected point info
                     if let selectedPoint = selectedPoint {
                         HStack {
-                            VStack(alignment: .leading, spacing: 2) {
+                            VStack(alignment: .leading, spacing: Spacing.xxs) {
                                 Text("Selected Point")
-                                    .font(.caption)
-                                    .fontWeight(.medium)
+                                    .caption1MediumStyle()
                                     .foregroundColor(.primary)
                                 
                                 Text("Price: $\(selectedPoint.close, specifier: "%.2f")")
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
+                                    .caption2Style()
                             }
                             
                             Spacer()
                             
-                            VStack(alignment: .trailing, spacing: 2) {
+                            VStack(alignment: .trailing, spacing: Spacing.xxs) {
                                 Text(selectedPoint.timestamp, style: .time)
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
+                                    .caption2Style()
                                 
                                 Text(selectedPoint.timestamp, style: .date)
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
+                                    .caption2Style()
                             }
                         }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, Spacing.md)
+                        .padding(.vertical, Spacing.sm)
                         .background(Color(.tertiarySystemBackground))
-                        .cornerRadius(6)
+                        .cornerRadius(CornerRadius.sm)
                     }
                 }
             }
@@ -183,7 +194,7 @@ struct DashboardView: View {
     
     var body: some View {
         ScrollView {
-            VStack(spacing: 20) {
+            VStack(spacing: Spacing.sectionSpacing) {
                 headerSection
                 priceSection
                 miniChartSection
@@ -194,7 +205,7 @@ struct DashboardView: View {
                 positionsPreviewSection
                 connectionStatusSection
             }
-            .padding()
+            .padding(Spacing.lg)
         }
         .background(Color(.systemBackground))
         .navigationTitle("Dashboard")
@@ -226,7 +237,7 @@ struct DashboardView: View {
                             }
                         }
                     )
-                    .padding()
+                    .padding(Spacing.lg)
                 }
                 .animation(.easeInOut(duration: 0.3), value: vm.showingTradeConfirmation)
             }
@@ -240,8 +251,8 @@ struct DashboardView: View {
                         vm.showingToast = false
                     }
                 )
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
+                .padding(.horizontal, Spacing.lg)
+                .padding(.top, Spacing.sm)
                 .transition(.asymmetric(
                     insertion: .move(edge: .top).combined(with: .opacity),
                     removal: .move(edge: .top).combined(with: .opacity)
@@ -254,14 +265,12 @@ struct DashboardView: View {
     // MARK: - Header Section
     private var headerSection: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: Spacing.xs) {
                 Text("BTC/USDT")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.primary)
+                    .headlineStyle()
                 
                 Text("Binance")
-                    .font(.system(size: 14))
-                    .foregroundColor(.secondary)
+                    .footnoteStyle()
             }
             
             Spacer()
@@ -273,22 +282,22 @@ struct DashboardView: View {
     
     // MARK: - Trading Mode Indicator
     private var tradingModeIndicator: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Spacing.sm) {
             Circle()
                 .fill(AppSettings.shared.demoMode ? .orange : .green)
                 .frame(width: 8, height: 8)
             
             Text(AppSettings.shared.demoMode ? "DEMO" : "LIVE")
-                .font(.system(size: 12, weight: .bold))
+                .caption1MediumStyle()
                 .foregroundColor(AppSettings.shared.demoMode ? .orange : .green)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
+        .padding(.horizontal, Spacing.md)
+        .padding(.vertical, Spacing.sm)
         .background(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: CornerRadius.md)
                 .fill((AppSettings.shared.demoMode ? Color.orange : Color.green).opacity(0.1))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 12)
+                    RoundedRectangle(cornerRadius: CornerRadius.md)
                         .stroke(AppSettings.shared.demoMode ? .orange : .green, lineWidth: 1)
                 )
         )
@@ -296,60 +305,55 @@ struct DashboardView: View {
     
     // MARK: - Price Section
     private var priceSection: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: Spacing.sm) {
             Text("$\(vm.priceString)")
-                .font(.system(size: 32, weight: .bold))
-                .foregroundColor(.primary)
+                .largeTitleStyle()
             
-            HStack(spacing: 12) {
+            HStack(spacing: Spacing.md) {
                 Text(vm.priceChangeString)
-                    .font(.system(size: 18, weight: .semibold))
+                    .headlineStyle()
                     .foregroundColor(vm.priceChangeColor)
                 
                 Text("(\(vm.priceChangePercentString))")
-                    .font(.system(size: 14))
+                    .footnoteStyle()
                     .foregroundColor(vm.priceChangeColor.opacity(0.8))
             }
         }
-        .padding()
+        .padding(Spacing.cardPadding)
         .background(Color(.secondarySystemBackground))
-        .cornerRadius(12)
+        .cornerRadius(CornerRadius.lg)
     }
     
     // MARK: - Mini Chart Section
     private var miniChartSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Spacing.md) {
             // Chart section header with explanation
             HStack {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: Spacing.xxs) {
                     Text("Price Chart")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.primary)
+                        .calloutMediumStyle()
                     
                     Text("Real-time candlestick data with volume")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .caption1Style()
                 }
                 
                 Spacer()
                 
                 if !vm.isLoading && !vm.candles.isEmpty {
                     Text("Interactive • Tap to explore")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .caption2Style()
                         .opacity(0.7)
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 12)
+            .padding(.horizontal, Spacing.lg)
+            .padding(.top, Spacing.md)
             
             if vm.isLoading {
                 VStack {
                     ProgressView()
                         .scaleEffect(1.2)
                     Text("Loading market data...")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .caption1Style()
                         .padding(.top, 8)
                 }
                 .frame(height: 280)
@@ -357,18 +361,16 @@ struct DashboardView: View {
             } else if !vm.candles.isEmpty {
                 CandlestickChart(candles: vm.candles, timeframe: vm.timeframe)
             } else {
-                VStack(spacing: 16) {
+                VStack(spacing: Spacing.lg) {
                     Image(systemName: "chart.line.uptrend.xyaxis")
                         .font(.system(size: 48))
                         .foregroundColor(.secondary)
                     
                     Text("No chart data available")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.primary)
+                        .calloutMediumStyle()
                     
                     Text("Check your connection or try a different symbol")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .caption1Style()
                         .multilineTextAlignment(.center)
                 }
                 .frame(height: 280)
@@ -376,17 +378,16 @@ struct DashboardView: View {
             }
         }
         .background(Color(.secondarySystemBackground))
-        .cornerRadius(12)
+        .cornerRadius(CornerRadius.lg)
     }
     
     // MARK: - Controls Section
     private var controlsSection: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: Spacing.lg) {
             // Timeframe selector
             HStack {
                 Text("Timeframe")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .footnoteMediumStyle()
                 
                 Spacer()
                 
@@ -401,8 +402,7 @@ struct DashboardView: View {
             // Mode selector
             HStack {
                 Text("Mode")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .footnoteMediumStyle()
                 
                 Spacer()
                 
@@ -416,8 +416,7 @@ struct DashboardView: View {
             // Auto/Manual switch
             HStack {
                 Text("Trading Mode")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .footnoteMediumStyle()
                 
                 Spacer()
                 
@@ -453,24 +452,24 @@ struct DashboardView: View {
     
     // MARK: - Quick Actions Section
     private var quickActionsSection: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: Spacing.md) {
             // Trading mode warning for demo mode
             if AppSettings.shared.demoMode {
-                HStack(spacing: 8) {
+                HStack(spacing: Spacing.sm) {
                     Image(systemName: "info.circle.fill")
                         .foregroundColor(.orange)
                         .font(.system(size: 14))
                     
                     Text("Demo Mode - No real trades will be executed")
-                        .font(.caption)
+                        .caption1Style()
                         .foregroundColor(.orange)
                     
                     Spacer()
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
+                .padding(.horizontal, Spacing.md)
+                .padding(.vertical, Spacing.sm)
                 .background(.orange.opacity(0.1))
-                .cornerRadius(8)
+                .cornerRadius(CornerRadius.sm)
             }
             
             // Show loading state when executing trade without confirmation
@@ -479,58 +478,24 @@ struct DashboardView: View {
                     .frame(height: 50)
                     .frame(maxWidth: .infinity)
                     .background(Color(.secondarySystemBackground))
-                    .cornerRadius(12)
+                    .cornerRadius(CornerRadius.lg)
             } else {
-                HStack(spacing: 12) {
-                    Button(action: {
-                        vm.executeBuy()
-                    }) {
-                        VStack(spacing: 4) {
-                            Text("BUY")
-                                .font(.system(size: 16, weight: .bold))
-                                .foregroundColor(.white)
-                            
-                            if AppSettings.shared.demoMode {
-                                Text("DEMO")
-                                    .font(.system(size: 10, weight: .medium))
-                                    .foregroundColor(.white.opacity(0.8))
-                            }
+                HStack(spacing: Spacing.md) {
+                    BuyButton(
+                        isDisabled: vm.tradingMode == .auto || vm.isExecutingTrade,
+                        isDemoMode: AppSettings.shared.demoMode,
+                        action: {
+                            vm.executeBuy()
                         }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .background(.green)
-                        .cornerRadius(12)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(AppSettings.shared.demoMode ? .orange.opacity(0.5) : .clear, lineWidth: 2)
-                        )
-                    }
-                    .disabled(vm.tradingMode == .auto || vm.isExecutingTrade)
+                    )
                     
-                    Button(action: {
-                        vm.executeSell()
-                    }) {
-                        VStack(spacing: 4) {
-                            Text("SELL")
-                                .font(.system(size: 16, weight: .bold))
-                                .foregroundColor(.white)
-                            
-                            if AppSettings.shared.demoMode {
-                                Text("DEMO")
-                                    .font(.system(size: 10, weight: .medium))
-                                    .foregroundColor(.white.opacity(0.8))
-                            }
+                    SellButton(
+                        isDisabled: vm.tradingMode == .auto || vm.isExecutingTrade,
+                        isDemoMode: AppSettings.shared.demoMode,
+                        action: {
+                            vm.executeSell()
                         }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .background(.red)
-                        .cornerRadius(12)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(AppSettings.shared.demoMode ? .orange.opacity(0.5) : .clear, lineWidth: 2)
-                        )
-                    }
-                    .disabled(vm.tradingMode == .auto || vm.isExecutingTrade)
+                    )
                 }
                 .opacity(vm.tradingMode == .auto || vm.isExecutingTrade ? 0.5 : 1.0)
             }
@@ -544,18 +509,17 @@ struct DashboardView: View {
     
     // MARK: - Positions Preview Section
     private var positionsPreviewSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Spacing.md) {
             HStack {
                 Text("Open Positions")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.primary)
+                    .calloutMediumStyle()
                 
                 Spacer()
                 
                 /* // Temporarily disabled
                 NavigationLink(destination: TradesView()) {
                     Text("View All")
-                        .font(.system(size: 14, weight: .medium))
+                        .footnoteMediumStyle()
                         .foregroundColor(Brand.blue)
                 }
                 */
@@ -563,26 +527,25 @@ struct DashboardView: View {
             
             if vm.openPositions.isEmpty {
                 Text("No open positions")
-                    .font(.system(size: 14))
-                    .foregroundColor(.secondary)
+                    .footnoteStyle()
                     .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 20)
+                    .padding(.vertical, Spacing.xl)
             } else {
                 ForEach(Array(vm.openPositions.prefix(2).enumerated()), id: \.offset) { _, position in
                     PositionRow(position: position)
                 }
             }
         }
-        .padding()
+        .padding(Spacing.cardPadding)
         .background(Color(.secondarySystemBackground))
-        .cornerRadius(12)
+        .cornerRadius(CornerRadius.lg)
     }
     
     // MARK: - Connection Status Section
     private var connectionStatusSection: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: Spacing.md) {
             // Connection indicator
-            HStack(spacing: 8) {
+            HStack(spacing: Spacing.sm) {
                 Circle()
                     .fill(vm.isConnected ? .green : .red)
                     .frame(width: 8, height: 8)
@@ -595,7 +558,7 @@ struct DashboardView: View {
                     )
                 
                 Text(connectionStatusText)
-                    .font(.system(size: 12, weight: .medium))
+                    .caption1MediumStyle()
                     .foregroundColor(vm.isConnected ? .green : .orange)
             }
             
@@ -603,16 +566,15 @@ struct DashboardView: View {
             
             // Last updated
             Text(vm.lastUpdatedString)
-                .font(.system(size: 11))
-                .foregroundColor(.secondary)
+                .caption2Style()
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
+        .padding(.horizontal, Spacing.lg)
+        .padding(.vertical, Spacing.sm)
         .background(
-            RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: CornerRadius.sm)
                 .fill(Color(.secondarySystemBackground))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 8)
+                    RoundedRectangle(cornerRadius: CornerRadius.sm)
                         .stroke(vm.isConnected ? .green.opacity(0.3) : .orange.opacity(0.3), lineWidth: 1)
                 )
         )
@@ -671,7 +633,7 @@ struct PositionRow: View {
     
     var body: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: Spacing.xxs) {
                 // Text(String(position.symbol))
                 //     .font(.system(size: 14, weight: .medium))
                 //     .foregroundColor(.primary)
@@ -687,7 +649,7 @@ struct PositionRow: View {
             //     .font(.system(size: 14, weight: .semibold))
             //     .foregroundColor(position.pnl >= 0 ? .green : .red)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, Spacing.xs)
     }
 }
 

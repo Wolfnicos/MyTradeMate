@@ -1,5 +1,26 @@
 import SwiftUI
 
+// Temporary Spacing and CornerRadius structs for this file until DesignSystem is properly imported
+private struct Spacing {
+    static let xs: CGFloat = 4
+    static let sm: CGFloat = 8
+    static let md: CGFloat = 12
+    static let lg: CGFloat = 16
+    static let xl: CGFloat = 20
+    static let xxl: CGFloat = 24
+    static let cardPadding: CGFloat = 16
+    static let elementSpacing: CGFloat = 12
+}
+
+private struct CornerRadius {
+    static let xs: CGFloat = 4
+    static let sm: CGFloat = 6
+    static let md: CGFloat = 8
+    static let lg: CGFloat = 12
+    static let xl: CGFloat = 16
+    static let xxl: CGFloat = 20
+}
+
 // MARK: - Trade Confirmation Dialog
 struct TradeConfirmationDialog: View {
     let trade: TradeRequest
@@ -38,7 +59,7 @@ struct TradeConfirmationDialog: View {
             onCancel: onCancel,
             content: {
                 AnyView(
-                    VStack(spacing: 16) {
+                    VStack(spacing: Spacing.lg) {
                         // Order Summary
                         orderSummaryView
                         
@@ -110,13 +131,12 @@ struct TradeConfirmationDialog: View {
     }
     
     private var orderSummaryView: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: Spacing.lg) {
             Text("Order Summary")
-                .font(.headline)
-                .fontWeight(.medium)
+                .headlineStyle()
                 .frame(maxWidth: .infinity, alignment: .leading)
             
-            VStack(spacing: 12) {
+            VStack(spacing: Spacing.elementSpacing) {
                 OrderSummaryRow(
                     label: "Symbol",
                     value: trade.symbol,
@@ -166,9 +186,9 @@ struct TradeConfirmationDialog: View {
                 )
             }
         }
-        .padding(16)
+        .padding(Spacing.cardPadding)
         .background(Color(.secondarySystemBackground))
-        .cornerRadius(12)
+        .cornerRadius(CornerRadius.lg)
     }
     
     // MARK: - Action Handlers
@@ -194,76 +214,70 @@ struct TradeConfirmationDialog: View {
     // MARK: - UI Components
     
     private var errorMessageView: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: Spacing.elementSpacing) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundColor(.red)
                 .font(.system(size: 16))
             
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: Spacing.xs) {
                 Text("Order Failed")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
+                    .subheadlineMediumStyle()
                     .foregroundColor(.red)
                 
                 Text(viewModel.errorMessage)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .caption1Style()
                     .lineLimit(3)
             }
             
             Spacer()
         }
-        .padding(12)
+        .padding(Spacing.elementSpacing)
         .background(.red.opacity(0.1))
-        .cornerRadius(8)
+        .cornerRadius(CornerRadius.md)
     }
     
     private var tradingModeWarning: some View {
         Group {
             if trade.isDemo {
-                HStack(spacing: 12) {
+                HStack(spacing: Spacing.elementSpacing) {
                     Image(systemName: "info.circle.fill")
                         .foregroundColor(.orange)
                         .font(.system(size: 16))
                     
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
                         Text("Demo Mode")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
+                            .subheadlineMediumStyle()
                             .foregroundColor(.orange)
                         
                         Text("This is a simulated trade - no real funds will be used")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .caption1Style()
                     }
                     
                     Spacer()
                 }
-                .padding(12)
+                .padding(Spacing.elementSpacing)
                 .background(.orange.opacity(0.1))
-                .cornerRadius(8)
+                .cornerRadius(CornerRadius.md)
             } else {
-                HStack(spacing: 12) {
+                HStack(spacing: Spacing.elementSpacing) {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundColor(.red)
                         .font(.system(size: 16))
                     
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
                         Text("Live Trading")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
+                            .subheadlineMediumStyle()
                             .foregroundColor(.red)
                         
                         Text("This will place a real order with actual funds")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .caption1Style()
                     }
                     
                     Spacer()
                 }
-                .padding(12)
+                .padding(Spacing.elementSpacing)
                 .background(.red.opacity(0.1))
-                .cornerRadius(8)
+                .cornerRadius(CornerRadius.md)
             }
         }
     }
@@ -271,11 +285,10 @@ struct TradeConfirmationDialog: View {
     // MARK: - Order Status Tracking View
     
     private func orderStatusTrackingView(_ trackedOrder: TrackedOrder) -> some View {
-        VStack(spacing: 12) {
+        VStack(spacing: Spacing.elementSpacing) {
             HStack {
                 Text("Order Status")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
+                    .subheadlineMediumStyle()
                 
                 Spacer()
                 
@@ -286,9 +299,9 @@ struct TradeConfirmationDialog: View {
             
             CompactOrderStatusView(trackedOrder: trackedOrder)
         }
-        .padding(12)
+        .padding(Spacing.elementSpacing)
         .background(Color(.tertiarySystemBackground))
-        .cornerRadius(8)
+        .cornerRadius(CornerRadius.md)
     }
 }
 
@@ -317,23 +330,22 @@ struct OrderSummaryRow: View {
     var body: some View {
         HStack {
             Text(label)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+                .subheadlineStyle()
             
             Spacer()
             
             if showBadge {
                 Text(value)
-                    .font(.caption)
+                    .caption1Style()
                     .fontWeight(valueWeight)
                     .foregroundColor(valueColor)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, Spacing.sm)
+                    .padding(.vertical, Spacing.xs)
                     .background(valueColor.opacity(0.15))
-                    .cornerRadius(6)
+                    .cornerRadius(CornerRadius.sm)
             } else {
                 Text(value)
-                    .font(.subheadline)
+                    .subheadlineStyle()
                     .fontWeight(valueWeight)
                     .foregroundColor(valueColor)
             }

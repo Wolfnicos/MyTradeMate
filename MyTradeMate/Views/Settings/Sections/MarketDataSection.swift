@@ -5,11 +5,19 @@ struct MarketDataSection: View {
     
     var body: some View {
         Section {
-            Toggle("Live Market Data", isOn: $settings.liveMarketDataEnabled)
-                .help("Use live market data from exchanges")
+            StandardToggleRow(
+                title: "Live Market Data",
+                description: "Connect to real-time exchange data feeds. Disable to use cached data and reduce API usage.",
+                isOn: $settings.liveMarketDataEnabled,
+                style: .default
+            )
             
-            Toggle("Demo Mode", isOn: $settings.demoMode)
-                .help("Use synthetic data for testing")
+            StandardToggleRow(
+                title: "Demo Mode",
+                description: "Use simulated trading environment with synthetic data for testing strategies safely.",
+                isOn: $settings.demoMode,
+                style: .warning
+            )
         }
     }
 }

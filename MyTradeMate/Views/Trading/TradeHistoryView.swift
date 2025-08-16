@@ -203,8 +203,12 @@ struct TradeHistoryView: View {
                 } label: {
                     if isExporting {
                         ProgressView()
+                            .scaleEffect(0.8)
+                            .progressViewStyle(CircularProgressViewStyle(tint: .accentColor))
                     } else {
                         Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.accentColor)
                     }
                 }
             }

@@ -3,18 +3,33 @@ import SwiftUI
 struct DiagnosticsSection: View {
     var body: some View {
         Section {
-            Button("Run CoreML Sanity Check") {
-                Task {
-                    await runCorMLSanityCheck()
+            VStack(alignment: .leading, spacing: 4) {
+                Button("Run CoreML Sanity Check") {
+                    Task {
+                        await runCorMLSanityCheck()
+                    }
                 }
+                Text("Validate AI models and check their input/output configurations. Use for troubleshooting AI issues.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
             
-            Button("Dump Last Feature Vector") {
-                dumpLastFeatureVector()
+            VStack(alignment: .leading, spacing: 4) {
+                Button("Dump Last Feature Vector") {
+                    dumpLastFeatureVector()
+                }
+                Text("Export the last computed feature vector used for AI predictions. Useful for debugging model inputs.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
             
-            Button("Clear Cache") {
-                clearCache()
+            VStack(alignment: .leading, spacing: 4) {
+                Button("Clear Cache") {
+                    clearCache()
+                }
+                Text("Clear all cached market data and force fresh data retrieval. Use if experiencing data issues.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
         }
     }

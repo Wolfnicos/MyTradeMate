@@ -5,11 +5,19 @@ struct AISection: View {
     
     var body: some View {
         Section {
-            Toggle("AI Debug Mode", isOn: $settings.aiDebugMode)
-                .help("Enable AI debugging features")
+            StandardToggleRow(
+                title: "AI Debug Mode",
+                description: "Enable AI debugging features and additional diagnostics. May impact performance.",
+                isOn: $settings.aiDebugMode,
+                style: .warning
+            )
             
-            Toggle("Verbose AI Logs", isOn: $settings.verboseAILogs)
-                .help("Enable detailed AI logging")
+            StandardToggleRow(
+                title: "Verbose AI Logs",
+                description: "Enable detailed AI logging including model inputs, outputs, and decision reasoning.",
+                isOn: $settings.verboseAILogs,
+                style: .danger
+            )
             
             VStack(alignment: .leading, spacing: 8) {
                 Text("Default Symbol")
@@ -25,6 +33,10 @@ struct AISection: View {
                     Text("BNB/USDT").tag("BNB/USDT")
                 }
                 .pickerStyle(.menu)
+                
+                Text("Primary trading pair for AI analysis and signals.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
             
             VStack(alignment: .leading, spacing: 8) {
@@ -38,6 +50,10 @@ struct AISection: View {
                     Text("4h").tag("4h")
                 }
                 .pickerStyle(.segmented)
+                
+                Text("Chart timeframe for AI analysis. Shorter timeframes provide more frequent signals but may be noisier.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
         }
     }

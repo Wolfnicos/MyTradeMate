@@ -168,11 +168,14 @@ struct StrategyRowView: View {
                     
                     Spacer()
                     
-                    Toggle("", isOn: Binding(
-                        get: { strategy.isEnabled },
-                        set: { _ in onToggle() }
-                    ))
-                    .labelsHidden()
+                    StandardToggle(
+                        isOn: Binding(
+                            get: { strategy.isEnabled },
+                            set: { _ in onToggle() }
+                        ),
+                        style: strategy.isEnabled ? .success : .default,
+                        size: .medium
+                    )
                 }
                 
                 Text(strategy.description)

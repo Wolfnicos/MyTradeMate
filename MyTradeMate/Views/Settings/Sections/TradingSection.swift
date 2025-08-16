@@ -5,18 +5,30 @@ struct TradingSection: View {
     
     var body: some View {
         Section {
-            Toggle("Confirm Trades", isOn: $settings.confirmTrades)
-                .help("Show confirmation dialog before placing trades")
+            StandardToggleRow(
+                title: "Confirm Trades",
+                description: "Show confirmation dialog before placing any trade. Recommended for beginners and live trading.",
+                isOn: $settings.confirmTrades,
+                style: .default
+            )
             
-            Toggle("Paper Trading", isOn: Binding(
-                get: { !settings.liveMarketDataEnabled },
-                set: { settings.liveMarketDataEnabled = !$0 }
-            ))
-                .help("Simulate trades without real money")
+            StandardToggleRow(
+                title: "Paper Trading",
+                description: "Simulate trades with real market data but without actual money. Safe way to test strategies.",
+                isOn: Binding(
+                    get: { !settings.liveMarketDataEnabled },
+                    set: { settings.liveMarketDataEnabled = !$0 }
+                ),
+                style: .prominent
+            )
             
-            Toggle("Auto Trading", isOn: $settings.autoTrading)
-                .help("Enable automated trading based on signals")
-                .disabled(!settings.confirmTrades)
+            StandardToggleRow(
+                title: "Auto Trading",
+                description: "Enable automated trading based on AI signals. Requires valid API keys and confirmation trades enabled.",
+                isOn: $settings.autoTrading,
+                style: .success,
+                isDisabled: !settings.confirmTrades
+            )
         }
     }
 }

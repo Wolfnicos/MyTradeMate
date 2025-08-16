@@ -6,15 +6,25 @@ struct ExchangesSection: View {
     
     var body: some View {
         Section {
-            Button("Binance API Keys") {
-                showBinanceKeys = true
+            VStack(alignment: .leading, spacing: 4) {
+                Button("Binance API Keys") {
+                    showBinanceKeys = true
+                }
+                .foregroundColor(.blue)
+                Text("Configure Binance API credentials for live trading and real-time market data access.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
-            .foregroundColor(.blue)
             
-            Button("Kraken API Keys") {
-                showKrakenKeys = true
+            VStack(alignment: .leading, spacing: 4) {
+                Button("Kraken API Keys") {
+                    showKrakenKeys = true
+                }
+                .foregroundColor(.blue)
+                Text("Configure Kraken API credentials for live trading and real-time market data access.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
-            .foregroundColor(.blue)
         }
         .sheet(isPresented: $showBinanceKeys) {
             BinanceKeysView()

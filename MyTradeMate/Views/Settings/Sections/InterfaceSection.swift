@@ -5,11 +5,19 @@ struct InterfaceSection: View {
     
     var body: some View {
         Section {
-            Toggle("Haptics", isOn: $settings.hapticsEnabled)
-                .help("Enable haptic feedback")
+            StandardToggleRow(
+                title: "Haptics",
+                description: "Enable tactile feedback for button presses, trade confirmations, and other interactions.",
+                isOn: $settings.hapticsEnabled,
+                style: .default
+            )
             
-            Toggle("Dark Mode", isOn: $settings.darkMode)
-                .help("Use dark appearance")
+            StandardToggleRow(
+                title: "Dark Mode",
+                description: "Use dark color scheme throughout the app. Follows system setting when disabled.",
+                isOn: $settings.darkMode,
+                style: .minimal
+            )
         }
     }
 }

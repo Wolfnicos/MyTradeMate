@@ -121,11 +121,11 @@
 
 **Subtasks:**
 - [x] Group settings into sections: Trading, Security, Diagnostics
-- [ ] Add descriptions for complex settings
-- [ ] Add Auto Trading toggle description
-- [ ] Implement search/filter functionality
-- [ ] Add help icons with tooltips
-- [ ] Improve visual hierarchy
+- [x] Add descriptions for complex settings
+- [x] Add Auto Trading toggle description
+- [x] Implement search/filter functionality
+- [x] Add help icons with tooltips
+- [x] Improve visual hierarchy
 
 #### Task 10: Add Diagnostics Export
 **Priority:** Medium  
@@ -133,12 +133,12 @@
 **Dependencies:** Task 4
 
 **Subtasks:**
-- [ ] Create export logs functionality
-- [ ] Add export button in Diagnostics section
-- [ ] Implement file sharing for exported logs
-- [ ] Add success toast for successful export
-- [ ] Add error handling for export failures
-- [ ] Include relevant metadata in exports
+- [x] Create export logs functionality
+- [x] Add export button in Diagnostics section
+- [x] Implement file sharing for exported logs
+- [x] Add success toast for successful export
+- [x] Add error handling for export failures
+- [x] Include relevant metadata in exports
 
 #### Task 11: Fix Design Inconsistencies
 **Priority:** Medium  
@@ -146,11 +146,11 @@
 **Dependencies:** None
 
 **Subtasks:**
-- [ ] Audit all timeframe labels and standardize
-- [ ] Standardize button styles across the app
-- [ ] Standardize toggle styles and behavior
-- [ ] Ensure consistent spacing and padding
-- [ ] Fix typography inconsistencies
+- [x] Audit all timeframe labels and standardize
+- [x] Standardize button styles across the app
+- [x] Standardize toggle styles and behavior
+- [x] Ensure consistent spacing and padding
+- [x] Fix typography inconsistencies
 - [ ] Add proper corner radius standards
 
 #### Task 12: Add Tab Icons
