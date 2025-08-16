@@ -27,10 +27,10 @@ enum AppTab: String, CaseIterable {
     var systemImage: String {
         switch self {
         case .dashboard: return "chart.line.uptrend.xyaxis"
-        case .trades: return "arrow.left.arrow.right"
-        case .pnl: return "chart.bar.fill"
+        case .trades: return "list.bullet.rectangle"
+        case .pnl: return "dollarsign.circle"
         case .strategies: return "brain"
-        case .settings: return "gearshape.fill"
+        case .settings: return "gearshape"
         }
     }
 }
@@ -131,7 +131,7 @@ struct RootTabs: View {
                     }
             }
             .tabItem {
-                Label("Trades", systemImage: "arrow.left.arrow.right")
+                Label("Trades", systemImage: "list.bullet.rectangle")
             }
             
             NavigationStack(path: $navigationCoordinator.pnlPath) {
@@ -141,7 +141,7 @@ struct RootTabs: View {
                     }
             }
             .tabItem {
-                Label("P&L", systemImage: "chart.bar.fill")
+                Label("P&L", systemImage: "dollarsign.circle")
             }
             
             NavigationStack(path: $navigationCoordinator.strategiesPath) {
@@ -161,7 +161,7 @@ struct RootTabs: View {
                     }
             }
             .tabItem {
-                Label("Settings", systemImage: "gearshape.fill")
+                Label("Settings", systemImage: "gearshape")
             }
         }
         .environmentObject(settings)

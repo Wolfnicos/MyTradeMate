@@ -33,11 +33,38 @@ struct MyTradeMateApp: App {
         appearance.largeTitleTextAttributes = [.font: UIFont.systemFont(ofSize: 34, weight: .bold)]
         appearance.titleTextAttributes = [.font: UIFont.systemFont(ofSize: 17, weight: .semibold)]
         
-        // Tab bar appearance
+        // Tab bar appearance - ensure proper light/dark mode support
         let tabAppearance = UITabBarAppearance()
         tabAppearance.configureWithDefaultBackground()
+        
+        // Ensure tab bar icons adapt properly to light/dark mode
+        // Use system colors that automatically adapt to appearance changes
+        tabAppearance.stackedLayoutAppearance.normal.iconColor = UIColor.systemGray
+        tabAppearance.stackedLayoutAppearance.selected.iconColor = UIColor.systemBlue
+        tabAppearance.stackedLayoutAppearance.normal.titleTextAttributes = [
+            .foregroundColor: UIColor.systemGray
+        ]
+        tabAppearance.stackedLayoutAppearance.selected.titleTextAttributes = [
+            .foregroundColor: UIColor.systemBlue
+        ]
+        
+        // Apply the same configuration to compact layout (for smaller screens)
+        tabAppearance.compactInlineLayoutAppearance.normal.iconColor = UIColor.systemGray
+        tabAppearance.compactInlineLayoutAppearance.selected.iconColor = UIColor.systemBlue
+        tabAppearance.compactInlineLayoutAppearance.normal.titleTextAttributes = [
+            .foregroundColor: UIColor.systemGray
+        ]
+        tabAppearance.compactInlineLayoutAppearance.selected.titleTextAttributes = [
+            .foregroundColor: UIColor.systemBlue
+        ]
+        
+        // Apply to both standard and scroll edge appearances
         UITabBar.appearance().standardAppearance = tabAppearance
         UITabBar.appearance().scrollEdgeAppearance = tabAppearance
+        
+        // Ensure the tab bar itself adapts to appearance changes
+        UITabBar.appearance().backgroundColor = UIColor.systemBackground
+        UITabBar.appearance().barTintColor = UIColor.systemBackground
     }
     
     private func setupDependencyInjection() {
@@ -55,6 +82,10 @@ struct MyTradeMateApp: App {
     @MainActor
     private func runStartupDiagnostics() async {
         Log.app.info("Running startup diagnostics...")
+        
+        // Tab icons are configured to work in both light and dark modes
+        // via the setupAppearance() method and ThemeManager.updateTabBarAppearance()
+        Log.app.info("Tab icons configured for light/dark mode support")
         
         // Run audit
         // await Audit.runOnStartup()

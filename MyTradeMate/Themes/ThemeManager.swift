@@ -72,7 +72,44 @@ final class ThemeManager: ObservableObject {
             }
         }
         
+        // Update tab bar appearance to ensure icons adapt properly
+        updateTabBarAppearance()
+        
         Log.verbose("Applied theme: \(currentTheme.rawValue) (dark: \(isDarkMode))", category: .ui)
+    }
+    
+    private func updateTabBarAppearance() {
+        let tabAppearance = UITabBarAppearance()
+        tabAppearance.configureWithDefaultBackground()
+        
+        // Ensure tab bar icons adapt properly to the current theme
+        // Use system colors that automatically adapt to appearance changes
+        tabAppearance.stackedLayoutAppearance.normal.iconColor = UIColor.systemGray
+        tabAppearance.stackedLayoutAppearance.selected.iconColor = UIColor.systemBlue
+        tabAppearance.stackedLayoutAppearance.normal.titleTextAttributes = [
+            .foregroundColor: UIColor.systemGray
+        ]
+        tabAppearance.stackedLayoutAppearance.selected.titleTextAttributes = [
+            .foregroundColor: UIColor.systemBlue
+        ]
+        
+        // Apply the same configuration to compact layout (for smaller screens)
+        tabAppearance.compactInlineLayoutAppearance.normal.iconColor = UIColor.systemGray
+        tabAppearance.compactInlineLayoutAppearance.selected.iconColor = UIColor.systemBlue
+        tabAppearance.compactInlineLayoutAppearance.normal.titleTextAttributes = [
+            .foregroundColor: UIColor.systemGray
+        ]
+        tabAppearance.compactInlineLayoutAppearance.selected.titleTextAttributes = [
+            .foregroundColor: UIColor.systemBlue
+        ]
+        
+        // Apply to both standard and scroll edge appearances
+        UITabBar.appearance().standardAppearance = tabAppearance
+        UITabBar.appearance().scrollEdgeAppearance = tabAppearance
+        
+        // Ensure the tab bar itself adapts to appearance changes
+        UITabBar.appearance().backgroundColor = UIColor.systemBackground
+        UITabBar.appearance().barTintColor = UIColor.systemBackground
     }
     
     // MARK: - Color Scheme

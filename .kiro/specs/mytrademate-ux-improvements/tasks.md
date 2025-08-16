@@ -159,12 +159,12 @@
 **Dependencies:** None
 
 **Subtasks:**
-- [ ] Add icon for Dashboard tab (chart.line.uptrend.xyaxis)
-- [ ] Add icon for Trades tab (list.bullet.rectangle)
-- [ ] Add icon for P&L tab (dollarsign.circle)
-- [ ] Add icon for Strategies tab (brain)
-- [ ] Add icon for Settings tab (gearshape)
-- [ ] Ensure icons work in both light and dark mode
+- [x] Add icon for Dashboard tab (chart.line.uptrend.xyaxis)
+- [x] Add icon for Trades tab (list.bullet.rectangle)
+- [x] Add icon for P&L tab (dollarsign.circle)
+- [x] Add icon for Strategies tab (brain)
+- [x] Add icon for Settings tab (gearshape)
+- [x] Ensure icons work in both light and dark mode
 
 ### Phase 4: Advanced Features (Week 4)
 

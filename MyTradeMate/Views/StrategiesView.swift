@@ -46,13 +46,10 @@ struct StrategiesView: View {
             
             VStack(spacing: 8) {
                 Text("No Strategies Available")
-                    .font(.headline)
-                    .fontWeight(.medium)
-                    .foregroundColor(.primary)
+                    .headlineStyle()
                 
                 Text("Trading strategies will appear here when loaded")
-                    .font(.body)
-                    .foregroundColor(.secondary)
+                    .bodyStyle()
                     .multilineTextAlignment(.center)
                     .lineLimit(3)
             }
@@ -90,37 +87,31 @@ struct StrategiesView: View {
             if let ensembleSignal = strategyManager.ensembleSignal {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Ensemble Signal")
-                        .font(.headline)
-                        .fontWeight(.semibold)
+                        .headlineStyle()
                     
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(ensembleSignal.direction.description.uppercased())
-                                .font(.title2)
-                                .fontWeight(.bold)
+                                .title2Style()
                                 .foregroundColor(signalColor(for: ensembleSignal.direction))
                             
                             Text("\(Int(ensembleSignal.confidence * 100))% confidence")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
+                                .subheadlineStyle()
                         }
                         
                         Spacer()
                         
                         VStack(alignment: .trailing, spacing: 4) {
                             Text("\(ensembleSignal.contributingStrategies.count) strategies")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                                .caption1Style()
                             
                             Text(ensembleSignal.timestamp.formatted(date: .omitted, time: .shortened))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                                .caption1Style()
                         }
                     }
                     
                     Text(ensembleSignal.reason)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .caption1Style()
                         .padding(.top, 4)
                 }
                 .padding()
@@ -150,21 +141,22 @@ struct StrategyRowView: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
                     Text(strategy.name)
-                        .font(.headline)
-                        .fontWeight(.semibold)
+                        .headlineStyle()
                     
                     Spacer()
                     
-                    Toggle("", isOn: Binding(
-                        get: { strategy.isEnabled },
-                        set: { _ in onToggle() }
-                    ))
-                    .labelsHidden()
+                    StandardToggle(
+                        isOn: Binding(
+                            get: { strategy.isEnabled },
+                            set: { _ in onToggle() }
+                        ),
+                        style: strategy.isEnabled ? .success : .default,
+                        size: .medium
+                    )
                 }
                 
                 Text(strategy.description)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .caption1Style()
                     .lineLimit(2)
                 
                 if let signal = lastSignal {
