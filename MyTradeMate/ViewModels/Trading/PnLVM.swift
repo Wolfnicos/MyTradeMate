@@ -126,6 +126,9 @@ final class PnLVM: ObservableObject {
                 // Update aggregated history
                 self.aggregateHistory()
                 
+                // Update widget data
+                self.updateWidgetData()
+                
                 // Hide loading state after calculations are complete
                 self.isLoading = false
             }
@@ -191,5 +194,29 @@ final class PnLVM: ObservableObject {
         }
         
         history = sortedHistory
+    }
+    
+    /// Update widget data when P&L changes
+    private func updateWidgetData() {
+        Task {
+            // Get current market data
+            let marketPrice = await MarketPriceCache.shared.lastPrice
+            let priceChange = 0.0 // This would need to be calculated from 24h data
+            
+            // Get trading mode and connection status
+            let isDemoMode = AppSettings.shared.tradingMode == .demo
+            let isConnected = true // This would come from connection manager
+            
+            let widgetData = WidgetDataManager.shared.createWidgetData(
+                from: self,
+                tradeManager: TradeManager.shared,
+                marketPrice: marketPrice,
+                priceChange: priceChange,
+                isDemoMode: isDemoMode,
+                isConnected: isConnected
+            )
+            
+            WidgetDataManager.shared.updateWidgetData(widgetData)
+        }
     }
 }

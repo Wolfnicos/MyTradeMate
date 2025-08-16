@@ -77,10 +77,12 @@ struct SettingsView: View {
     @State private var isExporting = false
     @State private var showShareSheet = false
     @State private var exportedLogURL: URL?
+    @State private var showWidgetConfiguration = false
+    @State private var widgetRefreshStats: (lastRefresh: Date?, canRefresh: Bool, status: WidgetRefreshStatus) = (nil, true, .idle)
     
     // MARK: - Computed Properties
     private var filteredSections: [SettingsSection] {
-        let allSections = [tradingSection, securitySection, diagnosticsSection]
+        let allSections = [tradingSection, interfaceSection, securitySection, diagnosticsSection]
         
         if searchText.isEmpty {
             return allSections
@@ -145,6 +147,12 @@ struct SettingsView: View {
             if let url = exportedLogURL {
                 ShareSheet(items: [url])
             }
+        }
+        .sheet(isPresented: $showWidgetConfiguration) {
+            WidgetConfigurationView()
+        }
+        .onAppear {
+            updateWidgetRefreshStats()
         }
     }
     
@@ -260,6 +268,55 @@ struct SettingsView: View {
                                 .navigationBarTitleDisplayMode(.inline)
                             )
                         )
+                    )
+                )
+            ]
+        )
+    }
+    
+    private var interfaceSection: SettingsSection {
+        SettingsSection(
+            title: "Interface",
+            icon: "rectangle.3.group",
+            footer: "Customize the app interface and widget appearance to match your preferences.",
+            items: [
+                SettingsItem(
+                    title: "Widget Configuration",
+                    description: "Customize your home screen widget display options, colors, and update frequency",
+                    view: AnyView(
+                        Button(action: {
+                            showWidgetConfiguration = true
+                        }) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: Spacing.xs) {
+                                    Text("Widget Configuration")
+                                        .font(Typography.body)
+                                        .foregroundColor(.primary)
+                                    
+                                    Text("Customize your home screen widget display options, colors, and update frequency")
+                                        .font(Typography.caption1)
+                                        .foregroundColor(.secondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                    
+                                    if let lastRefresh = widgetRefreshStats.lastRefresh {
+                                        Text("Last updated: \(lastRefresh, formatter: widgetRefreshDateFormatter)")
+                                            .font(Typography.caption2)
+                                            .foregroundColor(.tertiary)
+                                    }
+                                }
+                                
+                                Spacer()
+                                
+                                VStack(spacing: 4) {
+                                    widgetRefreshStatusIcon
+                                    
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        }
+                        .buttonStyle(PlainButtonStyle())
                     )
                 )
             ]
@@ -499,6 +556,38 @@ struct SettingsView: View {
     private func runSystemDiagnostics() {
         // System diagnostics functionality
         print("System diagnostics requested")
+    }
+    
+    @ViewBuilder
+    private var widgetRefreshStatusIcon: some View {
+        switch widgetRefreshStats.status {
+        case .idle:
+            Image(systemName: "clock")
+                .foregroundColor(.secondary)
+                .font(.caption2)
+        case .refreshing:
+            ProgressView()
+                .scaleEffect(0.6)
+        case .success:
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundColor(.green)
+                .font(.caption2)
+        case .failed:
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundColor(.red)
+                .font(.caption2)
+        }
+    }
+    
+    private var widgetRefreshDateFormatter: DateFormatter {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .none
+        formatter.timeStyle = .short
+        return formatter
+    }
+    
+    private func updateWidgetRefreshStats() {
+        widgetRefreshStats = WidgetDataManager.shared.getRefreshStats()
     }
 }
 

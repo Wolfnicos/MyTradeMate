@@ -187,12 +187,12 @@
 **Dependencies:** None
 
 **Subtasks:**
-- [ ] Create small widget for current P&L
-- [ ] Create medium widget with P&L and latest signal
-- [ ] Create large widget with P&L chart
-- [ ] Implement widget configuration
-- [ ] Add widget refresh functionality
-- [ ] Test widget performance and battery impact
+- [x] Create small widget for current P&L
+- [x] Create medium widget with P&L and latest signal
+- [x] Create large widget with P&L chart
+- [x] Implement widget configuration
+- [x] Add widget refresh functionality
+- [x] Test widget performance and battery impact
 
 #### Task 15: Polish Dark/Light Mode
 **Priority:** Medium  

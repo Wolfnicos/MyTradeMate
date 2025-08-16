@@ -1,6 +1,7 @@
 import SwiftUI
 import OSLog
 import UIKit
+import WidgetKit
 
 private let logger = os.Logger(subsystem: "com.mytrademate", category: "App")
 
@@ -131,5 +132,18 @@ struct MyTradeMateApp: App {
         Log.verbose("PnL demo mode: \(settings.isDemoPnL ? "ENABLED" : "DISABLED")", category: .pnl)
         
         Log.app.info("Startup diagnostics complete")
+        
+        // Initialize widget refresh system
+        // TODO: Re-enable when widget integration is complete
+        // Task {
+        //     await setupWidgetRefresh()
+        // }
+    }
+    
+    @MainActor
+    private func setupWidgetRefresh() async {
+        // Widget refresh system will be initialized when WidgetDataManager is properly integrated
+        // TODO: Integrate WidgetDataManager when widget target is properly configured
+        Log.app.info("Widget refresh system placeholder - integration pending")
     }
 }
