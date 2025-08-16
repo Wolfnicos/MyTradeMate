@@ -64,7 +64,9 @@ final class TradingManager: ObservableObject {
         } else {
             // Execute immediately
             logger.info("Executing buy order")
-            performBuyOrder()
+            Task {
+                await performBuyOrder()
+            }
         }
     }
     
@@ -82,8 +84,69 @@ final class TradingManager: ObservableObject {
         } else {
             // Execute immediately
             logger.info("Executing sell order")
-            performSellOrder()
+            Task {
+                await performSellOrder()
+            }
         }
+    }
+    
+    /// Execute a trade order with proper error handling
+    func executeTradeOrder(_ request: TradeRequest) async {
+        do {
+            // Convert TradeRequest to OrderRequest
+            let orderRequest = OrderRequest(
+                symbol: Symbol(raw: request.symbol),
+                side: request.side,
+                quantity: request.amount
+            )
+            
+            // Execute the order through TradeManager
+            let fill = try await TradeManager.shared.manualOrder(orderRequest)
+            
+            // Show success toast
+            await MainActor.run {
+                if let toastManager = getToastManager() {
+                    toastManager.showTradeExecuted(
+                        symbol: request.symbol,
+                        side: request.side.rawValue
+                    )
+                }
+            }
+            
+            Log.trade.info("✅ Order executed successfully: \(request.side.rawValue) \(request.amount) \(request.symbol)")
+            
+        } catch let error as AppError {
+            // Handle AppError with proper error message
+            await MainActor.run {
+                errorManager.handle(error, context: "Trade execution")
+                
+                if let toastManager = getToastManager() {
+                    toastManager.showTradeExecutionFailed(error: error.localizedDescription)
+                }
+            }
+            
+            Log.trade.error("❌ Order execution failed: \(error.localizedDescription)")
+            
+        } catch {
+            // Handle any other errors
+            let appError = AppError.tradeExecutionFailed(details: error.localizedDescription)
+            await MainActor.run {
+                errorManager.handle(appError, context: "Trade execution")
+                
+                if let toastManager = getToastManager() {
+                    toastManager.showTradeExecutionFailed(error: error.localizedDescription)
+                }
+            }
+            
+            Log.trade.error("❌ Order execution failed with unexpected error: \(error.localizedDescription)")
+        }
+    }
+    
+    /// Get toast manager from environment (this would be injected in real implementation)
+    private func getToastManager() -> ToastManager? {
+        // In a real implementation, this would be injected via dependency injection
+        // For now, we'll create a new instance or use a shared one
+        return ToastManager()
     }
     
     func handleAutoTrading(signal: SignalInfo, currentPrice: Double) {
@@ -112,21 +175,37 @@ final class TradingManager: ObservableObject {
     }
     
     // MARK: - Private Methods
-    private func performBuyOrder() {
+    private func performBuyOrder() async {
+        let tradeRequest = TradeRequest(
+            symbol: settings.defaultSymbol,
+            side: .buy,
+            amount: 0.01, // Default amount - should be configurable
+            price: 0.0, // Market order
+            mode: tradingMode,
+            isDemo: settings.demoMode
+        )
+        
         if settings.demoMode {
             simulateDemoTrade(direction: "BUY")
         } else {
-            // TODO: Implement real buy order
-            Log.trade.info("Real buy order execution not implemented")
+            await executeTradeOrder(tradeRequest)
         }
     }
     
-    private func performSellOrder() {
+    private func performSellOrder() async {
+        let tradeRequest = TradeRequest(
+            symbol: settings.defaultSymbol,
+            side: .sell,
+            amount: 0.01, // Default amount - should be configurable
+            price: 0.0, // Market order
+            mode: tradingMode,
+            isDemo: settings.demoMode
+        )
+        
         if settings.demoMode {
             simulateDemoTrade(direction: "SELL")
         } else {
-            // TODO: Implement real sell order
-            Log.trade.info("Real sell order execution not implemented")
+            await executeTradeOrder(tradeRequest)
         }
     }
     

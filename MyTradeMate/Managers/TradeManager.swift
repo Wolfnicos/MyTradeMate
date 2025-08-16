@@ -27,24 +27,52 @@ public final class TradeManager: ObservableObject {
     
         public func manualOrder(_ req: OrderRequest) async throws -> OrderFill {
         guard await risk.canTrade(equity: equity) else {
-            throw NSError(domain: "TradeManager", code: 1,
-                          userInfo: [NSLocalizedDescriptionKey: "Daily loss limit reached"])
+            throw AppError.riskLimitExceeded(limit: "Daily loss limit reached")
         }
 
-        let fill = try await exchangeClient.placeMarketOrder(req)
-        fills.append(fill)
+        do {
+            let fill = try await exchangeClient.placeMarketOrder(req)
+            fills.append(fill)
 
-        var pos = position ?? Position(symbol: req.symbol, quantity: 0, avgPrice: 0)
-        let (newPos, realized) = applyFill(fill: fill, to: pos)
-        
-        if realized != 0 {
-            equity += realized
-            await risk.record(realizedPnL: realized, equity: equity)
-            await PnLManager.shared.addRealized(realized)
+            var pos = position ?? Position(symbol: req.symbol, quantity: 0, avgPrice: 0)
+            let (newPos, realized) = applyFill(fill: fill, to: pos)
+            
+            if realized != 0 {
+                equity += realized
+                await risk.record(realizedPnL: realized, equity: equity)
+                await PnLManager.shared.addRealized(realized)
+            }
+            
+            position = newPos.isFlat ? nil : newPos
+            return fill
+        } catch let error as ExchangeError {
+            // Convert ExchangeError to AppError for consistent error handling
+            let appError = convertExchangeError(error, for: req)
+            throw appError
+        } catch {
+            // Handle any other errors
+            throw AppError.tradeExecutionFailed(details: error.localizedDescription)
         }
-        
-        position = newPos.isFlat ? nil : newPos
-        return fill
+    }
+    
+    /// Convert ExchangeError to AppError with appropriate context
+    private func convertExchangeError(_ error: ExchangeError, for request: OrderRequest) -> AppError {
+        switch error {
+        case .invalidResponse:
+            return .tradeExecutionFailed(details: "Invalid response from exchange")
+        case .networkError(let underlying):
+            return .tradeExecutionFailed(details: "Network error: \(underlying.localizedDescription)")
+        case .missingCredentials:
+            return .credentialsNotFound(exchange: exchangeClient.exchange.rawValue)
+        case .rateLimitExceeded:
+            return .tradeExecutionFailed(details: "Rate limit exceeded. Please wait before placing another order")
+        case .serverError(let message):
+            return .tradeExecutionFailed(details: "Exchange server error: \(message)")
+        case .invalidConfiguration:
+            return .invalidConfiguration(component: "Exchange client")
+        case .securityValidationFailed:
+            return .networkSecurityFailed(reason: "Exchange security validation failed")
+        }
     }
     
     /// Apply a fill to a position, correctly handling both long and short positions

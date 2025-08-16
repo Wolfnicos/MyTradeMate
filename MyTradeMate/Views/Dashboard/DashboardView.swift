@@ -190,6 +190,7 @@ struct DashboardView: View {
                 controlsSection
                 signalCardSection
                 quickActionsSection
+                activeOrdersSection
                 positionsPreviewSection
                 connectionStatusSection
             }
@@ -217,11 +218,35 @@ struct DashboardView: View {
                         onCancel: {
                             vm.cancelTrade()
                         },
-                        isExecuting: vm.isExecutingTrade
+                        onExecutionComplete: { success in
+                            if success {
+                                vm.showSuccessToast("Order executed successfully")
+                            } else {
+                                vm.showErrorToast("Order execution failed")
+                            }
+                        }
                     )
                     .padding()
                 }
                 .animation(.easeInOut(duration: 0.3), value: vm.showingTradeConfirmation)
+            }
+        }
+        .overlay(alignment: .top) {
+            if vm.showingToast {
+                ToastView(
+                    type: vm.toastType,
+                    title: vm.toastMessage,
+                    onDismiss: {
+                        vm.showingToast = false
+                    }
+                )
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+                .transition(.asymmetric(
+                    insertion: .move(edge: .top).combined(with: .opacity),
+                    removal: .move(edge: .top).combined(with: .opacity)
+                ))
+                .animation(.easeInOut(duration: 0.3), value: vm.showingToast)
             }
         }
     }
@@ -510,6 +535,11 @@ struct DashboardView: View {
                 .opacity(vm.tradingMode == .auto || vm.isExecutingTrade ? 0.5 : 1.0)
             }
         }
+    }
+    
+    // MARK: - Active Orders Section
+    private var activeOrdersSection: some View {
+        ActiveOrdersView()
     }
     
     // MARK: - Positions Preview Section

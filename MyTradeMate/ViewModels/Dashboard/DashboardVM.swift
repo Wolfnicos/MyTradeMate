@@ -106,6 +106,11 @@ final class DashboardVM: ObservableObject {
     @Published var pendingTradeRequest: TradeRequest?
     @Published var isExecutingTrade = false
     
+    // Toast notifications
+    @Published var showingToast = false
+    @Published var toastMessage = ""
+    @Published var toastType: ToastType = .success
+    
     // Computed property for backwards compatibility
     var isPrecisionMode: Bool {
         get { precisionMode }
@@ -780,6 +785,9 @@ final class DashboardVM: ObservableObject {
                 // Show success feedback
                 HapticFeedback.success()
                 
+                // Show success toast
+                showTradeSuccessToast(fill: fill)
+                
                 // Update last trade time for auto trading cooldown
                 lastAutoTradeTime = Date()
                 
@@ -790,6 +798,9 @@ final class DashboardVM: ObservableObject {
                 
                 // Show error feedback
                 HapticFeedback.error()
+                
+                // Show error toast
+                showTradeErrorToast(error: error)
             }
         }
     }
@@ -858,5 +869,67 @@ final class DashboardVM: ObservableObject {
     
     deinit {
         refreshTimer?.invalidate()
+    }
+    
+    // MARK: - Toast Methods
+    
+    private func showTradeSuccessToast(fill: OrderFill) {
+        let symbol = fill.symbol.display
+        let side = fill.side.rawValue.capitalized
+        let amount = formatAmount(fill.quantity)
+        
+        toastMessage = "\(side) order for \(amount) \(symbol) submitted successfully"
+        toastType = .success
+        showingToast = true
+        
+        // Auto-dismiss after 3 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+            self.showingToast = false
+        }
+    }
+    
+    private func showTradeErrorToast(error: Error) {
+        toastMessage = "Order failed: \(error.localizedDescription)"
+        toastType = .error
+        showingToast = true
+        
+        // Auto-dismiss after 5 seconds for errors
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+            self.showingToast = false
+        }
+    }
+    
+    // MARK: - Public Toast Methods
+    
+    func showSuccessToast(_ message: String) {
+        toastMessage = message
+        toastType = .success
+        showingToast = true
+        
+        // Auto-dismiss after 3 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+            self.showingToast = false
+        }
+    }
+    
+    func showErrorToast(_ message: String) {
+        toastMessage = message
+        toastType = .error
+        showingToast = true
+        
+        // Auto-dismiss after 5 seconds for errors
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+            self.showingToast = false
+        }
+    }
+    
+    private func formatAmount(_ amount: Double) -> String {
+        if amount >= 1.0 {
+            return String(format: "%.4f", amount)
+        } else if amount >= 0.001 {
+            return String(format: "%.6f", amount)
+        } else {
+            return String(format: "%.8f", amount)
+        }
     }
 }

@@ -6,17 +6,83 @@ struct TradesView: View {
     
     var body: some View {
         NavigationStack {
-            ScrollView {
-                LazyVStack(spacing: 16) {
-                    if vm.isLoading {
-                        loadingView
-                    } else if vm.trades.isEmpty {
-                        emptyStateView
-                    } else {
-                        tradesListView
+            VStack(spacing: 0) {
+                // Search bar
+                HStack {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(.secondary)
+                    
+                    TextField("Search symbols...", text: $vm.searchText)
+                        .textFieldStyle(.plain)
+                        .onChange(of: vm.searchText) { _, newValue in
+                            vm.updateSearch(newValue)
+                        }
+                    
+                    if !vm.searchText.isEmpty {
+                        Button(action: { vm.updateSearch("") }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
-                .padding()
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+                .background(Color(.systemGray6))
+                .cornerRadius(8)
+                .padding(.horizontal)
+                .padding(.top, 8)
+                
+                // Filter and Sort controls
+                HStack(spacing: 16) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Filter")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        Picker("Filter", selection: $vm.filterOption) {
+                            ForEach(TradeFilterOption.allCases) { option in
+                                Text(option.rawValue).tag(option)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .onChange(of: vm.filterOption) { _, newValue in
+                            vm.updateFilter(newValue)
+                        }
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Sort by")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        Picker("Sort", selection: $vm.sortOption) {
+                            ForEach(TradeSortOption.allCases) { option in
+                                Text(option.rawValue).tag(option)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .onChange(of: vm.sortOption) { _, newValue in
+                            vm.updateSort(newValue)
+                        }
+                    }
+                    
+                    Spacer()
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+                
+                ScrollView {
+                    LazyVStack(spacing: 16) {
+                        if vm.isLoading {
+                            loadingView
+                        } else if vm.filteredTrades.isEmpty {
+                            emptyStateView
+                        } else {
+                            tradesListView
+                        }
+                    }
+                    .padding()
+                }
             }
             .navigationTitle("Trades")
             .navigationBarTitleDisplayMode(.large)
@@ -85,7 +151,7 @@ struct TradesView: View {
     }
     
     private var tradesListView: some View {
-        ForEach(vm.trades) { trade in
+        ForEach(vm.filteredTrades) { trade in
             TradeRowView(trade: trade)
         }
     }

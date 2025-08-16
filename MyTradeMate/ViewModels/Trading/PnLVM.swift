@@ -1,6 +1,35 @@
 import Foundation
 import Combine
 
+enum PnLDateFilter: String, CaseIterable, Identifiable {
+    case all = "All Time"
+    case today = "Today"
+    case week = "7 Days"
+    case month = "30 Days"
+    case quarter = "90 Days"
+    
+    var id: String { rawValue }
+    
+    var dateRange: (Date?, Date?) {
+        let calendar = Calendar.current
+        let now = Date()
+        
+        switch self {
+        case .all:
+            return (nil, nil)
+        case .today:
+            let start = calendar.startOfDay(for: now)
+            return (start, now)
+        case .week:
+            return (calendar.date(byAdding: .day, value: -7, to: now), now)
+        case .month:
+            return (calendar.date(byAdding: .day, value: -30, to: now), now)
+        case .quarter:
+            return (calendar.date(byAdding: .day, value: -90, to: now), now)
+        }
+    }
+}
+
 @MainActor
 final class PnLVM: ObservableObject {
     @Published var today: Double = 0
@@ -10,6 +39,9 @@ final class PnLVM: ObservableObject {
     @Published var timeframe: Timeframe = .h1
     @Published var isLoading: Bool = false
     @Published var performanceMetrics: PnLMetrics?
+    @Published var dateFilter: PnLDateFilter = .all
+    @Published var symbolFilter: String = "All"
+    @Published var availableSymbols: [String] = ["All"]
     
     private var timer: AnyCancellable?
     private var rawHistory: [(Date, Double)] = []
@@ -68,15 +100,20 @@ final class PnLVM: ObservableObject {
             await PnLManager.shared.resetIfNeeded()
             let snap = await PnLManager.shared.snapshot(price: lp, position: pos, equity: eq)
             
-            // Get fills and calculate performance metrics
+            // Get fills and calculate performance metrics with filters applied
             let fills = await TradeManager.shared.fillsSnapshot()
-            let metrics = PnLMetricsAggregator.compute(from: fills)
+            let filteredFills = self.applyFilters(to: fills)
+            let metrics = PnLMetricsAggregator.compute(from: filteredFills)
+            
+            // Update available symbols
+            let symbols = Set(fills.map { $0.symbol.raw }).sorted()
             
             await MainActor.run {
                 self.today = snap.realizedToday
                 self.unrealized = snap.unrealized
                 self.equity = snap.equity
                 self.performanceMetrics = metrics
+                self.availableSymbols = ["All"] + symbols
                 
                 // Add to raw history
                 self.rawHistory.append((snap.ts, self.equity))
@@ -93,6 +130,38 @@ final class PnLVM: ObservableObject {
                 self.isLoading = false
             }
         }
+    }
+    
+    private func applyFilters(to fills: [OrderFill]) -> [OrderFill] {
+        var filtered = fills
+        
+        // Apply date filter
+        let (startDate, endDate) = dateFilter.dateRange
+        if let start = startDate {
+            filtered = filtered.filter { $0.timestamp >= start }
+        }
+        if let end = endDate {
+            filtered = filtered.filter { $0.timestamp <= end }
+        }
+        
+        // Apply symbol filter
+        if symbolFilter != "All" {
+            filtered = filtered.filter { $0.symbol.raw == symbolFilter }
+        }
+        
+        return filtered
+    }
+    
+    func updateDateFilter(_ newFilter: PnLDateFilter) {
+        dateFilter = newFilter
+        isLoading = true
+        refresh()
+    }
+    
+    func updateSymbolFilter(_ newSymbol: String) {
+        symbolFilter = newSymbol
+        isLoading = true
+        refresh()
     }
     
     private func aggregateHistory() {

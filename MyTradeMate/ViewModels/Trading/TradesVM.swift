@@ -5,6 +5,25 @@ import OSLog
 
 private let logger = Logger(subsystem: "com.mytrademate", category: "Trades")
 
+enum TradeSortOption: String, CaseIterable, Identifiable {
+    case dateNewest = "Date (Newest)"
+    case dateOldest = "Date (Oldest)"
+    case priceHighest = "Price (Highest)"
+    case priceLowest = "Price (Lowest)"
+    case quantityLargest = "Quantity (Largest)"
+    case quantitySmallest = "Quantity (Smallest)"
+    
+    var id: String { rawValue }
+}
+
+enum TradeFilterOption: String, CaseIterable, Identifiable {
+    case all = "All Trades"
+    case buyOnly = "Long Only"
+    case sellOnly = "Short Only"
+    
+    var id: String { rawValue }
+}
+
 @MainActor
 final class TradesVM: ObservableObject {
     // MARK: - Published Properties
@@ -14,6 +33,9 @@ final class TradesVM: ObservableObject {
     @Published var totalPnLPercent: Double = 0.0
     @Published var isLoading = false
     @Published var errorMessage: String?
+    @Published var searchText: String = ""
+    @Published var filterOption: TradeFilterOption = .all
+    @Published var sortOption: TradeSortOption = .dateNewest
     
     // MARK: - Private Properties
     private var cancellables = Set<AnyCancellable>()
@@ -31,6 +53,49 @@ final class TradesVM: ObservableObject {
     
     var hasOpenPositions: Bool {
         !openPositions.isEmpty
+    }
+    
+    var trades: [Trade] {
+        openPositions
+    }
+    
+    var filteredTrades: [Trade] {
+        var filtered = trades
+        
+        // Apply search filter
+        if !searchText.isEmpty {
+            filtered = filtered.filter { trade in
+                trade.symbol.localizedCaseInsensitiveContains(searchText)
+            }
+        }
+        
+        // Apply side filter
+        switch filterOption {
+        case .all:
+            break
+        case .buyOnly:
+            filtered = filtered.filter { $0.side == .long }
+        case .sellOnly:
+            filtered = filtered.filter { $0.side == .short }
+        }
+        
+        // Apply sorting
+        switch sortOption {
+        case .dateNewest:
+            filtered.sort { $0.timestamp > $1.timestamp }
+        case .dateOldest:
+            filtered.sort { $0.timestamp < $1.timestamp }
+        case .priceHighest:
+            filtered.sort { $0.currentPrice > $1.currentPrice }
+        case .priceLowest:
+            filtered.sort { $0.currentPrice < $1.currentPrice }
+        case .quantityLargest:
+            filtered.sort { $0.size > $1.size }
+        case .quantitySmallest:
+            filtered.sort { $0.size < $1.size }
+        }
+        
+        return filtered
     }
     
     // MARK: - Initialization
@@ -214,6 +279,19 @@ final class TradesVM: ObservableObject {
         for position in openPositions {
             executeClose(position)
         }
+    }
+    
+    // MARK: - Filtering and Sorting
+    func updateSort(_ newSort: TradeSortOption) {
+        sortOption = newSort
+    }
+    
+    func updateFilter(_ newFilter: TradeFilterOption) {
+        filterOption = newFilter
+    }
+    
+    func updateSearch(_ newSearch: String) {
+        searchText = newSearch
     }
     
     deinit {

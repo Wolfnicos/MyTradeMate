@@ -55,6 +55,45 @@ struct PnLDetailView: View {
                         print("🖥️ PnL timeframe=\(newValue.rawValue)")
                     }
                 }
+                
+                // Filter controls
+                HStack(spacing: 16) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Date Range")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        Picker("Date Filter", selection: $vm.dateFilter) {
+                            ForEach(PnLDateFilter.allCases) { filter in
+                                Text(filter.rawValue).tag(filter)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .onChange(of: vm.dateFilter) { _, newValue in
+                            vm.updateDateFilter(newValue)
+                        }
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Symbol")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        Picker("Symbol Filter", selection: $vm.symbolFilter) {
+                            ForEach(vm.availableSymbols, id: \.self) { symbol in
+                                Text(symbol).tag(symbol)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .onChange(of: vm.symbolFilter) { _, newValue in
+                            vm.updateSymbolFilter(newValue)
+                        }
+                    }
+                    
+                    Spacer()
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 8)
             
             Group {
                 if vm.isLoading {

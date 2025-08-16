@@ -7,40 +7,8 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("Market Data") {
-                    Toggle("Live Market Data", isOn: $settings.liveMarketData)
-                        .help("Connect to live exchange data")
-                    
-                    HStack {
-                        Text("Default Symbol")
-                        Spacer()
-                        Text(settings.defaultSymbol)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    HStack {
-                        Text("Default Timeframe")
-                        Spacer()
-                        Text(settings.defaultTimeframe)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                
-                Section("AI Settings") {
-                    Toggle("Demo Mode", isOn: $settings.demoMode)
-                        .help("Use simulated AI predictions for testing")
-                    
-                    Toggle("AI Debug Mode", isOn: $settings.aiDebugMode)
-                        .help("Enable additional AI diagnostics")
-                    
-                    Toggle("Verbose AI Logs", isOn: $settings.verboseAILogs)
-                        .help("Show detailed AI processing logs")
-                    
-                    Toggle("PnL Demo Mode", isOn: $settings.pnlDemoMode)
-                        .help("Use synthetic PnL data for testing")
-                }
-                
-                Section("Trading") {
+                // MARK: - Trading Section
+                Section {
                     // Enhanced trading mode display
                     HStack {
                         Text("Current Mode")
@@ -70,6 +38,9 @@ struct SettingsView: View {
                     Toggle("Demo Mode", isOn: $settings.demoMode)
                         .help("Use simulated trading for testing")
                     
+                    Toggle("Auto Trading", isOn: $settings.autoTrading)
+                        .help("Allow AI strategies to place trades automatically when conditions are met")
+                    
                     Toggle("Confirm Trades", isOn: $settings.confirmTrades)
                         .help("Show confirmation dialog before placing trades")
                     
@@ -77,54 +48,69 @@ struct SettingsView: View {
                         .help("Simulate trades without real money")
                         .disabled(settings.demoMode)
                     
-                    Toggle("Auto Trading", isOn: $settings.autoTrading)
-                        .help("Enable automated trading based on signals")
-                        .disabled(!settings.confirmTrades)
-                }
-                
-                Section("Strategies") {
-                    NavigationLink("RSI Strategy") {
-                        Text("RSI Configuration")
-                            .navigationTitle("RSI Strategy")
+                    Toggle("Live Market Data", isOn: $settings.liveMarketData)
+                        .help("Connect to live exchange data")
+                    
+                    HStack {
+                        Text("Default Symbol")
+                        Spacer()
+                        Text(settings.defaultSymbol)
+                            .foregroundColor(.secondary)
                     }
                     
-                    NavigationLink("EMA Strategy") {
-                        Text("EMA Configuration")
-                            .navigationTitle("EMA Strategy")
+                    HStack {
+                        Text("Default Timeframe")
+                        Spacer()
+                        Text(settings.defaultTimeframe)
+                            .foregroundColor(.secondary)
                     }
                     
-                    NavigationLink("ATR Strategy") {
-                        Text("ATR Configuration")
-                            .navigationTitle("ATR Strategy")
+                    NavigationLink("Strategy Configuration") {
+                        List {
+                            Section {
+                                Text("Strategy configuration will be implemented in a future update")
+                                    .foregroundColor(.secondary)
+                            } header: {
+                                Text("Available Strategies")
+                            }
+                        }
+                        .navigationTitle("Strategy Configuration")
+                        .navigationBarTitleDisplayMode(.inline)
                     }
+                } header: {
+                    Label("Trading", systemImage: "chart.line.uptrend.xyaxis")
+                } footer: {
+                    Text("Configure trading behavior, market data sources, and strategy settings.")
                 }
                 
-                Section("Exchanges") {
+                // MARK: - Security Section
+                Section {
                     Button("Manage API Keys") {
                         navigationCoordinator.navigate(to: .exchangeKeys, in: .settings)
                     }
                     .foregroundColor(.primary)
                     
-                    NavigationLink("Binance") {
-                        Text("Binance Configuration")
-                            .navigationTitle("Binance")
+                    NavigationLink("Binance Configuration") {
+                        BinanceKeysView()
                     }
                     
-                    NavigationLink("Kraken") {
-                        Text("Kraken Configuration")
-                            .navigationTitle("Kraken")
+                    NavigationLink("Kraken Configuration") {
+                        KrakenKeysView()
                     }
-                }
-                
-                Section("Interface") {
+                    
                     Toggle("Dark Mode", isOn: $settings.darkMode)
                         .help("Use dark color scheme")
                     
                     Toggle("Haptic Feedback", isOn: $settings.haptics)
                         .help("Enable tactile feedback for interactions")
+                } header: {
+                    Label("Security", systemImage: "key")
+                } footer: {
+                    Text("Manage exchange API credentials and app security settings.")
                 }
                 
-                Section("Diagnostics") {
+                // MARK: - Diagnostics Section
+                Section {
                     HStack {
                         Text("App Version")
                         Spacer()
@@ -139,15 +125,44 @@ struct SettingsView: View {
                             .foregroundColor(.secondary)
                     }
                     
-                    Button("Export Diagnostics") {
-                        // Export functionality
+                    Toggle("AI Debug Mode", isOn: $settings.aiDebugMode)
+                        .help("Enable additional AI diagnostics")
+                    
+                    Toggle("Verbose AI Logs", isOn: $settings.verboseAILogs)
+                        .help("Show detailed AI processing logs")
+                    
+                    Toggle("PnL Demo Mode", isOn: $settings.pnlDemoMode)
+                        .help("Use synthetic PnL data for testing")
+                    
+                    Button("Export Logs") {
+                        exportDiagnosticLogs()
                     }
                     .foregroundColor(.blue)
+                    
+                    Button("Run System Check") {
+                        runSystemDiagnostics()
+                    }
+                    .foregroundColor(.blue)
+                } header: {
+                    Label("Diagnostics", systemImage: "stethoscope")
+                } footer: {
+                    Text("Debug settings, system information, and diagnostic tools for troubleshooting.")
                 }
             }
             .navigationTitle("Settings")
         }
         .preferredColorScheme(settings.darkMode ? .dark : .light)
+    }
+    
+    // MARK: - Helper Methods
+    private func exportDiagnosticLogs() {
+        // Export functionality will be implemented in a separate task
+        print("Export diagnostic logs requested")
+    }
+    
+    private func runSystemDiagnostics() {
+        // System diagnostics functionality
+        print("System diagnostics requested")
     }
 }
 

@@ -21,7 +21,12 @@ public final class BinanceLiveClient: ExchangeClient {
     }
     
     public func placeMarketOrder(_ req: OrderRequest) async throws -> OrderFill {
-        throw NSError(domain: "LiveTradingDisabled", code: 1, 
-                     userInfo: [NSLocalizedDescriptionKey: "Live trading is disabled in this build."])
+        // Validate API credentials
+        guard !apiKey.isEmpty && !secret.isEmpty else {
+            throw ExchangeError.missingCredentials
+        }
+        
+        // For now, live trading is disabled for safety
+        throw ExchangeError.serverError("Live trading is disabled in this build for safety. Please use demo mode.")
     }
 }

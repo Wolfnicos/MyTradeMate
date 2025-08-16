@@ -28,14 +28,43 @@ public actor PaperExchangeClient: ExchangeClient {
     }
     
     public func placeMarketOrder(_ req: OrderRequest) async throws -> OrderFill {
-        let price = try await bestPrice(for: req.symbol)
-        return OrderFill(
-            id: UUID(),
-            symbol: req.symbol,
-            side: req.side,
-            quantity: req.quantity,
-            price: price,
-            timestamp: Date()
-        )
+        // Validate order parameters
+        guard req.quantity > 0 else {
+            throw ExchangeError.invalidConfiguration
+        }
+        
+        // Simulate potential network issues (5% chance)
+        if Double.random(in: 0...1) < 0.05 {
+            throw ExchangeError.networkError(URLError(.networkConnectionLost))
+        }
+        
+        // Simulate rate limiting (2% chance)
+        if Double.random(in: 0...1) < 0.02 {
+            throw ExchangeError.rateLimitExceeded
+        }
+        
+        do {
+            let price = try await bestPrice(for: req.symbol)
+            
+            // Simulate server errors (1% chance)
+            if Double.random(in: 0...1) < 0.01 {
+                throw ExchangeError.serverError("Internal server error")
+            }
+            
+            return OrderFill(
+                id: UUID(),
+                symbol: req.symbol,
+                side: req.side,
+                quantity: req.quantity,
+                price: price,
+                timestamp: Date()
+            )
+        } catch {
+            if error is ExchangeError {
+                throw error
+            } else {
+                throw ExchangeError.invalidResponse
+            }
+        }
     }
 }
