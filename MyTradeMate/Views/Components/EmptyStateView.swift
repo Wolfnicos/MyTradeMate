@@ -30,22 +30,35 @@ struct EmptyStateView: View {
     let description: String
     let actionButton: (() -> Void)?
     let actionButtonTitle: String?
+    let useIllustration: Bool
     
     init(
         icon: String,
         title: String,
         description: String,
         actionButton: (() -> Void)? = nil,
-        actionButtonTitle: String? = nil
+        actionButtonTitle: String? = nil,
+        useIllustration: Bool = false
     ) {
         self.icon = icon
         self.title = title
         self.description = description
         self.actionButton = actionButton
         self.actionButtonTitle = actionButtonTitle
+        self.useIllustration = useIllustration
     }
     
     var body: some View {
+        if useIllustration {
+            // Use the illustrated version when requested
+            illustratedVersion
+        } else {
+            // Use the original simple version
+            simpleVersion
+        }
+    }
+    
+    private var simpleVersion: some View {
         VStack(spacing: Spacing.lg) {
             Image(systemName: icon)
                 .font(.system(size: 48))
@@ -71,6 +84,50 @@ struct EmptyStateView: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(title). \(description)")
     }
+    
+    @ViewBuilder
+    private var illustratedVersion: some View {
+        // Map to appropriate illustrated empty state based on icon
+        switch icon {
+        case "chart.line.uptrend.xyaxis":
+            IllustratedEmptyStateView.chartNoData(
+                title: title,
+                description: description,
+                actionButton: actionButton,
+                actionButtonTitle: actionButtonTitle
+            )
+        case "dollarsign.circle":
+            IllustratedEmptyStateView.pnlNoData(
+                title: title,
+                description: description,
+                actionButton: actionButton,
+                actionButtonTitle: actionButtonTitle
+            )
+        case "list.bullet.rectangle":
+            IllustratedEmptyStateView.tradesNoData(
+                title: title,
+                description: description,
+                actionButton: actionButton,
+                actionButtonTitle: actionButtonTitle
+            )
+        case "brain.head.profile":
+            IllustratedEmptyStateView.strategiesNoData(
+                title: title,
+                description: description,
+                actionButton: actionButton,
+                actionButtonTitle: actionButtonTitle
+            )
+        case "antenna.radiowaves.left.and.right":
+            IllustratedEmptyStateView.aiSignalNoData(
+                title: title,
+                description: description,
+                actionButton: actionButton,
+                actionButtonTitle: actionButtonTitle
+            )
+        default:
+            simpleVersion
+        }
+    }
 }
 
 // MARK: - Convenience Initializers
@@ -81,14 +138,16 @@ extension EmptyStateView {
         title: String = "No Chart Data",
         description: String = "Market data is loading or unavailable",
         actionButton: (() -> Void)? = nil,
-        actionButtonTitle: String? = nil
+        actionButtonTitle: String? = nil,
+        useIllustration: Bool = false
     ) -> EmptyStateView {
         EmptyStateView(
             icon: "chart.line.uptrend.xyaxis",
             title: title,
             description: description,
             actionButton: actionButton,
-            actionButtonTitle: actionButtonTitle
+            actionButtonTitle: actionButtonTitle,
+            useIllustration: useIllustration
         )
     }
     
@@ -97,14 +156,16 @@ extension EmptyStateView {
         title: String = "No Trading Data",
         description: String = "Start trading to see performance here",
         actionButton: (() -> Void)? = nil,
-        actionButtonTitle: String? = nil
+        actionButtonTitle: String? = nil,
+        useIllustration: Bool = false
     ) -> EmptyStateView {
         EmptyStateView(
             icon: "dollarsign.circle",
             title: title,
             description: description,
             actionButton: actionButton,
-            actionButtonTitle: actionButtonTitle
+            actionButtonTitle: actionButtonTitle,
+            useIllustration: useIllustration
         )
     }
     
@@ -113,14 +174,16 @@ extension EmptyStateView {
         title: String = "No Trades Yet",
         description: String = "Start trading to see performance here",
         actionButton: (() -> Void)? = nil,
-        actionButtonTitle: String? = nil
+        actionButtonTitle: String? = nil,
+        useIllustration: Bool = false
     ) -> EmptyStateView {
         EmptyStateView(
             icon: "list.bullet.rectangle",
             title: title,
             description: description,
             actionButton: actionButton,
-            actionButtonTitle: actionButtonTitle
+            actionButtonTitle: actionButtonTitle,
+            useIllustration: useIllustration
         )
     }
     
@@ -129,14 +192,16 @@ extension EmptyStateView {
         title: String = "No Strategies Available",
         description: String = "Trading strategies will appear here when loaded",
         actionButton: (() -> Void)? = nil,
-        actionButtonTitle: String? = nil
+        actionButtonTitle: String? = nil,
+        useIllustration: Bool = false
     ) -> EmptyStateView {
         EmptyStateView(
             icon: "brain.head.profile",
             title: title,
             description: description,
             actionButton: actionButton,
-            actionButtonTitle: actionButtonTitle
+            actionButtonTitle: actionButtonTitle,
+            useIllustration: useIllustration
         )
     }
 }

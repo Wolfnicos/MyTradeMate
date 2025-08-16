@@ -40,20 +40,11 @@ struct StrategiesView: View {
     
     private var emptyStateView: some View {
         VStack(spacing: 20) {
-            Image(systemName: "brain.head.profile")
-                .font(.system(size: 64))
-                .foregroundColor(.secondary)
-            
-            VStack(spacing: 8) {
-                Text("No Strategies Available")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                
-                Text("Trading strategies will be loaded here")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-            }
+            EmptyStateView.strategiesNoData(
+                title: "No Strategies Available",
+                description: "Trading strategies will be loaded here",
+                useIllustration: true
+            )
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.top, 100)
@@ -121,19 +112,12 @@ struct StrategiesView: View {
                     .foregroundColor(.secondary)
                     .padding(.top, 4)
             } else {
-                VStack(spacing: 8) {
-                    Image(systemName: "brain")
-                        .font(.system(size: 24))
-                        .foregroundColor(.secondary)
-                    
-                    Text("No ensemble signal available")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                    
-                    Text("Enable strategies to generate signals")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
+                EmptyStateView(
+                    icon: "antenna.radiowaves.left.and.right",
+                    title: "No Ensemble Signal",
+                    description: "Enable strategies to generate signals",
+                    useIllustration: true
+                )
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
             }

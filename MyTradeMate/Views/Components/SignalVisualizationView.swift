@@ -57,9 +57,10 @@ struct SignalVisualizationView: View {
     // MARK: - Empty Signal View
     private var emptySignalView: EmptyStateView {
         EmptyStateView(
-            icon: "brain",
+            icon: "antenna.radiowaves.left.and.right",
             title: "No Signal Available",
-            description: "No clear trading signal right now. The AI is monitoring market conditions."
+            description: "No clear trading signal right now. The AI is monitoring market conditions.",
+            useIllustration: true
         )
     }
 }

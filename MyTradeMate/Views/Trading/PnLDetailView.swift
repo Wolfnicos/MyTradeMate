@@ -113,30 +113,13 @@ struct PnLDetailView: View {
                     .frame(maxWidth: .infinity)
                     .frame(height: 280)
                 } else if vm.history.isEmpty {
-                    // Empty state for P&L charts when no trading data exists
-                    VStack(spacing: 16) {
-                        Image(systemName: "dollarsign.circle")
-                            .font(.system(size: 48))
-                            .foregroundColor(.secondary)
-                        
-                        VStack(spacing: 8) {
-                            Text("No P&L History")
-                                .font(.headline)
-                                .fontWeight(.medium)
-                                .foregroundColor(.primary)
-                            
-                            Text("Your profit and loss chart will appear here once you start trading")
-                                .font(.body)
-                                .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
-                                .lineLimit(3)
-                        }
-                    }
-                    .padding()
-                    .frame(maxWidth: .infinity)
+                    // Empty state for P&L charts when no trading data exists with illustration
+                    EmptyStateView.pnlNoData(
+                        title: "No P&L History",
+                        description: "Your profit and loss chart will appear here once you start trading",
+                        useIllustration: true
+                    )
                     .frame(height: 280)
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel("No P&L History. Your profit and loss chart will appear here once you start trading")
                 } else {
                     VStack(spacing: 12) {
                         // Chart legend explaining what the chart shows

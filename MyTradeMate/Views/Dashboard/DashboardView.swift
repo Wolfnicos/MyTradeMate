@@ -43,27 +43,13 @@ struct CandleChartView: View {
     var body: some View {
         VStack(spacing: Spacing.md) {
             if data.isEmpty {
-                // Empty state for charts when no data is available
-                VStack(spacing: Spacing.lg) {
-                    Image(systemName: "chart.line.uptrend.xyaxis")
-                        .font(.system(size: 48))
-                        .foregroundColor(.secondary)
-                    
-                    VStack(spacing: Spacing.sm) {
-                        Text("No Chart Data")
-                            .headlineStyle()
-                        
-                        Text("No price data available for the selected timeframe")
-                            .bodyStyle()
-                            .multilineTextAlignment(.center)
-                            .lineLimit(3)
-                    }
-                }
-                .padding(Spacing.lg)
-                .frame(maxWidth: .infinity)
+                // Empty state for charts when no data is available with illustration
+                EmptyStateView.chartNoData(
+                    title: "No Chart Data",
+                    description: "No price data available for the selected timeframe",
+                    useIllustration: true
+                )
                 .frame(height: 280)
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel("No Chart Data. No price data available for the selected timeframe")
             } else {
                 VStack(spacing: Spacing.sm) {
                     // Chart legend
@@ -361,20 +347,12 @@ struct DashboardView: View {
             } else if !vm.candles.isEmpty {
                 CandlestickChart(candles: vm.candles, timeframe: vm.timeframe)
             } else {
-                VStack(spacing: Spacing.lg) {
-                    Image(systemName: "chart.line.uptrend.xyaxis")
-                        .font(.system(size: 48))
-                        .foregroundColor(.secondary)
-                    
-                    Text("No chart data available")
-                        .calloutMediumStyle()
-                    
-                    Text("Check your connection or try a different symbol")
-                        .caption1Style()
-                        .multilineTextAlignment(.center)
-                }
+                EmptyStateView.chartNoData(
+                    title: "No Chart Data Available",
+                    description: "Check your connection or try a different symbol",
+                    useIllustration: true
+                )
                 .frame(height: 280)
-                .frame(maxWidth: .infinity)
             }
         }
         .background(Color(.secondarySystemBackground))

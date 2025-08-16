@@ -121,20 +121,11 @@ struct TradesView: View {
     
     private var emptyStateView: some View {
         VStack(spacing: 20) {
-            Image(systemName: "list.bullet.rectangle")
-                .font(.system(size: 64))
-                .foregroundColor(.secondary)
-            
-            VStack(spacing: 8) {
-                Text("No Trades Yet")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                
-                Text("Start trading to see performance here")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-            }
+            EmptyStateView.tradesNoData(
+                title: "No Trades Yet",
+                description: "Start trading to see performance here",
+                useIllustration: true
+            )
             
             if settings.demoMode {
                 Text("Currently in demo mode")

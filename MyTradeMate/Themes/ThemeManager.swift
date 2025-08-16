@@ -80,7 +80,15 @@ final class ThemeManager: ObservableObject {
     
     private func updateTabBarAppearance() {
         let tabAppearance = UITabBarAppearance()
+        
+        // Use the same configuration as navigation bar for consistency
         tabAppearance.configureWithDefaultBackground()
+        
+        // Remove any solid background color to allow full translucency
+        tabAppearance.backgroundColor = .clear
+        
+        // Use the same blur effect as navigation bars
+        tabAppearance.backgroundEffect = UIBlurEffect(style: .systemChromeMaterial)
         
         // Ensure tab bar icons adapt properly to the current theme
         // Use system colors that automatically adapt to appearance changes
@@ -103,13 +111,12 @@ final class ThemeManager: ObservableObject {
             .foregroundColor: UIColor.systemBlue
         ]
         
-        // Apply to both standard and scroll edge appearances
+        // Apply to both standard and scroll edge appearances for consistency
         UITabBar.appearance().standardAppearance = tabAppearance
         UITabBar.appearance().scrollEdgeAppearance = tabAppearance
         
-        // Ensure the tab bar itself adapts to appearance changes
-        UITabBar.appearance().backgroundColor = UIColor.systemBackground
-        UITabBar.appearance().barTintColor = UIColor.systemBackground
+        // Ensure the tab bar is translucent like navigation bar
+        UITabBar.appearance().isTranslucent = true
     }
     
     // MARK: - Color Scheme

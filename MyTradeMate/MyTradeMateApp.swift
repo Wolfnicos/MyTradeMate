@@ -29,13 +29,26 @@ struct MyTradeMateApp: App {
     
     private func setupAppearance() {
         // Navigation bar appearance
-        let appearance = UINavigationBar.appearance()
-        appearance.largeTitleTextAttributes = [.font: UIFont.systemFont(ofSize: 34, weight: .bold)]
-        appearance.titleTextAttributes = [.font: UIFont.systemFont(ofSize: 17, weight: .semibold)]
+        let navAppearance = UINavigationBarAppearance()
+        navAppearance.configureWithDefaultBackground()
+        navAppearance.largeTitleTextAttributes = [.font: UIFont.systemFont(ofSize: 34, weight: .bold)]
+        navAppearance.titleTextAttributes = [.font: UIFont.systemFont(ofSize: 17, weight: .semibold)]
         
-        // Tab bar appearance - ensure proper light/dark mode support
+        UINavigationBar.appearance().standardAppearance = navAppearance
+        UINavigationBar.appearance().scrollEdgeAppearance = navAppearance
+        UINavigationBar.appearance().compactAppearance = navAppearance
+        
+        // Tab bar appearance - match the navigation bar's translucent blur exactly
         let tabAppearance = UITabBarAppearance()
+        
+        // Use the same configuration as navigation bar for consistency
         tabAppearance.configureWithDefaultBackground()
+        
+        // Remove any solid background color to allow full translucency
+        tabAppearance.backgroundColor = .clear
+        
+        // Use the same blur effect as navigation bars
+        tabAppearance.backgroundEffect = UIBlurEffect(style: .systemChromeMaterial)
         
         // Ensure tab bar icons adapt properly to light/dark mode
         // Use system colors that automatically adapt to appearance changes
@@ -58,13 +71,12 @@ struct MyTradeMateApp: App {
             .foregroundColor: UIColor.systemBlue
         ]
         
-        // Apply to both standard and scroll edge appearances
+        // Apply to both standard and scroll edge appearances for consistency
         UITabBar.appearance().standardAppearance = tabAppearance
         UITabBar.appearance().scrollEdgeAppearance = tabAppearance
         
-        // Ensure the tab bar itself adapts to appearance changes
-        UITabBar.appearance().backgroundColor = UIColor.systemBackground
-        UITabBar.appearance().barTintColor = UIColor.systemBackground
+        // Ensure the tab bar is translucent like navigation bar
+        UITabBar.appearance().isTranslucent = true
     }
     
     private func setupDependencyInjection() {

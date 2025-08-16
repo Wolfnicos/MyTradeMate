@@ -174,12 +174,12 @@
 **Dependencies:** Task 1
 
 **Subtasks:**
-- [ ] Design or source empty state illustrations
-- [ ] Add illustrations to empty states
-- [ ] Optimize images for different screen sizes
-- [ ] Ensure illustrations work in dark mode
-- [ ] Add subtle animations to illustrations
-- [ ] Test performance impact
+- [x] Design or source empty state illustrations
+- [x] Add illustrations to empty states
+- [x] Optimize images for different screen sizes
+- [x] Ensure illustrations work in dark mode
+- [x] Add subtle animations to illustrations
+- [x] Test performance impact
 
 #### Task 14: Create iOS 17 Widgets
 **Priority:** Low  
