@@ -4,20 +4,7 @@ import OSLog
 
 private let logger = os.Logger(subsystem: "com.mytrademate", category: "SignalManager")
 
-// MARK: - Signal Info
-struct SignalInfo {
-    let direction: String  // "BUY", "SELL", "HOLD"
-    let confidence: Double // 0-100
-    let reason: String
-    let timestamp: Date
-    
-    init(direction: String, confidence: Double, reason: String, timestamp: Date = Date()) {
-        self.direction = direction
-        self.confidence = confidence
-        self.reason = reason
-        self.timestamp = timestamp
-    }
-}
+
 
 // MARK: - Signal Manager
 @MainActor

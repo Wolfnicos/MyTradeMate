@@ -200,6 +200,30 @@ struct DashboardView: View {
         .onAppear {
             vm.refreshData()
         }
+        .overlay {
+            if vm.showingTradeConfirmation, let tradeRequest = vm.pendingTradeRequest {
+                ZStack {
+                    Color.black.opacity(0.3)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            vm.cancelTrade()
+                        }
+                    
+                    TradeConfirmationDialog(
+                        trade: tradeRequest,
+                        onConfirm: {
+                            vm.confirmTrade()
+                        },
+                        onCancel: {
+                            vm.cancelTrade()
+                        },
+                        isExecuting: vm.isExecutingTrade
+                    )
+                    .padding()
+                }
+                .animation(.easeInOut(duration: 0.3), value: vm.showingTradeConfirmation)
+            }
+        }
     }
     
     // MARK: - Header Section
@@ -216,7 +240,33 @@ struct DashboardView: View {
             }
             
             Spacer()
+            
+            // Trading Mode Indicator
+            tradingModeIndicator
         }
+    }
+    
+    // MARK: - Trading Mode Indicator
+    private var tradingModeIndicator: some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(AppSettings.shared.demoMode ? .orange : .green)
+                .frame(width: 8, height: 8)
+            
+            Text(AppSettings.shared.demoMode ? "DEMO" : "LIVE")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundColor(AppSettings.shared.demoMode ? .orange : .green)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill((AppSettings.shared.demoMode ? Color.orange : Color.green).opacity(0.1))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(AppSettings.shared.demoMode ? .orange : .green, lineWidth: 1)
+                )
+        )
     }
     
     // MARK: - Price Section
@@ -365,107 +415,101 @@ struct DashboardView: View {
     
     // MARK: - Signal Card Section
     private var signalCardSection: some View {
-        VStack(spacing: 12) {
-            if vm.isRefreshing {
-                LoadingStateView(message: "Analyzing market...")
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-            } else {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack(spacing: 8) {
-                            Text(signalDisplayText)
-                                .font(.system(size: 24, weight: .bold))
-                                .foregroundColor(signalColor)
-                            
-                            /* // Temporarily disabled
-                            if settings.demoMode {
-                                Pill(text: "DEMO", color: Accent.yellow)
-                            }
-                            */
-                        }
-                        
-                        HStack(spacing: 8) {
-                            Text(confidenceDisplayText)
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
-                            
-                            Text("•")
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
-                            
-                            Text(vm.timeframe.displayName)
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
-                            
-                            Text("•")
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
-                            
-                            Text(vm.lastUpdatedString)
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                    
-                    Spacer()
-                    
-                    Button(action: {
-                        vm.refreshPrediction()
-                    }) {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.blue)
-                            .padding(8)
-                            .background(.blue.opacity(0.1))
-                            .cornerRadius(8)
-                    }
-                    .disabled(vm.isRefreshing)
-                }
-                
-                if let reason = vm.currentSignal?.reason {
-                    Text(reason)
-                        .font(.system(size: 13))
-                        .foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
+        SignalVisualizationView(
+            signal: vm.currentSignal,
+            isRefreshing: vm.isRefreshing,
+            timeframe: vm.timeframe,
+            lastUpdated: vm.lastUpdated,
+            onRefresh: {
+                vm.refreshPrediction()
             }
-        }
-        .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(12)
+        )
     }
     
     // MARK: - Quick Actions Section
     private var quickActionsSection: some View {
-        HStack(spacing: 12) {
-            Button(action: {
-                vm.executeBuy()
-            }) {
-                Text("BUY")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 50)
-                    .background(.green)
-                    .cornerRadius(12)
+        VStack(spacing: 12) {
+            // Trading mode warning for demo mode
+            if AppSettings.shared.demoMode {
+                HStack(spacing: 8) {
+                    Image(systemName: "info.circle.fill")
+                        .foregroundColor(.orange)
+                        .font(.system(size: 14))
+                    
+                    Text("Demo Mode - No real trades will be executed")
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                    
+                    Spacer()
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(.orange.opacity(0.1))
+                .cornerRadius(8)
             }
-            .disabled(vm.tradingMode == .auto)
             
-            Button(action: {
-                vm.executeSell()
-            }) {
-                Text("SELL")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
+            // Show loading state when executing trade without confirmation
+            if vm.isExecutingTrade && !vm.showingTradeConfirmation {
+                LoadingStateView(message: "Submitting order...")
                     .frame(height: 50)
-                    .background(.red)
+                    .frame(maxWidth: .infinity)
+                    .background(Color(.secondarySystemBackground))
                     .cornerRadius(12)
+            } else {
+                HStack(spacing: 12) {
+                    Button(action: {
+                        vm.executeBuy()
+                    }) {
+                        VStack(spacing: 4) {
+                            Text("BUY")
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundColor(.white)
+                            
+                            if AppSettings.shared.demoMode {
+                                Text("DEMO")
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.8))
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .background(.green)
+                        .cornerRadius(12)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(AppSettings.shared.demoMode ? .orange.opacity(0.5) : .clear, lineWidth: 2)
+                        )
+                    }
+                    .disabled(vm.tradingMode == .auto || vm.isExecutingTrade)
+                    
+                    Button(action: {
+                        vm.executeSell()
+                    }) {
+                        VStack(spacing: 4) {
+                            Text("SELL")
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundColor(.white)
+                            
+                            if AppSettings.shared.demoMode {
+                                Text("DEMO")
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.8))
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .background(.red)
+                        .cornerRadius(12)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(AppSettings.shared.demoMode ? .orange.opacity(0.5) : .clear, lineWidth: 2)
+                        )
+                    }
+                    .disabled(vm.tradingMode == .auto || vm.isExecutingTrade)
+                }
+                .opacity(vm.tradingMode == .auto || vm.isExecutingTrade ? 0.5 : 1.0)
             }
-            .disabled(vm.tradingMode == .auto)
         }
-        .opacity(vm.tradingMode == .auto ? 0.5 : 1.0)
     }
     
     // MARK: - Positions Preview Section
@@ -553,40 +597,6 @@ struct DashboardView: View {
     }
     
     // MARK: - Helpers
-    private var signalColor: Color {
-        guard let signal = vm.currentSignal else { return .secondary }
-        switch signal.direction {
-        case "BUY": return .green
-        case "SELL": return .red
-        default: return .secondary
-        }
-    }
-    
-    private var signalDisplayText: String {
-        guard let signal = vm.currentSignal else {
-            return "No clear signal right now"
-        }
-        
-        // If confidence is very low (0% or close to 0), show user-friendly text
-        if signal.confidence < 0.01 {
-            return "No clear signal right now"
-        }
-        
-        return signal.direction.uppercased()
-    }
-    
-    private var confidenceDisplayText: String {
-        guard let signal = vm.currentSignal else {
-            return "Monitoring market conditions"
-        }
-        
-        // If confidence is very low (0% or close to 0), show user-friendly text
-        if signal.confidence < 0.01 {
-            return "Monitoring market conditions"
-        }
-        
-        return "\(Int(signal.confidence * 100))% confidence"
-    }
 }
 
 // MARK: - Sparkline Chart

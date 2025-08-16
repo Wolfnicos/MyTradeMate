@@ -39,24 +39,29 @@ struct StrategiesView: View {
     }
     
     private var emptyStateView: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 16) {
             Image(systemName: "brain.head.profile")
-                .font(.system(size: 64))
+                .font(.system(size: 48))
                 .foregroundColor(.secondary)
             
             VStack(spacing: 8) {
                 Text("No Strategies Available")
-                    .font(.title2)
-                    .fontWeight(.semibold)
+                    .font(.headline)
+                    .fontWeight(.medium)
+                    .foregroundColor(.primary)
                 
-                Text("Trading strategies will be loaded here")
-                    .font(.subheadline)
+                Text("Trading strategies will appear here when loaded")
+                    .font(.body)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
+                    .lineLimit(3)
             }
         }
+        .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.top, 100)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("No Strategies Available. Trading strategies will appear here when loaded")
     }
     
     private var strategiesListView: some View {

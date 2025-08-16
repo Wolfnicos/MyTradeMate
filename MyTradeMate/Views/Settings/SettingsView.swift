@@ -41,11 +41,41 @@ struct SettingsView: View {
                 }
                 
                 Section("Trading") {
+                    // Enhanced trading mode display
+                    HStack {
+                        Text("Current Mode")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                        
+                        Spacer()
+                        
+                        HStack(spacing: 8) {
+                            Circle()
+                                .fill(settings.demoMode ? .orange : .green)
+                                .frame(width: 8, height: 8)
+                            
+                            Text(settings.demoMode ? "DEMO MODE" : "LIVE MODE")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(settings.demoMode ? .orange : .green)
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(
+                            Capsule()
+                                .fill((settings.demoMode ? Color.orange : Color.green).opacity(0.15))
+                        )
+                    }
+                    .padding(.vertical, 4)
+                    
+                    Toggle("Demo Mode", isOn: $settings.demoMode)
+                        .help("Use simulated trading for testing")
+                    
                     Toggle("Confirm Trades", isOn: $settings.confirmTrades)
                         .help("Show confirmation dialog before placing trades")
                     
                     Toggle("Paper Trading", isOn: $settings.paperTrading)
                         .help("Simulate trades without real money")
+                        .disabled(settings.demoMode)
                     
                     Toggle("Auto Trading", isOn: $settings.autoTrading)
                         .help("Enable automated trading based on signals")

@@ -21,6 +21,24 @@ struct TradesView: View {
             .navigationTitle("Trades")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(settings.demoMode ? .orange : .green)
+                            .frame(width: 6, height: 6)
+                        
+                        Text(settings.demoMode ? "DEMO" : "LIVE")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(settings.demoMode ? .orange : .green)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule()
+                            .fill((settings.demoMode ? Color.orange : Color.green).opacity(0.15))
+                    )
+                }
+                
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Refresh") {
                         Task {
@@ -55,7 +73,7 @@ struct TradesView: View {
     
     private var emptyStateView: some View {
         VStack(spacing: 20) {
-            Image(systemName: "arrow.left.arrow.right.circle")
+            Image(systemName: "list.bullet.rectangle")
                 .font(.system(size: 64))
                 .foregroundColor(.secondary)
             
@@ -64,21 +82,40 @@ struct TradesView: View {
                     .font(.title2)
                     .fontWeight(.semibold)
                 
-                Text("Your trading history will appear here")
+                Text("Start trading to see performance here")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
             }
             
-            if settings.demoMode {
-                Text("Currently in demo mode")
+            // Enhanced trading mode indicator
+            VStack(spacing: 8) {
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(settings.demoMode ? .orange : .green)
+                        .frame(width: 8, height: 8)
+                    
+                    Text(settings.demoMode ? "Demo Mode Active" : "Live Trading Mode")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundColor(settings.demoMode ? .orange : .green)
+                }
+                
+                Text(settings.demoMode ? "Trades will be simulated" : "Real trades with actual funds")
                     .font(.caption)
-                    .foregroundColor(.orange)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 4)
-                    .background(.orange.opacity(0.1))
-                    .cornerRadius(8)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill((settings.demoMode ? Color.orange : Color.green).opacity(0.1))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(settings.demoMode ? .orange : .green, lineWidth: 1)
+                    )
+            )
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.top, 100)
@@ -93,6 +130,7 @@ struct TradesView: View {
 
 struct TradeRowView: View {
     let trade: Trade
+    @EnvironmentObject private var settings: AppSettings
     
     var body: some View {
         HStack {
@@ -104,14 +142,27 @@ struct TradeRowView: View {
                     
                     Spacer()
                     
-                    Text(trade.side.rawValue.uppercased())
-                        .font(.caption)
-                        .fontWeight(.bold)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 2)
-                        .background(trade.side == .buy ? .green : .red)
-                        .cornerRadius(4)
+                    HStack(spacing: 6) {
+                        // Trading mode indicator for individual trades
+                        Text(settings.demoMode ? "DEMO" : "LIVE")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(settings.demoMode ? .orange : .green)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(
+                                Capsule()
+                                    .fill((settings.demoMode ? Color.orange : Color.green).opacity(0.15))
+                            )
+                        
+                        Text(trade.side.rawValue.uppercased())
+                            .font(.caption)
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 2)
+                            .background(trade.side == .buy ? .green : .red)
+                            .cornerRadius(4)
+                    }
                 }
                 
                 HStack {
@@ -143,6 +194,10 @@ struct TradeRowView: View {
         .padding()
         .background(Color(.secondarySystemBackground))
         .cornerRadius(12)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(settings.demoMode ? .orange.opacity(0.3) : .clear, lineWidth: 1)
+        )
     }
 }
 

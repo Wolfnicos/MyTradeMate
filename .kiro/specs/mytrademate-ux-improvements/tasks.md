@@ -10,12 +10,13 @@
 **Dependencies:** None
 
 **Subtasks:**
-- [ ] Create `EmptyStateView` component with icon, title, description
-- [ ] Add empty state for trades list ("Start trading to see performance here")
-- [ ] Add empty state for AI signals ("No clear signal right now")
+- [x] Create `EmptyStateView` component with icon, title, description
+- [x] Add empty state for trades list ("Start trading to see performance here")
+- [x] Add empty state for AI signals ("No clear signal right now")
 - [x] Add empty state for P&L charts ("No trading data available")
-- [ ] Create empty state for strategy list
-- [ ] Add unit tests for empty state components
+- [x] Add empty state for charts when no data is available
+- [x] Create empty state for strategy list
+- [x] Add unit tests for empty state components
 
 #### Task 2: Implement Loading States
 **Priority:** High  
@@ -23,12 +24,12 @@
 **Dependencies:** None
 
 **Subtasks:**
-- [ ] Create `LoadingStateView` component with spinner and message
-- [ ] Add loading state for AI signal generation ("Analyzing market...")
-- [ ] Add loading state for P&L calculations ("Calculating performance...")
-- [ ] Add loading state for trade execution ("Submitting order...")
-- [ ] Add loading state for API key validation ("Validating keys...")
-- [ ] Implement skeleton loading for charts
+- [x] Create `LoadingStateView` component with spinner and message
+- [x] Add loading state for AI signal generation ("Analyzing market...")
+- [x] Add loading state for P&L calculations ("Calculating performance...")
+- [x] Add loading state for trade execution ("Submitting order...")
+- [x] Add loading state for API key validation ("Validating keys...")
+- [x] Implement skeleton loading for charts
 
 #### Task 3: Build Confirmation Dialog System
 **Priority:** High  
@@ -36,12 +37,12 @@
 **Dependencies:** None
 
 **Subtasks:**
-- [ ] Create `ConfirmationDialog` base component
-- [ ] Implement `TradeConfirmationDialog` with order summary
-- [ ] Add confirmation for strategy enable/disable
-- [ ] Add confirmation for settings changes
-- [ ] Add confirmation for account deletion
-- [ ] Style dialogs with proper spacing and colors
+- [x] Create `ConfirmationDialog` base component
+- [x] Implement `TradeConfirmationDialog` with order summary
+- [x] Add confirmation for strategy enable/disable
+- [x] Add confirmation for settings changes
+- [x] Add confirmation for account deletion
+- [x] Style dialogs with proper spacing and colors
 
 #### Task 4: Add Toast Notification System
 **Priority:** Medium  
@@ -49,12 +50,12 @@
 **Dependencies:** None
 
 **Subtasks:**
-- [ ] Create `ToastView` component with success/error/info variants
-- [ ] Implement toast manager for showing/hiding toasts
-- [ ] Add success toast for trade execution ("Order submitted successfully")
-- [ ] Add error toast for failed operations
-- [ ] Add info toast for settings changes
-- [ ] Add auto-dismiss functionality
+- [x] Create `ToastView` component with success/error/info variants
+- [x] Implement toast manager for showing/hiding toasts
+- [x] Add success toast for trade execution ("Order submitted successfully")
+- [x] Add error toast for failed operations
+- [x] Add info toast for settings changes
+- [x] Add auto-dismiss functionality
 
 ### Phase 2: Enhanced User Flows (Week 2)
 
@@ -81,9 +82,9 @@
 - [x] Replace "HOLD – 0% confidence" with user-friendly text
 - [x] Standardize timeframe labels (5m, 1h, 4h) across all views
 - [x] Add loading spinner for AI signal generation
-- [ ] Implement better signal visualization
-- [ ] Add signal confidence indicators
-- [ ] Add signal reasoning display
+- [x] Implement better signal visualization
+- [x] Add signal confidence indicators
+- [x] Add signal reasoning display
 
 #### Task 7: Improve P&L and Trading Views
 **Priority:** High  
@@ -91,11 +92,11 @@
 **Dependencies:** Task 1
 
 **Subtasks:**
-- [ ] Add empty state for trades list
-- [ ] Add chart legend explaining "Profit in % over time"
-- [ ] Implement tooltips for chart data points
-- [ ] Add performance metrics summary
-- [ ] Improve trade history display
+- [x] Add empty state for trades list
+- [x] Add chart legend explaining "Profit in % over time"
+- [x] Implement tooltips for chart data points
+- [x] Add performance metrics summary
+- [x] Improve trade history display
 - [ ] Add filtering and sorting options
 
 #### Task 8: Implement Trade Confirmation Flow
@@ -104,9 +105,9 @@
 **Dependencies:** Task 3, Task 4
 
 **Subtasks:**
-- [ ] Add confirmation dialog before Buy/Sell orders
+- [x] Add confirmation dialog before Buy/Sell orders
 - [ ] Include complete order summary (symbol, side, amount, mode)
-- [ ] Distinguish between demo and live trading visually
+- [x] Distinguish between demo and live trading visually
 - [ ] Add success toast after order execution
 - [ ] Add error handling for failed orders
 - [ ] Implement order status tracking

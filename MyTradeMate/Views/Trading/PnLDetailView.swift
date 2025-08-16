@@ -57,7 +57,23 @@ struct PnLDetailView: View {
                 }
             
             Group {
-                if vm.history.isEmpty {
+                if vm.isLoading {
+                    // Loading state for P&L calculations
+                    VStack(spacing: 16) {
+                        HStack(spacing: 12) {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                            
+                            Text("Calculating performance...")
+                                .font(.body)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding()
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 280)
+                } else if vm.history.isEmpty {
                     // Empty state for P&L charts when no trading data exists
                     VStack(spacing: 16) {
                         Image(systemName: "dollarsign.circle")
@@ -153,6 +169,87 @@ struct PnLDetailView: View {
             }
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .padding(.top, 8)
+            
+            // Performance metrics summary
+            VStack(spacing: 16) {
+                HStack {
+                    Text("Performance Summary")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                    Spacer()
+                }
+                
+                if let metrics = vm.performanceMetrics, metrics.trades > 0 {
+                    VStack(spacing: 12) {
+                        // First row: Trades and Win Rate
+                        HStack(spacing: 16) {
+                            TradingMetricCardView(
+                                title: "Total Trades",
+                                value: "\(metrics.trades)",
+                                color: .primary
+                            )
+                            
+                            TradingMetricCardView(
+                                title: "Win Rate",
+                                value: "\(Int(metrics.winRate * 100))%",
+                                color: metrics.winRate >= 0.5 ? .green : .red
+                            )
+                        }
+                        
+                        // Second row: Net P&L and Max Drawdown
+                        HStack(spacing: 16) {
+                            TradingMetricCardView(
+                                title: "Net P&L",
+                                value: formatCurrency(metrics.netPnL),
+                                color: metrics.netPnL >= 0 ? .green : .red
+                            )
+                            
+                            TradingMetricCardView(
+                                title: "Max Drawdown",
+                                value: formatCurrency(metrics.maxDrawdown),
+                                color: .red
+                            )
+                        }
+                        
+                        // Third row: Average Win/Loss
+                        HStack(spacing: 16) {
+                            TradingMetricCardView(
+                                title: "Avg Win",
+                                value: formatCurrency(metrics.avgWin),
+                                color: .green
+                            )
+                            
+                            TradingMetricCardView(
+                                title: "Avg Loss",
+                                value: formatCurrency(metrics.avgLoss),
+                                color: .red
+                            )
+                        }
+                    }
+                } else {
+                    // Empty state when no trades exist
+                    VStack(spacing: 12) {
+                        Image(systemName: "chart.bar")
+                            .font(.system(size: 32))
+                            .foregroundColor(.secondary)
+                        
+                        Text("No Trading Data")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundColor(.primary)
+                        
+                        Text("Performance metrics will appear here after you complete some trades")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .lineLimit(2)
+                    }
+                    .padding(.vertical, 20)
+                }
+            }
+            .padding(16)
+            .background(Color(.secondarySystemBackground))
+            .cornerRadius(12)
             .padding(.bottom, 20)
             
             }
@@ -169,5 +266,47 @@ struct PnLDetailView: View {
     private func formatPnL(_ v: Double) -> String {
         let sign = v >= 0 ? "+" : ""
         return "\(sign)\(String(format: "%.2f", v))"
+    }
+    
+    private func formatCurrency(_ value: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        formatter.maximumFractionDigits = 2
+        
+        if abs(value) >= 1000 {
+            formatter.maximumFractionDigits = 0
+        }
+        
+        return formatter.string(from: NSNumber(value: value)) ?? "$0.00"
+    }
+}
+
+struct TradingMetricCardView: View {
+    let title: String
+    let value: String
+    let color: Color
+    
+    var body: some View {
+        VStack(spacing: 4) {
+            Text(title)
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+            
+            Text(value)
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .foregroundColor(color)
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+        .padding(.horizontal, 4)
+        .background(Color(.systemBackground))
+        .cornerRadius(8)
     }
 }

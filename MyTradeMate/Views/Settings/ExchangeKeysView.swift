@@ -172,13 +172,22 @@ struct ExchangeKeyRow: View {
             
             HStack(spacing: 12) {
                 if hasKeys {
-                    Button("Test") {
-                        viewModel.testConnection(for: exchange)
+                    if viewModel.isTestingConnection {
+                        HStack(spacing: 6) {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                            Text("Validating keys...")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                    } else {
+                        Button("Test") {
+                            viewModel.testConnection(for: exchange)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .tint(.blue)
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .tint(.blue)
-                    .disabled(viewModel.isTestingConnection)
                 }
                 
                 Button("Edit") {

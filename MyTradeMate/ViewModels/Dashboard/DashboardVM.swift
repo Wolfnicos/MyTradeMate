@@ -13,12 +13,7 @@ enum Mode: String, CaseIterable {
     case normal, precision 
 }
 
-// MARK: - Signal Info
-struct SignalInfo {
-    let direction: String  // "BUY", "SELL", "HOLD"
-    let confidence: Double // 0-100
-    let reason: String
-}
+
 
 // MARK: - Strategy Store (inline)
 private class StrategyStore {
@@ -106,6 +101,11 @@ final class DashboardVM: ObservableObject {
     @Published var connectionStatus: String = "Connecting..."
     @Published var lastUpdated: Date = Date()
     
+    // Trade confirmation
+    @Published var showingTradeConfirmation = false
+    @Published var pendingTradeRequest: TradeRequest?
+    @Published var isExecutingTrade = false
+    
     // Computed property for backwards compatibility
     var isPrecisionMode: Bool {
         get { precisionMode }
@@ -118,13 +118,7 @@ final class DashboardVM: ObservableObject {
     private var lastPredictionTime: Date = .distantPast
     private var lastThrottleLog: Date = .distantPast
     
-    // MARK: - Signal Info
-    struct SignalInfo {
-        let direction: String // "BUY", "SELL", "HOLD"
-        let confidence: Double
-        let reason: String
-        let timestamp: Date
-    }
+
     
     // MARK: - Computed Properties
     var priceString: String {
@@ -619,8 +613,12 @@ final class DashboardVM: ObservableObject {
         } else {
             // Execute immediately
             logger.info("Executing buy order immediately")
+            isExecutingTrade = true
             Task {
                 await performTradeExecution(side: .buy)
+                await MainActor.run {
+                    self.isExecutingTrade = false
+                }
             }
         }
     }
@@ -640,23 +638,65 @@ final class DashboardVM: ObservableObject {
         } else {
             // Execute immediately
             logger.info("Executing sell order immediately")
+            isExecutingTrade = true
             Task {
                 await performTradeExecution(side: .sell)
+                await MainActor.run {
+                    self.isExecutingTrade = false
+                }
             }
         }
     }
     
     private func showTradeConfirmation(side: OrderSide) {
-        // This would show a confirmation dialog in the UI
-        // For now, we'll simulate user confirmation and execute
         logger.info("Showing trade confirmation for \(side.rawValue) order")
         
-        // Simulate confirmation after a brief delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            Task {
-                await self.performTradeExecution(side: side)
+        // Calculate trade size
+        let tradeSize = calculateTradeSize()
+        
+        // Create trade request
+        let tradeRequest = TradeRequest(
+            symbol: settings.defaultSymbol,
+            side: side,
+            amount: tradeSize,
+            price: price,
+            mode: tradingMode,
+            isDemo: settings.demoMode
+        )
+        
+        // Show confirmation dialog
+        pendingTradeRequest = tradeRequest
+        showingTradeConfirmation = true
+    }
+    
+    func confirmTrade() {
+        guard let tradeRequest = pendingTradeRequest else { return }
+        
+        logger.info("Trade confirmed by user: \(tradeRequest.side.rawValue)")
+        
+        // Start executing trade (show loading state)
+        isExecutingTrade = true
+        
+        // Execute the trade
+        Task {
+            await performTradeExecution(side: tradeRequest.side)
+            
+            // Hide confirmation dialog and stop loading after execution
+            await MainActor.run {
+                self.showingTradeConfirmation = false
+                self.pendingTradeRequest = nil
+                self.isExecutingTrade = false
             }
         }
+    }
+    
+    func cancelTrade() {
+        logger.info("Trade cancelled by user")
+        
+        // Hide confirmation dialog
+        showingTradeConfirmation = false
+        pendingTradeRequest = nil
+        isExecutingTrade = false
     }
     
     private func performTradeExecution(side: OrderSide) async {

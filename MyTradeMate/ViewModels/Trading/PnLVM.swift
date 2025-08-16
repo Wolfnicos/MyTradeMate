@@ -8,6 +8,8 @@ final class PnLVM: ObservableObject {
     @Published var equity: Double = 10_000
     @Published var history: [(Date, Double)] = []
     @Published var timeframe: Timeframe = .h1
+    @Published var isLoading: Bool = false
+    @Published var performanceMetrics: PnLMetrics?
     
     private var timer: AnyCancellable?
     private var rawHistory: [(Date, Double)] = []
@@ -18,6 +20,9 @@ final class PnLVM: ObservableObject {
     
     func start() {
         timer?.cancel()
+        
+        // Show loading state initially
+        isLoading = true
         
         // Initialize with some baseline data if history is empty
         if rawHistory.isEmpty {
@@ -31,6 +36,9 @@ final class PnLVM: ObservableObject {
             aggregateHistory()
         }
         
+        // Initial refresh to load data
+        refresh()
+        
         timer = Timer.publish(every: 1.0, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in self?.refresh() }
@@ -39,21 +47,36 @@ final class PnLVM: ObservableObject {
     func stop() { timer?.cancel(); timer = nil }
     
     func setTimeframe(_ tf: Timeframe) {
+        isLoading = true
         timeframe = tf
         aggregateHistory()
+        isLoading = false
     }
     
     private func refresh() {
         Task {
+            // Show loading state for initial load or when recalculating
+            await MainActor.run {
+                if self.rawHistory.isEmpty || self.isLoading {
+                    self.isLoading = true
+                }
+            }
+            
             let pos = await TradeManager.shared.position
             let eq = await TradeManager.shared.equity
             let lp = await MarketPriceCache.shared.lastPrice
             await PnLManager.shared.resetIfNeeded()
             let snap = await PnLManager.shared.snapshot(price: lp, position: pos, equity: eq)
+            
+            // Get fills and calculate performance metrics
+            let fills = await TradeManager.shared.fillsSnapshot()
+            let metrics = PnLMetricsAggregator.compute(from: fills)
+            
             await MainActor.run {
                 self.today = snap.realizedToday
                 self.unrealized = snap.unrealized
                 self.equity = snap.equity
+                self.performanceMetrics = metrics
                 
                 // Add to raw history
                 self.rawHistory.append((snap.ts, self.equity))
@@ -65,6 +88,9 @@ final class PnLVM: ObservableObject {
                 
                 // Update aggregated history
                 self.aggregateHistory()
+                
+                // Hide loading state after calculations are complete
+                self.isLoading = false
             }
         }
     }

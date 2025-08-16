@@ -55,7 +55,7 @@ struct TradesView: View {
     
     private var emptyStateView: some View {
         VStack(spacing: 20) {
-            Image(systemName: "arrow.left.arrow.right.circle")
+            Image(systemName: "list.bullet.rectangle")
                 .font(.system(size: 64))
                 .foregroundColor(.secondary)
             
@@ -64,7 +64,7 @@ struct TradesView: View {
                     .font(.title2)
                     .fontWeight(.semibold)
                 
-                Text("Your trading history will appear here")
+                Text("Start trading to see performance here")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)

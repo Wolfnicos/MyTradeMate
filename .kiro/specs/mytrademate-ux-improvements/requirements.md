@@ -19,19 +19,19 @@ Implement comprehensive UX improvements and quality assurance fixes to enhance u
 **As a user**, I want clear and informative AI signals and chart displays.
 
 **Acceptance Criteria:**
-- [ ] Replace "HOLD – 0% confidence" with user-friendly text ("No clear signal right now")
-- [-] Standardize timeframe labels (consistently use 5m, 1h, 4h)
-- [-] Add loading states for AI signals (spinner or "Loading signal…")
-- [-] Implement empty states for charts when no data is available
+- [x] Replace "HOLD – 0% confidence" with user-friendly text ("No clear signal right now")
+- [x] Standardize timeframe labels (consistently use 5m, 1h, 4h)
+- [x] Add loading states for AI signals (spinner or "Loading signal…")
+- [x] Implement empty states for charts when no data is available
 - [x] Add tooltips/legends to clarify chart meanings
 
 ### 💰 P&L & Trades
 **As a user**, I want to understand my trading performance with clear visualizations.
 
 **Acceptance Criteria:**
-- [ ] Add empty state message when no trades exist ("Start trading to see performance here")
+- [-] Add empty state message when no trades exist ("Start trading to see performance here")
 - [x] Add chart legend/tooltip explaining "Profit in % over time"
-- [ ] Implement loading states for P&L calculations
+- [-] Implement loading states for P&L calculations
 - [ ] Show clear trade history with meaningful labels
 
 ### 🛒 Trading Actions
@@ -39,10 +39,10 @@ Implement comprehensive UX improvements and quality assurance fixes to enhance u
 
 **Acceptance Criteria:**
 - [ ] Add trade confirmation dialog before Buy/Sell orders
-- [ ] Include order summary (symbol, side, amount, mode: demo/live)
+- [x] Include order summary (symbol, side, amount, mode: demo/live)
 - [ ] Show toast/snackbar after successful order execution
 - [ ] Provide clear error messages for failed orders
-- [ ] Distinguish between demo and live trading modes visually
+- [-] Distinguish between demo and live trading modes visually
 
 ### ⚙️ Settings
 **As a user**, I want organized and well-documented settings.

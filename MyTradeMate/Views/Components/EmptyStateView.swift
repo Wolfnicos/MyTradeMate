@@ -91,12 +91,28 @@ extension EmptyStateView {
     /// Empty state for trade history
     static func tradesNoData(
         title: String = "No Trades Yet",
-        description: String = "Your trading history will appear here",
+        description: String = "Start trading to see performance here",
         actionButton: (() -> Void)? = nil,
         actionButtonTitle: String? = nil
     ) -> EmptyStateView {
         EmptyStateView(
             icon: "list.bullet.rectangle",
+            title: title,
+            description: description,
+            actionButton: actionButton,
+            actionButtonTitle: actionButtonTitle
+        )
+    }
+    
+    /// Empty state for strategies list
+    static func strategiesNoData(
+        title: String = "No Strategies Available",
+        description: String = "Trading strategies will appear here when loaded",
+        actionButton: (() -> Void)? = nil,
+        actionButtonTitle: String? = nil
+    ) -> EmptyStateView {
+        EmptyStateView(
+            icon: "brain.head.profile",
             title: title,
             description: description,
             actionButton: actionButton,
@@ -121,6 +137,11 @@ extension EmptyStateView {
         .cornerRadius(12)
         
         EmptyStateView.tradesNoData()
+            .frame(height: 200)
+            .background(Color(.systemGray6))
+            .cornerRadius(12)
+        
+        EmptyStateView.strategiesNoData()
             .frame(height: 200)
             .background(Color(.systemGray6))
             .cornerRadius(12)

@@ -18,44 +18,169 @@ struct TradeHistoryView: View {
     
     var body: some View {
         VStack(spacing: 0) {
+            // Search bar
             HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Export range")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    Picker("", selection: $exportRange) {
-                        ForEach(ExportRange.allCases) { Text($0.rawValue).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
-                }
+                Image(systemName: "magnifyingglass")
+                    .foregroundColor(.secondary)
                 
-                Spacer(minLength: 12)
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Symbol")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    Picker("", selection: $selectedSymbol) {
-                        ForEach(availableSymbols, id: \.self) { Text($0).tag($0) }
+                TextField("Search symbols...", text: $vm.searchText)
+                    .textFieldStyle(.plain)
+                    .onChange(of: vm.searchText) { _, newValue in
+                        vm.updateSearch(newValue)
                     }
-                    .pickerStyle(.menu)
-                    .frame(maxWidth: 160)
+                
+                if !vm.searchText.isEmpty {
+                    Button(action: { vm.updateSearch("") }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.secondary)
+                    }
                 }
             }
             .padding(.horizontal)
+            .padding(.vertical, 8)
+            .background(Color(.systemGray6))
+            .cornerRadius(8)
+            .padding(.horizontal)
             .padding(.top, 8)
             
-            List {
-                ForEach(vm.fills) { fill in
-                    HStack {
-                        Text(fill.symbol.display).font(.headline)
-                        Spacer()
-                        Text(fill.side == .buy ? "BUY" : "SELL")
-                            .foregroundStyle(fill.side == .buy ? .green : .red)
-                        Text(String(format: "@ %.2f", fill.price))
-                            .foregroundStyle(.secondary)
+            // Filter and Sort controls
+            HStack(spacing: 16) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Filter")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    Picker("Filter", selection: $vm.filterOption) {
+                        ForEach(TradeFilterOption.allCases) { option in
+                            Text(option.rawValue).tag(option)
+                        }
                     }
-                    .onAppear { vm.loadMoreIfNeeded(current: fill) }
+                    .pickerStyle(.menu)
+                    .onChange(of: vm.filterOption) { _, newValue in
+                        vm.updateFilter(newValue)
+                    }
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Sort by")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    Picker("Sort", selection: $vm.sortOption) {
+                        ForEach(TradeSortOption.allCases) { option in
+                            Text(option.rawValue).tag(option)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .onChange(of: vm.sortOption) { _, newValue in
+                        vm.updateSort(newValue)
+                    }
+                }
+                
+                Spacer()
+                
+                // Export controls (condensed)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Export")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    HStack(spacing: 8) {
+                        Picker("Range", selection: $exportRange) {
+                            ForEach(ExportRange.allCases) { Text($0.rawValue).tag($0) }
+                        }
+                        .pickerStyle(.menu)
+                        .frame(maxWidth: 100)
+                        
+                        Picker("Symbol", selection: $selectedSymbol) {
+                            ForEach(availableSymbols, id: \.self) { Text($0).tag($0) }
+                        }
+                        .pickerStyle(.menu)
+                        .frame(maxWidth: 100)
+                    }
+                }
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+            
+            List {
+                if vm.fills.isEmpty {
+                    VStack(spacing: 16) {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .font(.system(size: 48))
+                            .foregroundColor(.secondary)
+                        
+                        VStack(spacing: 8) {
+                            Text("No Trade History")
+                                .font(.headline)
+                                .fontWeight(.medium)
+                            
+                            Text("Start trading to see performance here")
+                                .font(.body)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                } else {
+                    ForEach(vm.fills) { fill in
+                        VStack(spacing: 0) {
+                            HStack(spacing: 12) {
+                                // Side indicator with icon
+                                HStack(spacing: 6) {
+                                    Image(systemName: fill.side == .buy ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
+                                        .foregroundColor(fill.side == .buy ? .green : .red)
+                                        .font(.system(size: 16, weight: .medium))
+                                    
+                                    Text(fill.side == .buy ? "BUY" : "SELL")
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundColor(fill.side == .buy ? .green : .red)
+                                }
+                                .frame(width: 70, alignment: .leading)
+                                
+                                // Symbol
+                                Text(fill.symbol.display)
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(.primary)
+                                
+                                Spacer()
+                                
+                                // Price and quantity info
+                                VStack(alignment: .trailing, spacing: 2) {
+                                    Text(String(format: "%.2f", fill.quantity))
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundColor(.primary)
+                                    
+                                    Text("@ \(String(format: "%.2f", fill.price))")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            
+                            // Second row with timestamp and total value
+                            HStack {
+                                Text(fill.timestamp.tradeDateString)
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                                
+                                Text(fill.timestamp.tradeTimeString)
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                                
+                                Spacer()
+                                
+                                Text("Total: \(String(format: "%.2f", fill.quantity * fill.price))")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.top, 4)
+                        }
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 4)
+                        .onAppear { vm.loadMoreIfNeeded(current: fill) }
+                    }
                 }
             }
         }

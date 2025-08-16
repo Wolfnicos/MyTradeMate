@@ -311,6 +311,31 @@ final class CredentialValidationTests: XCTestCase {
         wait(for: [expectation], timeout: 1.0)
     }
     
+    func testConnectionTestLoadingState() {
+        // Given
+        let exchange = Exchange.binance
+        mockKeychainStore.storage["apiKey.\(exchange.rawValue)"] = "test_key"
+        mockKeychainStore.storage["apiSecret.\(exchange.rawValue)"] = "test_secret"
+        
+        // When
+        XCTAssertFalse(exchangeKeysViewModel.isTestingConnection, "Should not be testing connection initially")
+        
+        exchangeKeysViewModel.testConnection(for: exchange)
+        
+        // Then
+        XCTAssertTrue(exchangeKeysViewModel.isTestingConnection, "Should be testing connection immediately after call")
+        
+        // Wait for async operation to complete
+        let expectation = XCTestExpectation(description: "Connection test completion")
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            XCTAssertFalse(self.exchangeKeysViewModel.isTestingConnection, "Should not be testing connection after completion")
+            expectation.fulfill()
+        }
+        
+        wait(for: [expectation], timeout: 1.0)
+    }
+    
     func testKeyStatusesUpdate() {
         // Given
         let exchange = Exchange.binance
@@ -385,7 +410,7 @@ class MockKeychainStore: KeychainStoreProtocol {
     var shouldThrowError = false
     var errorToThrow: Error?
     
-    private var storage: [String: String] = [:]
+    var storage: [String: String] = [:]
     
     func saveAPIKey(_ key: String, for exchange: Exchange) throws {
         if shouldThrowError, let error = errorToThrow {
