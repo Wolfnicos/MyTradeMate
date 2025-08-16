@@ -81,13 +81,11 @@ struct SettingsView: View {
                     .foregroundColor(.primary)
                     
                     NavigationLink("Binance") {
-                        Text("Binance Configuration")
-                            .navigationTitle("Binance")
+                        BinanceKeysView()
                     }
                     
                     NavigationLink("Kraken") {
-                        Text("Kraken Configuration")
-                            .navigationTitle("Kraken")
+                        KrakenKeysView()
                     }
                 }
                 

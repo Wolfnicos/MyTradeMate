@@ -23,26 +23,100 @@ struct ExchangeKeysView: View {
                 }
             }
             
-            Section(header: Text("Instructions")) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("1. Create API keys on your exchange")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+            Section(header: Text("Setup Instructions")) {
+                VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("1. Create API keys on your exchange")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .fontWeight(.medium)
+                        
+                        Text("Visit your exchange's API management page to generate new keys")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
                     
-                    Text("2. Enable 'Futures Trading' permissions")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("2. Configure permissions carefully")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .fontWeight(.medium)
+                        
+                        Text("• Binance: Enable 'Spot & Margin Trading' only")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                        
+                        Text("• Kraken: Enable 'Query Funds' and 'Query Open Orders' only")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
                     
-                    Text("3. Restrict to your IP address for security")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("3. Enhance security")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .fontWeight(.medium)
+                        
+                        Text("• Restrict to your IP address if possible")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                        
+                        Text("• Never enable withdrawal permissions")
+                            .font(.caption2)
+                            .foregroundColor(.red)
+                            .fontWeight(.medium)
+                    }
                     
-                    Text("4. Never share your keys with anyone")
-                        .font(.caption)
-                        .foregroundColor(.red)
-                        .bold()
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("4. Keep your keys secure")
+                            .font(.caption)
+                            .foregroundColor(.red)
+                            .fontWeight(.medium)
+                        
+                        Text("Never share your API keys with anyone or store them in unsecured locations")
+                            .font(.caption2)
+                            .foregroundColor(.red)
+                    }
                 }
                 .padding(.vertical, 4)
+            }
+            
+            Section(header: Text("Quick Links")) {
+                VStack(spacing: 8) {
+                    Button(action: {
+                        if let url = URL(string: "https://www.binance.com/en/my/settings/api-management") {
+                            UIApplication.shared.open(url)
+                        }
+                    }) {
+                        HStack {
+                            Image(systemName: "link")
+                                .foregroundColor(.blue)
+                            Text("Binance API Management")
+                                .foregroundColor(.blue)
+                            Spacer()
+                            Image(systemName: "arrow.up.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    
+                    Button(action: {
+                        if let url = URL(string: "https://support.kraken.com/hc/en-us/articles/360000919966-How-to-generate-an-API-key-pair-") {
+                            UIApplication.shared.open(url)
+                        }
+                    }) {
+                        HStack {
+                            Image(systemName: "link")
+                                .foregroundColor(.blue)
+                            Text("Kraken API Setup Guide")
+                                .foregroundColor(.blue)
+                            Spacer()
+                            Image(systemName: "arrow.up.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
             }
         }
         .navigationTitle("API Keys")
@@ -224,6 +298,64 @@ struct ExchangeKeyEditView: View {
 
 
 
+
+// MARK: - Validation Components
+
+enum ValidationState: Equatable {
+    case none
+    case validating
+    case valid
+    case invalid(String)
+}
+
+struct ValidationIndicatorView: View {
+    let state: ValidationState
+    
+    var body: some View {
+        HStack(spacing: 6) {
+            switch state {
+            case .none:
+                EmptyView()
+            case .validating:
+                ProgressView()
+                    .scaleEffect(0.7)
+                Text("Validating...")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            case .valid:
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.green)
+                    .font(.caption)
+                Text("Valid format")
+                    .font(.caption2)
+                    .foregroundColor(.green)
+            case .invalid(let message):
+                Image(systemName: "exclamationmark.circle.fill")
+                    .foregroundColor(.red)
+                    .font(.caption)
+                Text(message)
+                    .font(.caption2)
+                    .foregroundColor(.red)
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: state)
+    }
+}
+
+struct LoadingStateView: View {
+    let message: String
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            ProgressView()
+                .scaleEffect(0.8)
+            Text(message)
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .padding(.top, 4)
+    }
+}
 
 extension Exchange: Identifiable {
     public var id: String { rawValue }
