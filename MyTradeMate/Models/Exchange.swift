@@ -8,3 +8,7 @@ public enum Exchange: String, Codable, CaseIterable, Sendable {
 public extension Exchange {
     var displayName: String { rawValue }
 }
+
+extension Exchange: Identifiable {
+    public var id: String { rawValue }
+}

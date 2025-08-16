@@ -1,5 +1,48 @@
 import Foundation
 
+// MARK: - Missing Notification Names
+extension NSNotification.Name {
+    static let pauseSpecificConnections = NSNotification.Name("pauseSpecificConnections")
+    static let optimizeForCellular = NSNotification.Name("optimizeForCellular")
+    static let optimizeForBackground = NSNotification.Name("optimizeForBackground")
+    static let optimizeForForeground = NSNotification.Name("optimizeForForeground")
+}
+
+// MARK: - Connection Manager (temporary stub)
+@MainActor
+final class ConnectionManager {
+    static let shared = ConnectionManager()
+    private init() {}
+    
+    func registerConnection(_ name: String, priority: ConnectionPriority) {
+        // Stub implementation
+    }
+    
+    func shouldAllowConnection(_ name: String) -> Bool {
+        return true // Allow all connections for now
+    }
+    
+    func recordConnectionActivity(_ name: String) {
+        // Stub implementation
+    }
+    
+    func recordConnectionFailure(_ name: String) {
+        // Stub implementation
+    }
+    
+    func resetConnectionRetryCount(_ name: String) {
+        // Stub implementation
+    }
+}
+
+// MARK: - Connection Priority (temporary definition)
+public enum ConnectionPriority: Int, CaseIterable {
+    case critical = 0
+    case high = 1
+    case medium = 2
+    case low = 3
+}
+
 // MARK: - WebSocket Manager Base Class
 
 @MainActor
@@ -30,12 +73,14 @@ public final class WebSocketManager {
         let subscribeMessage: String?
         let name: String
         let verboseLogging: Bool
+        let priority: ConnectionPriority
         
-        public init(url: URL, subscribeMessage: String? = nil, name: String, verboseLogging: Bool = false) {
+        public init(url: URL, subscribeMessage: String? = nil, name: String, verboseLogging: Bool = false, priority: ConnectionPriority = .high) {
             self.url = url
             self.subscribeMessage = subscribeMessage
             self.name = name
             self.verboseLogging = verboseLogging
+            self.priority = priority
         }
     }
     
@@ -43,14 +88,109 @@ public final class WebSocketManager {
     public var onMessage: ((String) -> Void)?
     public var onConnectionStateChange: ((Bool) -> Void)?
     
+    // Performance optimization
+    private var connectionOptimizationObserver: NSObjectProtocol?
+    
     // MARK: - Initialization
     
     public init(configuration: Configuration) {
         self.configuration = configuration
+        setupConnectionOptimization()
     }
     
     deinit {
         Task { await disconnect() }
+        if let observer = connectionOptimizationObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+    }
+    
+    private func setupConnectionOptimization() {
+        // Register with connection manager
+        ConnectionManager.shared.registerConnection(configuration.name, priority: configuration.priority)
+        
+        // Listen for optimization notifications
+        connectionOptimizationObserver = NotificationCenter.default.addObserver(
+            forName: .pauseSpecificConnections,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self = self,
+                  let connections = notification.userInfo?["connections"] as? Set<String>,
+                  connections.contains(self.configuration.name) else { return }
+            
+            Task { @MainActor in
+                await self.handleOptimizationPause()
+            }
+        }
+        
+        // Listen for other optimization notifications
+        NotificationCenter.default.addObserver(
+            forName: .optimizeForCellular,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self = self else { return }
+            Task { @MainActor in
+                await self.handleCellularOptimization(notification)
+            }
+        }
+        
+        NotificationCenter.default.addObserver(
+            forName: .optimizeForBackground,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self = self else { return }
+            Task { @MainActor in
+                await self.handleBackgroundOptimization()
+            }
+        }
+        
+        NotificationCenter.default.addObserver(
+            forName: .optimizeForForeground,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self = self else { return }
+            Task { @MainActor in
+                await self.handleForegroundOptimization()
+            }
+        }
+    }
+    
+    private func handleOptimizationPause() async {
+        log("Connection paused for optimization")
+        shouldReconnect = false
+        await cleanup()
+    }
+    
+    private func handleCellularOptimization(_ notification: Notification) async {
+        guard let userInfo = notification.userInfo,
+              let maxConnections = userInfo["maxConnections"] as? Int,
+              let updateInterval = userInfo["updateInterval"] as? TimeInterval else { return }
+        
+        log("Optimizing for cellular: max connections=\(maxConnections), interval=\(updateInterval)s")
+        
+        // Reduce ping frequency on cellular
+        stopHealthMonitoring()
+        startHealthMonitoring(pingInterval: updateInterval, healthCheckInterval: updateInterval * 2)
+    }
+    
+    private func handleBackgroundOptimization() async {
+        log("Optimizing for background mode")
+        
+        // Reduce activity in background
+        stopHealthMonitoring()
+        startHealthMonitoring(pingInterval: 60.0, healthCheckInterval: 120.0)
+    }
+    
+    private func handleForegroundOptimization() async {
+        log("Optimizing for foreground mode")
+        
+        // Resume normal activity
+        stopHealthMonitoring()
+        startHealthMonitoring()
     }
     
     // MARK: - Public Methods
@@ -63,6 +203,12 @@ public final class WebSocketManager {
         guard !isConnected else { 
             log("Already connected")
             return 
+        }
+        
+        // Check if connection is allowed by connection manager
+        guard ConnectionManager.shared.shouldAllowConnection(configuration.name) else {
+            log("Connection not allowed by connection manager")
+            return
         }
         
         await _connect()
@@ -163,21 +309,42 @@ public final class WebSocketManager {
     }
     
     private func handleMessage(_ message: URLSessionWebSocketTask.Message) {
+        // Record connection activity for health monitoring
+        ConnectionManager.shared.recordConnectionActivity(configuration.name)
+        
         switch message {
         case .string(let text):
             if configuration.verboseLogging {
                 log("📨 Received: \(text.prefix(200))")
             }
+            
+            // Validate message format
+            guard !text.isEmpty else {
+                ErrorManager.shared.handle(.webSocketInvalidMessage(message: "Empty message"))
+                return
+            }
+            
             onMessage?(text)
+            
         case .data(let data):
             if let text = String(data: data, encoding: .utf8) {
                 if configuration.verboseLogging {
                     log("📨 Received (data): \(text.prefix(200))")
                 }
+                
+                guard !text.isEmpty else {
+                    ErrorManager.shared.handle(.webSocketInvalidMessage(message: "Empty data message"))
+                    return
+                }
+                
                 onMessage?(text)
+            } else {
+                ErrorManager.shared.handle(.webSocketInvalidMessage(message: "Invalid data encoding"))
             }
+            
         @unknown default:
             log("Unknown message type received")
+            ErrorManager.shared.handle(.webSocketInvalidMessage(message: "Unknown message type"))
         }
     }
     
@@ -187,10 +354,23 @@ public final class WebSocketManager {
         
         log("🔌 Connection lost: \(error.localizedDescription)")
         
+        // Record connection failure for intelligent management
+        ConnectionManager.shared.recordConnectionFailure(configuration.name)
+        
+        // Report error to error manager
+        ErrorManager.shared.handle(.webSocketConnectionFailed(reason: error.localizedDescription))
+        
+        // Check if connection is still allowed before attempting reconnection
+        guard ConnectionManager.shared.shouldAllowConnection(configuration.name) else {
+            log("❌ Reconnection not allowed by connection manager")
+            return
+        }
+        
         // Check if we should attempt reconnection
         guard shouldReconnect && reconnectAttempts < maxReconnectAttempts else {
             if reconnectAttempts >= maxReconnectAttempts {
                 log("❌ Max reconnection attempts reached")
+                ErrorManager.shared.handle(.webSocketReconnectionFailed(attempts: reconnectAttempts))
             }
             return
         }
@@ -210,21 +390,29 @@ public final class WebSocketManager {
         // Attempt reconnection
         if shouldReconnect {
             await _connect()
+            
+            // Reset retry count on successful reconnection
+            if isConnected {
+                ConnectionManager.shared.resetConnectionRetryCount(configuration.name)
+            }
         }
     }
     
-    private func startHealthMonitoring() {
+    private func startHealthMonitoring(pingInterval: TimeInterval? = nil, healthCheckInterval: TimeInterval? = nil) {
         stopHealthMonitoring()
         
+        let actualPingInterval = pingInterval ?? self.pingInterval
+        let actualHealthCheckInterval = healthCheckInterval ?? self.healthCheckInterval
+        
         // Start ping timer
-        pingTimer = Timer.scheduledTimer(withTimeInterval: pingInterval, repeats: true) { [weak self] _ in
+        pingTimer = Timer.scheduledTimer(withTimeInterval: actualPingInterval, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 await self?.sendPing()
             }
         }
         
         // Start health check timer
-        healthCheckTimer = Timer.scheduledTimer(withTimeInterval: healthCheckInterval, repeats: true) { [weak self] _ in
+        healthCheckTimer = Timer.scheduledTimer(withTimeInterval: actualHealthCheckInterval, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 await self?.performHealthCheck()
             }
@@ -284,7 +472,7 @@ public final class WebSocketManager {
     
     private func log(_ message: String) {
         if configuration.verboseLogging {
-            Log.ws("[\(configuration.name)] \(message)")
+            Log.log("[\(configuration.name)] \(message)", category: .webSocket)
         }
     }
 }

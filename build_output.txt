@@ -1,0 +1,523 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -project MyTradeMate.xcodeproj -scheme MyTradeMate -configuration Debug -destination "platform=iOS Simulator,name=iPhone 16 Pro" build
+
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (1 target)
+    Target 'MyTradeMate' in project 'MyTradeMate' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk /Users/lupudragos/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator18.5-22F76-d5fc8ad4295d2ef488fb7d0f804ce0c4.sdkstatcache
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate.xcodeproj
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk -o /Users/lupudragos/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator18.5-22F76-d5fc8ad4295d2ef488fb7d0f804ce0c4.sdkstatcache
+
+SwiftDriver MyTradeMate normal arm64 com.apple.xcode.tools.swift.compiler (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name MyTradeMate -Onone -enforce-exclusivity\=checked @/Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/Objects-normal/arm64/MyTradeMate.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk -target arm64-apple-ios17.0-simulator -g -module-cache-path /Users/lupudragos/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Index.noindex/DataStore -swift-version 5 -I /Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Products/Debug-iphonesimulator -F /Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Products/Debug-iphonesimulator -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/lupudragos/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator18.5-22F76-d5fc8ad4295d2ef488fb7d0f804ce0c4.sdkstatcache -output-file-map /Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/Objects-normal/arm64/MyTradeMate-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/Objects-normal/arm64/MyTradeMate.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/lupudragos/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/Objects-normal/arm64/MyTradeMate_const_extract_protocols.json -Xcc -iquote -Xcc /Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/MyTradeMate-generated-files.hmap -Xcc -I/Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/MyTradeMate-own-target-headers.hmap -Xcc -I/Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/MyTradeMate-all-target-headers.hmap -Xcc -iquote -Xcc /Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/MyTradeMate-project-headers.hmap -Xcc -I/Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/DerivedSources-normal/arm64 -Xcc -I/Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/DerivedSources/arm64 -Xcc -I/Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/Objects-normal/arm64/MyTradeMate-Swift.h -working-directory /Users/lupudragos/Desktop/Trading_MyTradeMate -experimental-emit-module-separately -disable-cmo
+
+SwiftCompile normal arm64 Compiling\ KrakenModels.swift,\ LegacyStrategy.swift,\ Log.swift,\ Logger.swift,\ MACDStrategy.swift,\ MarketDataSection.swift,\ MarketDataService.swift,\ MarketPriceCache.swift,\ MeanReversionStrategy.swift,\ MyTradeMateApp.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/KrakenModels.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/LegacyStrategy.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Diagnostics/Log.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/Logger.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/AI/StrategyEngine/MACDStrategy.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/Settings/Sections/MarketDataSection.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Services/MarketDataService.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Managers/MarketPriceCache.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/AI/StrategyEngine/MeanReversionStrategy.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/MyTradeMateApp.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/KrakenModels.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/LegacyStrategy.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Diagnostics/Log.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/Logger.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/AI/StrategyEngine/MACDStrategy.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/Settings/Sections/MarketDataSection.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Services/MarketDataService.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Managers/MarketPriceCache.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/AI/StrategyEngine/MeanReversionStrategy.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/MyTradeMateApp.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 Compiling\ AIModelManager.swift,\ AISection.swift,\ Account.swift,\ AppConfig.swift,\ AppError.swift,\ AppSettings.swift,\ Audit.swift,\ BackgroundExporter.swift,\ BinanceClient.swift,\ BinanceExchangeClient.swift,\ BinanceKeysView.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Services/AIModelManager.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/Settings/Sections/AISection.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/Account.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/AppConfig.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/AppError.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/AppSettings.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Diagnostics/Audit.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Utils/BackgroundExporter.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/BinanceClient.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/BinanceExchangeClient.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/Settings/Sheets/BinanceKeysView.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+Failed frontend command:
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift-frontend -frontend -c -primary-file /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Services/AIModelManager.swift -primary-file /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/Settings/Sections/AISection.swift -primary-file /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/Account.swift -primary-file /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/AppConfig.swift -primary-file /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/AppError.swift -primary-file /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/AppSettings.swift -primary-file /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Diagnostics/Audit.swift -primary-file /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Utils/BackgroundExporter.swift -primary-file /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/BinanceClient.swift -primary-file /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/BinanceExchangeClient.swift -primary-file /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/Settings/Sheets/BinanceKeysView.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Services/BinanceLiveClient.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/BinanceModels.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/AI/StrategyEngine/BreakoutStrategy.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Utils/CSVExporter+PnLMetrics.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Utils/CSVExporter.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/Candle.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/UI/Candles/CandleChartView.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Services/CandleProvider.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/UI/Charts/CandlestickChart.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Diagnostics/CoreMLInspector.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/ViewModels/DashboardVM.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/DashboardView.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Utils/DateFormatter+Extensions.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/DesignSystem.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/Settings/Sections/DiagnosticsSection.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/AI/StrategyEngine/EMAStrategy.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/AI/StrategyEngine/EnsembleDecider.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/ErrorManager.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/Exchange.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Services/ExchangeClient.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/ExchangeKeysView.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/Settings/Sections/ExchangesSection.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/AI/FeatureBuilder.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Utils/Haptics.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/Settings/Sections/InterfaceSection.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Utils/JSONExporter.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Utils/KeychainHelper.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/KeychainStore.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/KrakenClient.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/KrakenExchangeClient.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/Settings/Sheets/KrakenKeysView.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Services/KrakenLiveClient.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/KrakenModels.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/LegacyStrategy.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Diagnostics/Log.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/Logger.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/AI/StrategyEngine/MACDStrategy.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/Settings/Sections/MarketDataSection.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Services/MarketDataService.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Managers/MarketPriceCache.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/AI/StrategyEngine/MeanReversionStrategy.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/MyTradeMateApp.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Security/NetworkSecurityManager.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/Order.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/OrderSide.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/OrderTypes.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Services/PaperExchangeClient.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Utils/PnLAggregator.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Utils/PnLCSVExporter.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/PnLDetailView.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Managers/PnLManager.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Utils/PnLMetrics.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/ViewModels/PnLVM.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/Components/PnLWidget.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/Position.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/PriceTick.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/AI/StrategyEngine/RSIStrategy.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/AI/StrategyEngine/RegimeDetector.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Managers/RiskManager.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/RiskModels.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/RootTabs.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Utils/SafeTask.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/ViewModels/SettingsVM.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Settings/SettingsValidator.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/SettingsView.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/Shared/ShareSheet.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/Signal.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/SignalEngine.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Managers/StopMonitor.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/Settings/Sections/StrategiesSection.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/ViewModels/StrategiesVM.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/StrategiesView.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/AI/StrategyEngine/Strategy.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/AI/StrategyEngine/StrategyManager.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/Symbol.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/SymbolCatalog.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Themes/ThemeManager.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/Ticker.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/Timeframe.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/ViewModels/TradeHistoryVM.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/TradeHistoryView.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Managers/TradeManager.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/TradeStore.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/ViewModels/TradesVM.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/TradesView.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/TradingMode.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/Settings/Sections/TradingSection.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/TrialManager.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/WebSocketManager.swift /Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/DerivedSources/CoreMLGenerated/BTC_4H_Model/BTC_4H_Model.swift /Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/DerivedSources/CoreMLGenerated/BitcoinAI_1h_enhanced/BitcoinAI_1h_enhanced.swift /Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/DerivedSources/CoreMLGenerated/BitcoinAI_5m_enhanced/BitcoinAI_5m_enhanced.swift -supplementary-output-file-map /Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/Objects-normal/arm64/supplementaryOutputs-1 -target arm64-apple-ios17.0-simulator -Xllvm -aarch64-use-tbi -enable-objc-interop -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk -I /Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Products/Debug-iphonesimulator -F /Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Products/Debug-iphonesimulator -no-color-diagnostics -enable-testing -g -debug-info-format\=dwarf -dwarf-version\=4 -module-cache-path /Users/lupudragos/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -swift-version 5 -enforce-exclusivity\=checked -Onone -D DEBUG -serialize-debugging-options -const-gather-protocols-file /Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/Objects-normal/arm64/MyTradeMate_const_extract_protocols.json -enable-experimental-feature DebugDescriptionMacro -enable-bare-slash-regex -empty-abi-descriptor -validate-clang-modules-once -clang-build-session-file /Users/lupudragos/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -working-directory -Xcc /Users/lupudragos/Desktop/Trading_MyTradeMate -resource-dir /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift -enable-anonymous-context-mangled-names -file-compilation-dir /Users/lupudragos/Desktop/Trading_MyTradeMate -Xcc -ivfsstatcache -Xcc /Users/lupudragos/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator18.5-22F76-d5fc8ad4295d2ef488fb7d0f804ce0c4.sdkstatcache -Xcc -I/Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/swift-overrides.hmap -Xcc -iquote -Xcc /Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/MyTradeMate-generated-files.hmap -Xcc -I/Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/MyTradeMate-own-target-headers.hmap -Xcc -I/Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/MyTradeMate-all-target-headers.hmap -Xcc -iquote -Xcc /Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/MyTradeMate-project-headers.hmap -Xcc -I/Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/DerivedSources-normal/arm64 -Xcc -I/Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/DerivedSources/arm64 -Xcc -I/Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/DerivedSources -Xcc -DDEBUG\=1 -module-name MyTradeMate -frontend-parseable-output -disable-clang-spi -target-sdk-version 18.5 -target-sdk-name iphonesimulator18.5 -external-plugin-path /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/lib/swift/host/plugins\#/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/bin/swift-plugin-server -external-plugin-path /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/local/lib/swift/host/plugins\#/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/bin/swift-plugin-server -in-process-plugin-server-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/libSwiftInProcPluginServer.dylib -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/local/lib/swift/host/plugins -o /Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/Objects-normal/arm64/AIModelManager.o -o /Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/Objects-normal/arm64/AISection.o -o /Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/Objects-normal/arm64/Account.o -o /Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/Objects-normal/arm64/AppConfig.o -o /Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/Objects-normal/arm64/AppError.o -o /Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/Objects-normal/arm64/AppSettings.o -o /Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/Objects-normal/arm64/Audit.o -o /Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/Objects-normal/arm64/BackgroundExporter.o -o /Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/Objects-normal/arm64/BinanceClient.o -o /Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/Objects-normal/arm64/BinanceExchangeClient.o -o /Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/Objects-normal/arm64/BinanceKeysView.o -index-unit-output-path /MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/Objects-normal/arm64/AIModelManager.o -index-unit-output-path /MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/Objects-normal/arm64/AISection.o -index-unit-output-path /MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/Objects-normal/arm64/Account.o -index-unit-output-path /MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/Objects-normal/arm64/AppConfig.o -index-unit-output-path /MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/Objects-normal/arm64/AppError.o -index-unit-output-path /MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/Objects-normal/arm64/AppSettings.o -index-unit-output-path /MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/Objects-normal/arm64/Audit.o -index-unit-output-path /MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/Objects-normal/arm64/BackgroundExporter.o -index-unit-output-path /MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/Objects-normal/arm64/BinanceClient.o -index-unit-output-path /MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/Objects-normal/arm64/BinanceExchangeClient.o -index-unit-output-path /MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/Objects-normal/arm64/BinanceKeysView.o -index-store-path /Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Index.noindex/DataStore -index-system-modules
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Services/AIModelManager.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+/Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Services/AIModelManager.swift:27:13: warning: immutable value 'i' was never used; consider replacing with '_' or removing it
+        for i in 1..<10 {
+            ^
+            _
+/Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Services/AIModelManager.swift:173:14: warning: immutable value 'kind' was never used; consider replacing with '_' or removing it
+        for (kind, model) in models {
+             ^~~~
+             _
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/Settings/Sections/AISection.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/Account.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/AppConfig.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/AppError.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+/Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/AppError.swift:229:9: warning: immutable property will not be decoded because it is declared with an initial value which cannot be overwritten
+    let id = UUID()
+        ^
+/Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/AppError.swift:229:9: note: set the initial value via the initializer or explicitly define a CodingKeys enum including a 'id' case to silence this warning
+    let id = UUID()
+        ^
+/Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/AppError.swift:229:9: note: make the property mutable instead
+    let id = UUID()
+    ~~~ ^
+    var
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/AppSettings.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Diagnostics/Audit.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+/Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Diagnostics/Audit.swift:14:15: warning: result of call to 'checkModelHealth()' is unused
+        await checkModelHealth()
+              ^               ~~
+/Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Diagnostics/Audit.swift:15:9: warning: result of call to 'checkDataIsolation()' is unused
+        checkDataIsolation()
+        ^                 ~~
+/Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Diagnostics/Audit.swift:16:9: warning: result of call to 'checkWebSocketStatus()' is unused
+        checkWebSocketStatus()
+        ^                   ~~
+/Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Diagnostics/Audit.swift:17:9: warning: result of call to 'checkMemoryUsage()' is unused
+        checkMemoryUsage()
+        ^               ~~
+/Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Diagnostics/Audit.swift:18:9: warning: result of call to 'checkPerformanceMetrics()' is unused
+        checkPerformanceMetrics()
+        ^                      ~~
+/Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Diagnostics/Audit.swift:97:17: warning: initialization of immutable value 'testCandles' was never used; consider replacing with assignment to '_' or removing it
+            let testCandles = generateTestCandles()
+            ~~~~^~~~~~~~~~~
+            _
+/Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Diagnostics/Audit.swift:110:11: warning: 'catch' block is unreachable because no errors are thrown in 'do' block
+        } catch {
+          ^
+/Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Diagnostics/Audit.swift:162:54: error: value of type 'WebSocketManager' has no member 'lastPingTime'
+            report += "  📡 Last ping: \(wsManager.lastPingTime ?? "never")\n"
+/Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Diagnostics/Audit.swift:163:63: error: 'reconnectAttempts' is inaccessible due to 'private' protection level
+            report += "  🔄 Reconnect attempts: \(wsManager.reconnectAttempts)\n"
+/Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/WebSocketManager.swift:20:17: note: 'reconnectAttempts' declared here
+    private var reconnectAttempts = 0
+                ^
+/Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Diagnostics/Audit.swift:166:63: error: 'reconnectAttempts' is inaccessible due to 'private' protection level
+            report += "  🔄 Reconnect attempts: \(wsManager.reconnectAttempts)\n"
+/Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/WebSocketManager.swift:20:17: note: 'reconnectAttempts' declared here
+    private var reconnectAttempts = 0
+                ^
+/Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Diagnostics/Audit.swift:168:26: error: 'reconnectAttempts' is inaccessible due to 'private' protection level
+            if wsManager.reconnectAttempts > 5 {
+                         ^~~~~~~~~~~~~~~~~
+/Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/WebSocketManager.swift:20:17: note: 'reconnectAttempts' declared here
+    private var reconnectAttempts = 0
+                ^
+/Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Diagnostics/Audit.swift:170:76: error: 'reconnectAttempts' is inaccessible due to 'private' protection level
+                logger.warning("WebSocket reconnection issues: \(wsManager.reconnectAttempts) attempts")
+                                                                           ^~~~~~~~~~~~~~~~~
+/Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/WebSocketManager.swift:20:17: note: 'reconnectAttempts' declared here
+    private var reconnectAttempts = 0
+                ^
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Utils/BackgroundExporter.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/BinanceClient.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+/Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/BinanceClient.swift:36:9: warning: no calls to throwing functions occur within 'try' expression
+        try await disconnectTickers()
+        ^
+/Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/BinanceClient.swift:71:21: warning: actor-isolated property 'continuation' can not be referenced from a Sendable closure; this is an error in the Swift 6 language mode
+                    continuation?.yield(tick)
+                    ^
+/Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/BinanceClient.swift:20:17: note: property declared here
+    private var continuation: AsyncStream<Ticker>.Continuation?
+                ^
+/Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/BinanceClient.swift:75:18: warning: call to actor-isolated instance method 'receive' in a synchronous nonisolated context; this is an error in the Swift 6 language mode
+            self.receive(ws)
+                 ^
+/Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/BinanceClient.swift:53:18: note: calls to instance method 'receive' from outside of its actor context are implicitly asynchronous
+    private func receive(_ ws: URLSessionWebSocketTask) {
+                 ^
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/BinanceExchangeClient.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+/Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/BinanceExchangeClient.swift:67:19: warning: call to main actor-isolated instance method 'receiveMessages()' in a synchronous nonisolated context; this is an error in the Swift 6 language mode
+            self?.receiveMessages()
+                  ^
+/Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/BinanceExchangeClient.swift:52:18: note: calls to instance method 'receiveMessages()' from outside of its actor context are implicitly asynchronous
+    private func receiveMessages() {
+                 ^
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/Settings/Sheets/BinanceKeysView.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ MyTradeMate (in target 'MyTradeMate' from project 'MyTradeMate')
+EmitSwiftModule normal arm64 (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 Compiling\ DashboardView.swift,\ DateFormatter+Extensions.swift,\ DesignSystem.swift,\ DiagnosticsSection.swift,\ EMAStrategy.swift,\ EnsembleDecider.swift,\ ErrorManager.swift,\ Exchange.swift,\ ExchangeClient.swift,\ ExchangeKeysView.swift,\ ExchangesSection.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/DashboardView.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Utils/DateFormatter+Extensions.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/DesignSystem.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/Settings/Sections/DiagnosticsSection.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/AI/StrategyEngine/EMAStrategy.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/AI/StrategyEngine/EnsembleDecider.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/ErrorManager.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/Exchange.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Services/ExchangeClient.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/ExchangeKeysView.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/Settings/Sections/ExchangesSection.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/DashboardView.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Utils/DateFormatter+Extensions.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/DesignSystem.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/Settings/Sections/DiagnosticsSection.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/AI/StrategyEngine/EMAStrategy.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/AI/StrategyEngine/EnsembleDecider.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/ErrorManager.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/Exchange.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Services/ExchangeClient.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/ExchangeKeysView.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/Settings/Sections/ExchangesSection.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 Compiling\ SettingsVM.swift,\ SettingsValidator.swift,\ SettingsView.swift,\ ShareSheet.swift,\ Signal.swift,\ SignalEngine.swift,\ StopMonitor.swift,\ StrategiesSection.swift,\ StrategiesVM.swift,\ StrategiesView.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/ViewModels/SettingsVM.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Settings/SettingsValidator.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/SettingsView.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/Shared/ShareSheet.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/Signal.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/SignalEngine.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Managers/StopMonitor.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/Settings/Sections/StrategiesSection.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/ViewModels/StrategiesVM.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/StrategiesView.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/ViewModels/SettingsVM.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Settings/SettingsValidator.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/SettingsView.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/Shared/ShareSheet.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/Signal.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/SignalEngine.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Managers/StopMonitor.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/Settings/Sections/StrategiesSection.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/ViewModels/StrategiesVM.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/StrategiesView.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 Compiling\ PnLVM.swift,\ PnLWidget.swift,\ Position.swift,\ PriceTick.swift,\ RSIStrategy.swift,\ RegimeDetector.swift,\ RiskManager.swift,\ RiskModels.swift,\ RootTabs.swift,\ SafeTask.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/ViewModels/PnLVM.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/Components/PnLWidget.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/Position.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/PriceTick.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/AI/StrategyEngine/RSIStrategy.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/AI/StrategyEngine/RegimeDetector.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Managers/RiskManager.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/RiskModels.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/RootTabs.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Utils/SafeTask.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/ViewModels/PnLVM.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/Components/PnLWidget.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/Position.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/PriceTick.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/AI/StrategyEngine/RSIStrategy.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/AI/StrategyEngine/RegimeDetector.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Managers/RiskManager.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/RiskModels.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/RootTabs.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Utils/SafeTask.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 Compiling\ TradeStore.swift,\ TradesVM.swift,\ TradesView.swift,\ TradingMode.swift,\ TradingSection.swift,\ TrialManager.swift,\ WebSocketManager.swift,\ BTC_4H_Model.swift,\ BitcoinAI_1h_enhanced.swift,\ BitcoinAI_5m_enhanced.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/TradeStore.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/ViewModels/TradesVM.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/TradesView.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/TradingMode.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/Settings/Sections/TradingSection.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/TrialManager.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/WebSocketManager.swift /Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/DerivedSources/CoreMLGenerated/BTC_4H_Model/BTC_4H_Model.swift /Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/DerivedSources/CoreMLGenerated/BitcoinAI_1h_enhanced/BitcoinAI_1h_enhanced.swift /Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/DerivedSources/CoreMLGenerated/BitcoinAI_5m_enhanced/BitcoinAI_5m_enhanced.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/TradeStore.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/ViewModels/TradesVM.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/TradesView.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/TradingMode.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/Settings/Sections/TradingSection.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/TrialManager.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/WebSocketManager.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/DerivedSources/CoreMLGenerated/BTC_4H_Model/BTC_4H_Model.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/DerivedSources/CoreMLGenerated/BitcoinAI_1h_enhanced/BitcoinAI_1h_enhanced.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Library/Developer/Xcode/DerivedData/MyTradeMate-gdjtlyvxntysdfdyhmpbmjryjkum/Build/Intermediates.noindex/MyTradeMate.build/Debug-iphonesimulator/MyTradeMate.build/DerivedSources/CoreMLGenerated/BitcoinAI_5m_enhanced/BitcoinAI_5m_enhanced.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 Compiling\ NetworkSecurityManager.swift,\ Order.swift,\ OrderSide.swift,\ OrderTypes.swift,\ PaperExchangeClient.swift,\ PnLAggregator.swift,\ PnLCSVExporter.swift,\ PnLDetailView.swift,\ PnLManager.swift,\ PnLMetrics.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Security/NetworkSecurityManager.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/Order.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/OrderSide.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/OrderTypes.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Services/PaperExchangeClient.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Utils/PnLAggregator.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Utils/PnLCSVExporter.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/PnLDetailView.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Managers/PnLManager.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Utils/PnLMetrics.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Security/NetworkSecurityManager.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/Order.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/OrderSide.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/OrderTypes.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Services/PaperExchangeClient.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Utils/PnLAggregator.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Utils/PnLCSVExporter.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/PnLDetailView.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Managers/PnLManager.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Utils/PnLMetrics.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 Compiling\ BinanceLiveClient.swift,\ BinanceModels.swift,\ BreakoutStrategy.swift,\ CSVExporter+PnLMetrics.swift,\ CSVExporter.swift,\ Candle.swift,\ CandleChartView.swift,\ CandleProvider.swift,\ CandlestickChart.swift,\ CoreMLInspector.swift,\ DashboardVM.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Services/BinanceLiveClient.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/BinanceModels.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/AI/StrategyEngine/BreakoutStrategy.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Utils/CSVExporter+PnLMetrics.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Utils/CSVExporter.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/Candle.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/UI/Candles/CandleChartView.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Services/CandleProvider.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/UI/Charts/CandlestickChart.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Diagnostics/CoreMLInspector.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/ViewModels/DashboardVM.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Services/BinanceLiveClient.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/BinanceModels.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/AI/StrategyEngine/BreakoutStrategy.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Utils/CSVExporter+PnLMetrics.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Utils/CSVExporter.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/Candle.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/UI/Candles/CandleChartView.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Services/CandleProvider.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/UI/Charts/CandlestickChart.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Diagnostics/CoreMLInspector.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/ViewModels/DashboardVM.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 Compiling\ FeatureBuilder.swift,\ Haptics.swift,\ InterfaceSection.swift,\ JSONExporter.swift,\ KeychainHelper.swift,\ KeychainStore.swift,\ KrakenClient.swift,\ KrakenExchangeClient.swift,\ KrakenKeysView.swift,\ KrakenLiveClient.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/AI/FeatureBuilder.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Utils/Haptics.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/Settings/Sections/InterfaceSection.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Utils/JSONExporter.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Utils/KeychainHelper.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/KeychainStore.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/KrakenClient.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/KrakenExchangeClient.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/Settings/Sheets/KrakenKeysView.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Services/KrakenLiveClient.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/AI/FeatureBuilder.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Utils/Haptics.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/Settings/Sections/InterfaceSection.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Utils/JSONExporter.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Utils/KeychainHelper.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/KeychainStore.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/KrakenClient.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/KrakenExchangeClient.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/Settings/Sheets/KrakenKeysView.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Services/KrakenLiveClient.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+    cd /Users/lupudragos/Desktop/Trading_MyTradeMate
+    
+
+SwiftCompile normal arm64 Compiling\ Strategy.swift,\ StrategyManager.swift,\ Symbol.swift,\ SymbolCatalog.swift,\ ThemeManager.swift,\ Ticker.swift,\ Timeframe.swift,\ TradeHistoryVM.swift,\ TradeHistoryView.swift,\ TradeManager.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/AI/StrategyEngine/Strategy.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/AI/StrategyEngine/StrategyManager.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/Symbol.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/SymbolCatalog.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Themes/ThemeManager.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/Ticker.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/Timeframe.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/ViewModels/TradeHistoryVM.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/TradeHistoryView.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Managers/TradeManager.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+Command SwiftCompile failed with a nonzero exit code
+
+** BUILD FAILED **
+
+
+The following build commands failed:
+	SwiftCompile normal arm64 Compiling\ AIModelManager.swift,\ AISection.swift,\ Account.swift,\ AppConfig.swift,\ AppError.swift,\ AppSettings.swift,\ Audit.swift,\ BackgroundExporter.swift,\ BinanceClient.swift,\ BinanceExchangeClient.swift,\ BinanceKeysView.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Services/AIModelManager.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/Settings/Sections/AISection.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/Account.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/AppConfig.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/AppError.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/AppSettings.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Diagnostics/Audit.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Utils/BackgroundExporter.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/BinanceClient.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/BinanceExchangeClient.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/Settings/Sheets/BinanceKeysView.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+	SwiftCompile normal arm64 /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Diagnostics/Audit.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+	SwiftCompile normal arm64 Compiling\ Strategy.swift,\ StrategyManager.swift,\ Symbol.swift,\ SymbolCatalog.swift,\ ThemeManager.swift,\ Ticker.swift,\ Timeframe.swift,\ TradeHistoryVM.swift,\ TradeHistoryView.swift,\ TradeManager.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/AI/StrategyEngine/Strategy.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/AI/StrategyEngine/StrategyManager.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/Symbol.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Core/SymbolCatalog.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Themes/ThemeManager.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/Ticker.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Models/Timeframe.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/ViewModels/TradeHistoryVM.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Views/TradeHistoryView.swift /Users/lupudragos/Desktop/Trading_MyTradeMate/MyTradeMate/Managers/TradeManager.swift (in target 'MyTradeMate' from project 'MyTradeMate')
+	Building project MyTradeMate with scheme MyTradeMate and configuration Debug
+(4 failures)

@@ -9,7 +9,7 @@ targets:
   MyTradeMate:
     type: application
     platform: iOS
-    deploymentTarget: "16.0"
+    deploymentTarget: "17.0"
     sources:
       - path: MyTradeMate
         excludes:
@@ -21,7 +21,7 @@ targets:
       base:
         PRODUCT_NAME: MyTradeMate
         PRODUCT_BUNDLE_IDENTIFIER: com.gmail.mytrademate.app
-        SWIFT_VERSION: 5.0
+        SWIFT_VERSION: 5.9
         INFOPLIST_FILE: MyTradeMate/Info.plist
         CODE_SIGN_STYLE: Automatic
         CURRENT_PROJECT_VERSION: 1
@@ -40,3 +40,18 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.gmail.mytrademate.app.tests
         BUNDLE_LOADER: $(BUILT_PRODUCTS_DIR)/MyTradeMate.app/MyTradeMate
         TEST_HOST: $(BUNDLE_LOADER)
+
+  MyTradeMateWidget:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: MyTradeMateWidget
+    settings:
+      base:
+        PRODUCT_NAME: MyTradeMateWidget
+        PRODUCT_BUNDLE_IDENTIFIER: com.gmail.mytrademate.app.widget
+        SWIFT_VERSION: 5.9
+        INFOPLIST_FILE: MyTradeMateWidget/Info.plist
+    dependencies:
+      - target: MyTradeMate

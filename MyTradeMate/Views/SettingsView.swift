@@ -1,7 +1,13 @@
 import SwiftUI
+import Foundation
+
+// Exchange model is defined in Models/Exchange.swift
+
+// NavigationCoordinator, NavigationDestination and AppTab are defined in RootTabs.swift
 
 struct SettingsView: View {
     @ObservedObject private var settings = AppSettings.shared
+    @EnvironmentObject private var navigationCoordinator: NavigationCoordinator
     
     var body: some View {
         NavigationStack {
@@ -69,6 +75,11 @@ struct SettingsView: View {
                 }
                 
                 Section("Exchanges") {
+                    Button("Manage API Keys") {
+                        navigationCoordinator.navigate(to: .exchangeKeys, in: .settings)
+                    }
+                    .foregroundColor(.primary)
+                    
                     NavigationLink("Binance") {
                         Text("Binance Configuration")
                             .navigationTitle("Binance")

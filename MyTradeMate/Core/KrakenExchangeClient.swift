@@ -4,8 +4,8 @@ import CryptoKit
 final class KrakenExchangeClient: ExchangeClient {
     let id: Exchange = .kraken
     let exchange: Exchange = .kraken
-    private let baseURL = URL(string: "https://api.kraken.com")!
-    private let wsURL = URL(string: "wss://ws.kraken.com")!
+    private let baseURL = URL(string: "https://api.kraken.com")
+    private let wsURL = URL(string: "wss://ws.kraken.com")
     
     private var continuation: AsyncStream<Ticker>.Continuation?
     
@@ -92,6 +92,10 @@ final class KrakenExchangeClient: ExchangeClient {
     // MARK: - Market Data
     
     func fetchCandles(symbol: String, interval: String, limit: Int) async throws -> [Candle] {
+        guard let baseURL = baseURL else {
+            throw ExchangeError.invalidConfiguration
+        }
+        
         var components = URLComponents(url: baseURL.appendingPathComponent("/0/public/OHLC"), resolvingAgainstBaseURL: true)
         components?.queryItems = [
             URLQueryItem(name: "pair", value: symbol),
@@ -102,7 +106,11 @@ final class KrakenExchangeClient: ExchangeClient {
             throw ExchangeError.invalidResponse
         }
         
-        let (data, response) = try await URLSession.shared.data(from: url)
+        // Validate HTTPS security
+        try NetworkSecurityManager.shared.validateHTTPS(for: url)
+        
+        let session = NetworkSecurityManager.shared.createSecureSession(for: .kraken)
+        let (data, response) = try await session.data(from: url)
         
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 200 else {
@@ -146,7 +154,10 @@ final class KrakenExchangeClient: ExchangeClient {
         ]
         
         let signature = sign(path: "/0/private/AddOrder", params: params, secret: apiSecret)
-        var request = URLRequest(url: baseURL.appendingPathComponent("/0/private/AddOrder"))
+        guard let url = baseURL?.appendingPathComponent("/0/private/AddOrder") else {
+            throw ExchangeError.invalidConfiguration
+        }
+        var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue(apiKey, forHTTPHeaderField: "API-Key")
         request.setValue(signature, forHTTPHeaderField: "API-Sign")

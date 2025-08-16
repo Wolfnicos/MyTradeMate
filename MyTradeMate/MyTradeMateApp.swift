@@ -4,102 +4,14 @@ import UIKit
 
 private let logger = os.Logger(subsystem: "com.mytrademate", category: "App")
 
-// MARK: - AppSettings Implementation (inline due to target issues)
-@MainActor
-public final class AppSettings: ObservableObject {
-    public static let shared = AppSettings()
-    
-    private let ud = UserDefaults.standard
-    
-    // MARK: Keys
-    private struct K {
-        static let liveMarketData   = "live_market_data"
-        static let demoMode         = "demo_mode"
-        static let aiDebugMode      = "ai_debug_mode"
-        static let verboseAILogs    = "verbose_ai_logs"
-        static let confirmTrades    = "confirm_trades"
-        static let pnlDemoMode      = "pnl_demo_mode"
-        static let paperTrading     = "paper_trading"
-        static let haptics          = "haptics_enabled"
-        static let darkMode         = "dark_mode"
-        static let defaultTimeframe = "default_timeframe"
-        static let defaultSymbol    = "default_symbol"
-        static let autoTrading      = "auto_trading"
-    }
-    
-    // MARK: Published settings
-    @Published public var liveMarketData: Bool {
-        didSet { ud.set(liveMarketData, forKey: K.liveMarketData) }
-    }
-    @Published public var demoMode: Bool {
-        didSet { ud.set(demoMode, forKey: K.demoMode) }
-    }
-    @Published public var aiDebugMode: Bool {
-        didSet { ud.set(aiDebugMode, forKey: K.aiDebugMode) }
-    }
-    @Published public var verboseAILogs: Bool {
-        didSet { ud.set(verboseAILogs, forKey: K.verboseAILogs) }
-    }
-    @Published public var confirmTrades: Bool {
-        didSet { ud.set(confirmTrades, forKey: K.confirmTrades) }
-    }
-    @Published public var pnlDemoMode: Bool {
-        didSet { ud.set(pnlDemoMode, forKey: K.pnlDemoMode) }
-    }
-    @Published public var paperTrading: Bool {
-        didSet { ud.set(paperTrading, forKey: K.paperTrading) }
-    }
-    @Published public var haptics: Bool {
-        didSet { ud.set(haptics, forKey: K.haptics) }
-    }
-    @Published public var darkMode: Bool {
-        didSet { ud.set(darkMode, forKey: K.darkMode) }
-    }
-    @Published public var defaultTimeframe: String {
-        didSet { ud.set(defaultTimeframe, forKey: K.defaultTimeframe) }
-    }
-    @Published public var defaultSymbol: String {
-        didSet { ud.set(defaultSymbol, forKey: K.defaultSymbol) }
-    }
-    @Published public var autoTrading: Bool {
-        didSet { ud.set(autoTrading, forKey: K.autoTrading) }
-    }
-    
-    // MARK: Computed helpers
-    public var isDemoAI: Bool { demoMode }
-    public var isDemoPnL: Bool { pnlDemoMode }
-    
-    // Legacy compatibility
-    public var liveMarketDataEnabled: Bool {
-        get { liveMarketData }
-        set { liveMarketData = newValue }
-    }
-    public var hapticsEnabled: Bool {
-        get { haptics }
-        set { haptics = newValue }
-    }
-    
-    private init() {
-        liveMarketData   = ud.object(forKey: K.liveMarketData) as? Bool ?? true
-        demoMode         = ud.object(forKey: K.demoMode) as? Bool ?? true
-        aiDebugMode      = ud.object(forKey: K.aiDebugMode) as? Bool ?? false
-        verboseAILogs    = ud.object(forKey: K.verboseAILogs) as? Bool ?? true
-        confirmTrades    = ud.object(forKey: K.confirmTrades) as? Bool ?? true
-        pnlDemoMode      = ud.object(forKey: K.pnlDemoMode) as? Bool ?? true
-        paperTrading     = ud.object(forKey: K.paperTrading) as? Bool ?? true
-        haptics          = ud.object(forKey: K.haptics) as? Bool ?? true
-        darkMode         = ud.object(forKey: K.darkMode) as? Bool ?? false
-        defaultTimeframe = ud.string(forKey: K.defaultTimeframe) ?? "m5"
-        defaultSymbol    = ud.string(forKey: K.defaultSymbol) ?? "BTC/USDT"
-        autoTrading      = ud.object(forKey: K.autoTrading) as? Bool ?? false
-    }
-}
+// Using the proper AppSettings from Models/AppSettings.swift
 
 @main
 struct MyTradeMateApp: App {
     @StateObject private var settings = AppSettings.shared
     
     init() {
+        setupDependencyInjection()
         setupAppearance()
         configureLogging()
     }
@@ -128,16 +40,21 @@ struct MyTradeMateApp: App {
         UITabBar.appearance().scrollEdgeAppearance = tabAppearance
     }
     
+    private func setupDependencyInjection() {
+        // Initialize services as needed
+        Log.app.info("App services initialized")
+    }
+    
     private func configureLogging() {
         // Configure logging subsystems
-        logger.info("MyTradeMate starting up...")
-        // logger.info("Demo mode: \(AppSettings.shared.demoMode)")
-        // logger.info("Verbose logging: \(AppSettings.shared.verboseAILogs)")
+        Log.app.info("MyTradeMate starting up...")
+        Log.verbose("Demo mode: \(AppSettings.shared.demoMode)", category: .app)
+        Log.verbose("Verbose logging: \(AppSettings.shared.verboseAILogs)", category: .app)
     }
     
     @MainActor
     private func runStartupDiagnostics() async {
-        logger.info("Running startup diagnostics...")
+        Log.app.info("Running startup diagnostics...")
         
         // Run audit
         // await Audit.runOnStartup()
@@ -145,35 +62,31 @@ struct MyTradeMateApp: App {
         // Validate AI models
         do {
             try await AIModelManager.shared.validateModels()
-            logger.info("✅ AI models validated successfully")
+            Log.ai.success("AI models validated successfully")
             
             // Print model info at startup
             for (kind, model) in AIModelManager.shared.models {
                 let inputs = model.modelDescription.inputDescriptionsByName
                 let outputs = model.modelDescription.outputDescriptionsByName
                 
-                logger.info("📊 Model: \(kind.modelName)")
+                Log.ai.info("📊 Model: \(kind.modelName)")
                 for (key, desc) in inputs {
                     let shape = desc.multiArrayConstraint?.shape ?? []
-                    logger.info("  Input: \(key) → \(shape)")
+                    Log.ai.debug("  Input: \(key) → \(shape)")
                 }
                 for (key, desc) in outputs {
                     let shape = desc.multiArrayConstraint?.shape ?? []
-                    logger.info("  Output: \(key) → \(shape)")
+                    Log.ai.debug("  Output: \(key) → \(shape)")
                 }
             }
         } catch {
-            logger.error("❌ AI model validation failed: \(error.localizedDescription)")
+            Log.error(error, context: "AI model validation", category: .ai)
         }
         
         // Check demo/live isolation
-        // if settings.demoMode {
-        //     logger.info("🎭 Running in DEMO mode - no real trades")
-        // }
-        // if settings.pnlDemoMode {
-        //     logger.info("📊 PnL in DEMO mode - synthetic equity curve")
-        // }
+        Log.verbose("Demo mode: \(settings.demoMode ? "ENABLED" : "DISABLED")", category: .app)
+        Log.verbose("PnL demo mode: \(settings.isDemoPnL ? "ENABLED" : "DISABLED")", category: .pnl)
         
-        logger.info("Startup diagnostics complete")
+        Log.app.info("Startup diagnostics complete")
     }
 }

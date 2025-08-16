@@ -2,13 +2,26 @@ import Foundation
 import CoreML
 import os.log
 
+// MARK: - Feature Error Types
+enum FeatureError: Error {
+    case notEnoughCandles
+    case invalidInput(String)
+}
+
 final class FeatureBuilder {
-    private static let logger = Logger(subsystem: "com.mytrade.mate", category: "FeatureBuilder")
+    private static let logger = os.Logger(subsystem: "com.mytrade.mate", category: "FeatureBuilder")
     
     // MARK: - Static Feature Building
-    static func vector10(from candles: [Candle]) throws -> MLMultiArray {
+    @MainActor static func vector10(from candles: [Candle]) throws -> MLMultiArray {
         let builder = FeatureBuilder()
-        return try builder.buildFeatures(from: candles)
+        let features = try builder.buildFeatures(from: candles)
+        
+        // Convert [Float] to MLMultiArray
+        let array = try MLMultiArray(shape: [10], dataType: .float32)
+        for (i, feature) in features.enumerated() {
+            array[i] = NSNumber(value: feature)
+        }
+        return array
     }
     
     // MARK: - Constants
@@ -25,12 +38,12 @@ final class FeatureBuilder {
     }
     
     // MARK: - Feature Building
-    func buildFeatures(from candles: [Candle]) throws -> [Float] {
+    @MainActor func buildFeatures(from candles: [Candle]) throws -> [Float] {
         guard candles.count >= 50 else {
             throw FeatureError.notEnoughCandles
         }
         
-        guard let lastCandle = candles.last else {
+        guard candles.last != nil else {
             throw FeatureError.invalidInput("no candles provided")
         }
         
@@ -177,7 +190,7 @@ extension Array where Element: BinaryFloatingPoint {
     func standardDeviation() -> Element {
         guard count > 1 else { return 0 }
         let avg = average()
-        let variance = map { pow($0 - avg, 2) }.average()
+        let variance = map { ($0 - avg) * ($0 - avg) }.average()
         return sqrt(variance)
     }
 }
@@ -202,4 +215,18 @@ func linearRegressionSlope(y: [Double], x: [Double]) -> Double {
     let sumX2 = x.map { $0 * $0 }.reduce(0, +)
     
     return (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX)
+}
+
+// MARK: - Safe Access Helpers
+private extension FeatureBuilder {
+    func safeLast<T>(_ array: [T]) -> T? {
+        return array.last
+    }
+    
+    func safeIndex<T>(_ array: [T], _ index: Int) -> T? {
+        guard index >= 0 && index < array.count else {
+            return nil
+        }
+        return array[index]
+    }
 }

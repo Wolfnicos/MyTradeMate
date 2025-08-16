@@ -1,19 +1,13 @@
 import Foundation
 import CoreML
 import Combine
-
-// MARK: - Logging Helper
-private enum Log {
-    static func ai(_ msg: @autoclosure () -> String) {
-        print("[AI] \(msg())")
-    }
-}
+import os
 
 // MARK: - Feature Builder (inline)
-private enum FeatureBuilder {
+private enum InlineFeatureBuilder {
     static func vector10(from candles: [Candle]) throws -> [Float] {
         guard candles.count >= 50 else {
-            Log.ai("Not enough candles for features: \(candles.count)/50")
+            Log.ai.info("Not enough candles for features: \(candles.count)/50")
             return Array(repeating: 0.0, count: 10)
         }
         
@@ -34,52 +28,52 @@ private enum FeatureBuilder {
             features.append(Float.random(in: -1...1)) // Placeholder implementation
         }
         
-        Log.ai("Built \(features.count) features: \(features.prefix(3))...")
+        Log.ai.info("Built \(features.count) features: \(features.prefix(3))...")
         return features
     }
 }
 
 // MARK: - Model Types
-enum ModelKind {
-    case m5, h1, h4
+enum ModelKind: String {
+    case m5 = "BitcoinAI_5m_enhanced"
+    case h1 = "BitcoinAI_1h_enhanced" 
+    case h4 = "BitcoinAI_4h_enhanced"
     
     var timeframe: String {
         switch self {
-        case .m5: return "5m"
-        case .h1: return "1h"
-        case .h4: return "4h"
+        case .m5: return "m5"
+        case .h1: return "h1"
+        case .h4: return "h4"
         }
     }
     
     var modelName: String {
-        switch self {
-        case .m5: return "BitcoinAI_5m_enhanced"
-        case .h1: return "BitcoinAI_1h_enhanced"
-        case .h4: return "BTC_4H_Model"
-        }
+        return self.rawValue
     }
 }
 
 enum SimpleSignal {
     case buy, sell, hold
+    
+    var stringValue: String {
+        switch self {
+        case .buy: return "BUY"
+        case .sell: return "SELL"
+        case .hold: return "HOLD"
+        }
+    }
 }
 
 struct PredictionResult {
-    let signal: SimpleSignal
+    let signal: String // "BUY", "SELL", "HOLD"
     let confidence: Double
-    let modelUsed: String
-    let timeframe: String
-    let timestamp: Date
-    let reasoning: String?
-    let meta: [String: Any]
+    let modelName: String
+    let meta: [String: String]
     
-    init(signal: SimpleSignal, confidence: Double, modelName: String, meta: [String: Any] = [:]) {
+    init(signal: String, confidence: Double, modelName: String, meta: [String: String] = [:]) {
         self.signal = signal
         self.confidence = confidence
-        self.modelUsed = modelName
-        self.timeframe = ""
-        self.timestamp = Date()
-        self.reasoning = nil
+        self.modelName = modelName
         self.meta = meta
     }
 }
@@ -100,12 +94,61 @@ final class AIModelManager: ObservableObject {
     
     @Published var models: [ModelKind: MLModel] = [:]
     
+    // Performance optimization
+    private var lastInferenceTime: Date = .distantPast
+    private var inferenceCount = 0
+    
     private init() {
         // Preload models on init
         Task {
             await preloadModels()
         }
+        
+        // TODO: Re-enable memory pressure notifications when MemoryPressureManager is available
+        // Listen for memory pressure notifications
+        // NotificationCenter.default.addObserver(
+        //     self,
+        //     selector: #selector(handleMemoryPressure),
+        //     name: .memoryPressureChanged,
+        //     object: nil
+        // )
+        
+        // Listen for optimization notifications
+        // NotificationCenter.default.addObserver(
+        //     self,
+        //     selector: #selector(handleOptimizationPause),
+        //     name: .pauseNonEssentialOperations,
+        //     object: nil
+        // )
     }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+    
+    // TODO: Re-implement when MemoryPressureManager is available
+    // @objc private func handleMemoryPressure(_ notification: Notification) {
+    //     guard let level = notification.userInfo?["level"] as? MemoryPressureManager.MemoryPressureLevel else { return }
+    //     
+    //     Task { @MainActor in
+    //         switch level {
+    //         case .warning:
+    //             await reduceModelCache()
+    //         case .critical:
+    //             await unloadInactiveModels()
+    //         case .normal:
+    //             break
+    //         }
+    //     }
+    // }
+    
+    // TODO: Re-implement when optimization system is available
+    // @objc private func handleOptimizationPause(_ notification: Notification) {
+    //     Task { @MainActor in
+    //         // Pause non-essential model operations
+    //         Log.performance("Pausing non-essential AI operations due to optimization")
+    //     }
+    // }
     
     func preloadModels() async {
         for kind in [ModelKind.m5, .h1, .h4] {
@@ -144,75 +187,137 @@ final class AIModelManager: ObservableObject {
         }
     }
     
-    func predictSafely(timeframe: Timeframe, candles: [Candle], mode: TradingMode) async -> PredictionResult {
-        let settings = AppSettings.shared
+    func predict(symbol: String, timeframe: Timeframe, candles: [Candle], precision: Bool) async -> PredictionResult {
+        // TODO: Re-enable when InferenceThrottler is available
+        // Check inference throttling
+        // guard InferenceThrottler.shared.shouldAllowInference() else {
+        //     Log.ai.debug("Inference throttled, returning cached or default prediction")
+        //     return PredictionResult(signal: "HOLD", confidence: 0.5, 
+        //                            modelName: "THROTTLED", meta: ["throttled": "true"])
+        // }
         
-        // Demo override
-        if settings.demoMode || settings.aiDebugMode {
-            let mock = PredictionResult(signal: .buy, confidence: 0.78, modelName: "Demo", meta: ["demo": "true"])
-            Log.ai("Demo prediction → \(mock.signal)")
-            return mock
+        // Demo mode override
+        if AppSettings.shared.demoMode {
+            let directions = ["BUY", "SELL", "HOLD"]
+            let dir = directions.randomElement() ?? "HOLD"
+            Log.ai.info("Demo prediction → \(dir)")
+            
+            // TODO: Re-enable when InferenceThrottler is available
+            // Record inference for throttling
+            // InferenceThrottler.shared.recordInference()
+            
+            return PredictionResult(signal: dir, confidence: Double.random(in: 0.55...0.9), 
+                                   modelName: "DEMO", meta: ["demo": "1"])
         }
+        
+        // TODO: Re-enable when InferenceThrottler is available
+        // Record inference attempt
+        // InferenceThrottler.shared.recordInference()
+        inferenceCount += 1
+        lastInferenceTime = Date()
+        
+        let result: PredictionResult
+        if precision {
+            // Precision mode: ensemble across models
+            result = await ensemblePrediction(symbol: symbol, candles: candles)
+        } else {
+            // Normal mode: single model for timeframe
+            result = await singleModelPrediction(timeframe: timeframe, candles: candles)
+        }
+        
+        Log.performance("AI inference completed", duration: Date().timeIntervalSince(lastInferenceTime))
+        return result
+    }
+    
+    func predictSafely(timeframe: Timeframe, candles: [Candle], mode: TradingMode) async -> PredictionResult {
+        return await predict(symbol: "BTC/USDT", timeframe: timeframe, candles: candles, precision: false)
+    }
+    
+    private func singleModelPrediction(timeframe: Timeframe, candles: [Candle]) async -> PredictionResult {
+        guard candles.count >= 50 else {
+            return PredictionResult(signal: "HOLD", confidence: 0, modelName: "N/A", 
+                                  meta: ["reason": "insufficient_candles"])
+        }
+        
+        let modelKind = modelKindForTimeframe(timeframe)
         
         do {
             let model = try await loadModel(for: timeframe)
-            let md = model.modelDescription
-            Log.ai("Loaded model \(md.metadata[.author] ?? "") / \(md.predictedFeatureName ?? "unknown")")
+            let features = try InlineFeatureBuilder.vector10(from: candles)
             
-            if timeframe == .h4 {
-                // OHLC model
-                let keys = ohlcKeys(for: model)
-                guard keys.count == 4 else {
-                    Log.ai("❌ OHLC keys missing: \(keys)")
-                    return .empty(modelName: "OHLC-missing")
-                }
-                
-                guard candles.count >= 2 else { return .empty(modelName: "not-enough-candles") }
-                let last = candles.last!
-                let prev = candles[candles.count - 2]
-                
-                let inputs: [String: MLFeatureValue] = [
-                    "open": .init(double: last.open),
-                    "high": .init(double: last.high),
-                    "low":  .init(double: last.low),
-                    "close": .init(double: last.close),
-                    // OPTIONAL: add prev close if model has it
-                    "prev_close": md.inputDescriptionsByName.keys.contains("prev_close") ? .init(double: prev.close) : nil
-                ].compactMapValues { $0 }
-                
-                Log.ai("→ OHLC inputs: \(inputs.map { "\($0.key)=\($0.value.doubleValue)" }.joined(separator: ", "))")
-                
-                let dict = try MLDictionaryFeatureProvider(dictionary: inputs)
-                let out = try model.prediction(from: dict)
-                Log.ai("← OHLC output: \(out.featureNames.map { "\($0)=\(out.featureValue(for: $0)!)" }.joined(separator: ", "))")
-                
-                return PredictionResult.from(features: out, modelName: "BTC_4H_Model")
-            } else {
-                // Dense 10 model
-                let vec = try FeatureBuilder.vector10(from: candles)
-                let key = denseKey(for: model) ?? "dense_input"
-                let arr = try MLMultiArray(shape: [10], dataType: .float32)
-                for (i, v) in vec.enumerated() { arr[i] = NSNumber(value: v) }
-                
-                Log.ai("→ Dense vector (10): \(vec.map { String(format: "%.5f", $0) }.joined(separator: ", "))")
-                Log.ai("→ Using input key '\(key)' (fallback to detected)")
-                
-                let prov = try MLDictionaryFeatureProvider(dictionary: [key: MLFeatureValue(multiArray: arr)])
-                let out = try model.prediction(from: prov)
-                Log.ai("← Dense output: \(out.featureNames.map { "\($0)=\(out.featureValue(for: $0)!)" }.joined(separator: ", "))")
-                
-                return PredictionResult.from(features: out, modelName: currentModelName(for: timeframe))
-            }
+            let inputName = model.modelDescription.inputDescriptionsByName.keys.first ?? "dense_input"
+            let array = try MLMultiArray(shape: [10], dataType: .float32)
+            for (i, v) in features.enumerated() { array[i] = NSNumber(value: v) }
+            let input = [inputName: MLFeatureValue(multiArray: array)]
+            
+            let provider = try MLDictionaryFeatureProvider(dictionary: input)
+            let output = try await model.prediction(from: provider)
+            
+            // Convert output to prediction result
+            return convertToPredictionResult(output: output, modelName: modelKind.modelName)
         } catch {
             let ns = error as NSError
-            let shapes = models.values.first?.modelDescription.inputDescriptionsByName.mapValues { $0.multiArrayConstraint?.shape ?? [] } ?? [:]
-            Log.ai("❌ CoreML prediction failed | \(ns.localizedDescription)")
-            Log.ai("↳ domain=\(ns.domain) code=\(ns.code)")
-            Log.ai("↳ reason=\(ns.localizedFailureReason ?? "nil") suggestion=\(ns.localizedRecoverySuggestion ?? "nil")")
-            Log.ai("↳ userInfo=\(ns.userInfo)")
-            Log.ai("↳ model inputs=\(shapes)")
-            return .empty(modelName: "error")
+            print("CoreML EVAL ERROR: \(ns.localizedDescription) code=\(ns.code) domain=\(ns.domain)")
+            if let underlying = ns.userInfo[NSUnderlyingErrorKey] as? NSError {
+                print("Underlying: \(underlying), code=\(underlying.code)")
+            }
+            Log.ai.error("Prediction failed: \(ns.localizedDescription)")
+            return PredictionResult(signal: "HOLD", confidence: 0, modelName: modelKind.modelName, 
+                                  meta: ["error": "eval_failed"])
         }
+    }
+    
+    private func ensemblePrediction(symbol: String, candles: [Candle]) async -> PredictionResult {
+        var predictions: [PredictionResult] = []
+        
+        // Run all models
+        for timeframe: Timeframe in [.m5, .h1, .h4] {
+            let result = await singleModelPrediction(timeframe: timeframe, candles: candles)
+            predictions.append(result)
+        }
+        
+        // Majority vote
+        let buyVotes = predictions.filter { $0.signal == "BUY" }
+        let sellVotes = predictions.filter { $0.signal == "SELL" }
+        let holdVotes = predictions.filter { $0.signal == "HOLD" }
+        
+        let finalSignal: String
+        let avgConfidence: Double
+        
+        if buyVotes.count > max(sellVotes.count, holdVotes.count) {
+            finalSignal = "BUY"
+            avgConfidence = buyVotes.map { $0.confidence }.reduce(0, +) / Double(buyVotes.count)
+        } else if sellVotes.count > holdVotes.count {
+            finalSignal = "SELL"
+            avgConfidence = sellVotes.map { $0.confidence }.reduce(0, +) / Double(sellVotes.count)
+        } else {
+            finalSignal = "HOLD"
+            avgConfidence = holdVotes.map { $0.confidence }.reduce(0, +) / Double(max(holdVotes.count, 1))
+        }
+        
+        return PredictionResult(signal: finalSignal, confidence: avgConfidence, 
+                               modelName: "Ensemble", meta: ["models": "m5,h1,h4"])
+    }
+    
+    private func convertToPredictionResult(output: MLFeatureProvider, modelName: String) -> PredictionResult {
+        // Try to find output values
+        let outputNames = output.featureNames
+        
+        if let classLabel = output.featureValue(for: "classLabel")?.stringValue {
+            let confidence = output.featureValue(for: "confidence")?.doubleValue ?? 0.5
+            return PredictionResult(signal: classLabel.uppercased(), confidence: confidence, 
+                                   modelName: modelName, meta: [:])
+        }
+        
+        // Fallback to first output
+        if let firstOutput = outputNames.first,
+           let value = output.featureValue(for: firstOutput)?.doubleValue {
+            let signal = value > 0.5 ? "BUY" : "HOLD"
+            return PredictionResult(signal: signal, confidence: abs(value), 
+                                   modelName: modelName, meta: [:])
+        }
+        
+        return PredictionResult(signal: "HOLD", confidence: 0, modelName: modelName, meta: [:])
     }
     
     private func denseKey(for model: MLModel) -> String? {
@@ -277,7 +382,7 @@ final class AIModelManager: ObservableObject {
         )
         
         // Prediction
-        let prediction = try model.prediction(from: provider)
+        let prediction = try await model.prediction(from: provider)
         
         guard let outputName = model.modelDescription.outputDescriptionsByName.keys.first,
               let output = prediction.featureValue(for: outputName)?.multiArrayValue else {
@@ -288,7 +393,7 @@ final class AIModelManager: ObservableObject {
         let confidence = output.count > 0 ? output[0].doubleValue : 0.5
         
         return PredictionResult(
-            signal: signal,
+            signal: signal.stringValue,
             confidence: confidence,
             modelName: kind.modelName,
             meta: [:]
@@ -297,10 +402,10 @@ final class AIModelManager: ObservableObject {
     
     func demoPrediction(for kind: ModelKind) async -> PredictionResult {
         let signals: [SimpleSignal] = [.buy, .sell, .hold]
-        let signal = signals.randomElement()!
+        let signal = signals.randomElement() ?? .hold
         
         return PredictionResult(
-            signal: signal,
+            signal: signal.stringValue,
             confidence: Double.random(in: 0.6...0.9),
             modelName: "Demo Model",
             meta: [:]
@@ -347,15 +452,15 @@ final class AIModelManager: ObservableObject {
 
 private extension PredictionResult {
     static func empty(modelName: String) -> PredictionResult {
-        .init(signal: .hold, confidence: 0, modelName: modelName, meta: [:])
+        .init(signal: "HOLD", confidence: 0, modelName: modelName, meta: [:])
     }
     
     static func from(features out: MLFeatureProvider, modelName: String) -> PredictionResult {
         // Generic mapping: prefer "classLabel" or "signal" + "confidence"
         if let label = out.featureValue(for: "classLabel")?.stringValue {
             let conf = out.featureValue(for: "confidence")?.doubleValue ?? 0
-            let s: SimpleSignal = SimpleSignal(rawValue: label.uppercased()) ?? .hold
-            return .init(signal: s, confidence: conf, modelName: modelName, meta: [:])
+            let signal = label.uppercased()
+            return .init(signal: signal, confidence: conf, modelName: modelName, meta: [:])
         }
         // Fallback: if model outputs logits array
         if let logits = out.featureValue(for: "output")?.multiArrayValue {
@@ -364,7 +469,7 @@ private extension PredictionResult {
             for i in 1..<logits.count { if logits[i].doubleValue > maxV { maxV = logits[i].doubleValue; maxI = i } }
             let mapping = ["HOLD","BUY","SELL"]
             let label = mapping.indices.contains(maxI) ? mapping[maxI] : "HOLD"
-            return .init(signal: SimpleSignal(rawValue: label) ?? .hold,
+            return .init(signal: label,
                          confidence: maxV, modelName: modelName, meta: [:])
         }
         return .empty(modelName: modelName)

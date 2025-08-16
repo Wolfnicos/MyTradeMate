@@ -6,12 +6,6 @@ import OSLog
 
 private let logger = os.Logger(subsystem: "com.mytrademate", category: "Dashboard")
 
-// MARK: - Logging Helper
-private enum Log {
-    static func ai(_ msg: @autoclosure () -> String) {
-        print("[AI] \(msg())")
-    }
-}
 
 // Using the canonical TradingMode from Models/TradingMode.swift
 
@@ -26,52 +20,14 @@ struct SignalInfo {
     let reason: String
 }
 
-// MARK: - Strategy Store (inline)
-private class StrategyStore {
-    static let shared = StrategyStore()
-    
-    func evaluateStrategies(candles: [Candle], timeframe: Timeframe) -> SignalInfo? {
-        guard candles.count >= 20 else { return nil }
-        
-        // Simple RSI strategy
-        let rsi = calculateRSI(candles: candles, period: 14)
-        if rsi < 30 {
-            return SignalInfo(direction: "BUY", confidence: 65, reason: "RSI oversold")
-        } else if rsi > 70 {
-            return SignalInfo(direction: "SELL", confidence: 65, reason: "RSI overbought")
-        }
-        
-        return SignalInfo(direction: "HOLD", confidence: 50, reason: "No clear signal")
-    }
-    
-    private func calculateRSI(candles: [Candle], period: Int) -> Double {
-        guard candles.count >= period else { return 50.0 }
-        
-        var gains: [Double] = []
-        var losses: [Double] = []
-        
-        for i in 1..<min(candles.count, period + 1) {
-            let change = candles[i].close - candles[i-1].close
-            if change > 0 {
-                gains.append(change)
-                losses.append(0)
-            } else {
-                gains.append(0)
-                losses.append(-change)
-            }
-        }
-        
-        let avgGain = gains.reduce(0, +) / Double(gains.count)
-        let avgLoss = losses.reduce(0, +) / Double(losses.count)
-        
-        guard avgLoss > 0 else { return 50.0 }
-        let rs = avgGain / avgLoss
-        return 100 - (100 / (1 + rs))
-    }
-}
 
 @MainActor
 final class DashboardVM: ObservableObject {
+    // MARK: - Dependencies
+    private let marketDataService = MarketDataService.shared
+    private let aiModelManager = AIModelManager.shared
+    private let settings = AppSettings.shared
+    
     // MARK: - Published Properties
     @Published var price: Double = 0.0
     @Published var priceChange: Double = 0.0
@@ -96,18 +52,22 @@ final class DashboardVM: ObservableObject {
     }
     @Published var errorMessage: String?
     @Published var timeframe: Timeframe = .m5
-    @Published var isPrecisionMode: Bool = false
+    @Published var precisionMode: Bool = false
+    @Published var tradingMode: TradingMode = .manual
+    @Published var confidence: Double = 0.0
     @Published var currentSignal: SignalInfo?
     @Published var openPositions: [Position] = []
     @Published var isConnected: Bool = false
     @Published var connectionStatus: String = "Connecting..."
     @Published var lastUpdated: Date = Date()
-    @Published var tradingMode: TradingMode = .manual
+    
+    // Computed property for backwards compatibility
+    var isPrecisionMode: Bool {
+        get { precisionMode }
+        set { precisionMode = newValue }
+    }
     
     // MARK: - Private Properties
-    private let aiModelManager = AIModelManager.shared
-    // private let ensembleDecider = EnsembleDecider()
-    private let marketDataService = MarketDataService.shared
     private var cancellables = Set<AnyCancellable>()
     private var refreshTimer: Timer?
     private var lastPredictionTime: Date = .distantPast
@@ -159,10 +119,30 @@ final class DashboardVM: ObservableObject {
         $timeframe
             .removeDuplicates()
             .debounce(for: .milliseconds(300), scheduler: RunLoop.main)
-            .sink { [weak self] _ in
+            .sink { [weak self] timeframe in
+                Log.app.info("User set timeframe to \(timeframe.rawValue)")
+                Task { @MainActor [weak self] in
+                    await self?.reloadDataAndPredict()
+                }
+            }
+            .store(in: &cancellables)
+        
+        // Observe precision mode changes
+        $precisionMode
+            .removeDuplicates()
+            .sink { [weak self] precision in
+                Log.ai.info("Precision mode \(precision ? "ON" : "OFF")")
                 Task { @MainActor [weak self] in
                     await self?.refreshPredictionAsync()
                 }
+            }
+            .store(in: &cancellables)
+        
+        // Observe trading mode changes  
+        $tradingMode
+            .removeDuplicates()
+            .sink { [weak self] mode in
+                Log.trade.info("Trading mode \(mode.rawValue)")
             }
             .store(in: &cancellables)
         
@@ -176,6 +156,11 @@ final class DashboardVM: ObservableObject {
                 }
             }
             .store(in: &cancellables)
+    }
+    
+    private func reloadDataAndPredict() async {
+        await loadMarketData()
+        await refreshPredictionAsync()
     }
     
     private func loadInitialData() {
@@ -196,30 +181,34 @@ final class DashboardVM: ObservableObject {
     // MARK: - Data Loading
     private func loadMarketData() async {
         do {
-            // In demo mode, generate mock data
-            // if AppSettings.shared.demoMode {
-            //     generateMockData()
-            // } else {
-            //     // Load real market data
-            //     let marketData = try await marketDataService.fetchCandles(
-            //         symbol: "BTCUSDT",
-            //         timeframe: timeframe
-            //     )
-            //     
-            //     await MainActor.run {
-            //         self.candles = marketData
-            //         self.updatePriceInfo()
-            //         self.updateChartPoints()
-            //     }
-            // }
-            
-            // Generate mock data for now
-            generateMockData()
+            if settings.demoMode {
+                generateMockData()
+                Log.app.info("Loaded demo market data")
+            } else if settings.liveMarketData {
+                // Load real market data
+                let marketData = try await marketDataService.fetchCandles(
+                    symbol: settings.defaultSymbol,
+                    timeframe: timeframe
+                )
+                
+                await MainActor.run {
+                    self.candles = marketData
+                    self.updatePriceInfo()
+                    self.updateChartPoints()
+                }
+                Log.app.info("Loaded live market data: \(marketData.count) candles")
+            } else {
+                // Fallback to demo data
+                generateMockData()
+                Log.app.info("Fallback to demo data")
+            }
         } catch {
-            logger.error("Failed to load market data: \(error.localizedDescription)")
+            Log.app.error("Failed to load market data: \(error.localizedDescription)")
             await MainActor.run {
                 self.errorMessage = error.localizedDescription
             }
+            // Fallback to demo data on error
+            generateMockData()
         }
     }
     
@@ -328,8 +317,8 @@ final class DashboardVM: ObservableObject {
         guard timeSinceLastPrediction >= 0.5 else {
             // Only log throttling when verbose logging is enabled and at most once per second
             let now = Date()
-            if AppSettings.shared.verboseAILogs && now.timeIntervalSince(lastThrottleLog) >= 1.0 {
-                Log.ai("Throttling prediction, last was \(String(format: "%.1f", timeSinceLastPrediction))s ago")
+            if AppSettings.shared.aiVerbose && now.timeIntervalSince(lastThrottleLog) >= 1.0 {
+                Log.ai.info("Throttling prediction, last was \(String(format: "%.1f", timeSinceLastPrediction))s ago")
                 lastThrottleLog = now
             }
             return
@@ -399,9 +388,10 @@ final class DashboardVM: ObservableObject {
         
         await MainActor.run {
             self.currentSignal = finalSignal
+            self.confidence = finalSignal.confidence
             
             // Auto trading logic
-            if self.tradingMode == .auto && AppSettings.shared.confirmTrades {
+            if self.tradingMode == .auto && settings.autoTrading {
                 self.handleAutoTrading(signal: finalSignal)
             }
         }
@@ -410,7 +400,7 @@ final class DashboardVM: ObservableObject {
     
     private func generateDemoSignal() -> SignalInfo {
         let signals = ["BUY", "SELL", "HOLD"]
-        let direction = signals.randomElement()!
+        let direction = signals.randomElement() ?? "HOLD"
         let confidence = Double.random(in: 0.5...0.95)
         
         let reasons = [
@@ -463,11 +453,13 @@ final class DashboardVM: ObservableObject {
         
         // Add CoreML scores
         switch coreML.signal {
-        case .buy:
+        case "BUY":
             buyScore += coreML.confidence * coreMLWeight
-        case .sell:
+        case "SELL":
             sellScore += coreML.confidence * coreMLWeight
-        case .hold:
+        case "HOLD":
+            holdScore += coreML.confidence * coreMLWeight
+        default:
             holdScore += coreML.confidence * coreMLWeight
         }
         
@@ -487,14 +479,15 @@ final class DashboardVM: ObservableObject {
             confidence = holdScore
         }
         
-        var reason = "CoreML \(coreML.modelUsed)" // No ensemble reasoning in this simplified example
+        var reason = "CoreML \(coreML.modelName)" // No ensemble reasoning in this simplified example
         
         // If AI returns HOLD and strategies are enabled, check for secondary suggestions
         if direction == "HOLD" {
-            if let strategySignal = StrategyStore.shared.evaluateStrategies(candles: self.candles, timeframe: self.timeframe) {
-                reason = "AI: HOLD, Strategy: \(strategySignal)"
-                Log.ai("Strategy override: \(strategySignal)")
-            }
+            // TODO: Integrate with StrategyManager when available
+            // if let strategySignal = StrategyManager.shared.evaluateStrategies(candles: self.candles, timeframe: self.timeframe) {
+            //     reason = "AI: HOLD, Strategy: \(strategySignal)"
+            //     Log.ai.info("Strategy override: \(strategySignal)")
+            // }
         }
         
         if verboseLogging {
@@ -528,38 +521,41 @@ final class DashboardVM: ObservableObject {
     
     // MARK: - Trading Actions
     func executeBuy() {
-        // guard !AppSettings.shared.autoTrading else { return }
+        guard !settings.autoTrading else { 
+            logger.warning("Manual trading disabled in auto mode")
+            return 
+        }
         
-        // Haptics.impact(.medium)
-        
-        // if AppSettings.shared.confirmTrades {
-        //     // Show confirmation dialog
-        //     logger.info("Buy order confirmation required")
-        // } else {
-        //     // Execute immediately
-        //     logger.info("Executing buy order")
-        //     // TODO: Implement trade execution
-        // }
+        if settings.confirmTrades {
+            // Show confirmation dialog
+            logger.info("Buy order confirmation required")
+        } else {
+            // Execute immediately
+            logger.info("Executing buy order")
+            // TODO: Implement trade execution
+        }
         
         logger.info("Executing buy order")
     }
     
     func executeSell() {
-        // guard !AppSettings.shared.autoTrading else { return }
+        guard !settings.autoTrading else { 
+            logger.warning("Manual trading disabled in auto mode")
+            return 
+        }
         
-        // Haptics.impact(.medium)
-        
-        // if AppSettings.shared.confirmTrades {
-        //     // Show confirmation dialog
-        //     logger.info("Sell order confirmation required")
-        // } else {
-        //     // Execute immediately
-        //     logger.info("Executing sell order")
-        //     // TODO: Implement trade execution
-        // }
+        if settings.confirmTrades {
+            // Show confirmation dialog
+            logger.info("Sell order confirmation required")
+        } else {
+            // Execute immediately
+            logger.info("Executing sell order")
+            // TODO: Implement trade execution
+        }
         
         logger.info("Executing sell order")
     }
+    
     
     // MARK: - Auto Trading
     private var lastAutoTradeTime: Date = .distantPast
@@ -569,21 +565,21 @@ final class DashboardVM: ObservableObject {
         // Cooldown check
         let timeSinceLastTrade = Date().timeIntervalSince(lastAutoTradeTime)
         guard timeSinceLastTrade >= autoTradeCooldown else {
-            Log.ai("Auto trading on cooldown: \(String(format: "%.1f", timeSinceLastTrade))s / \(autoTradeCooldown)s")
+            Log.ai.info("Auto trading on cooldown: \(String(format: "%.1f", timeSinceLastTrade))s / \(autoTradeCooldown)s")
             return
         }
         
         // Only act on strong signals
         guard signal.confidence > 0.7 else {
-            Log.ai("Auto trading: Signal confidence too low (\(String(format: "%.1f", signal.confidence)))")
+            Log.ai.info("Auto trading: Signal confidence too low (\(String(format: "%.1f", signal.confidence)))")
             return
         }
         
         // Paper trading simulation
-        if AppSettings.shared.confirmTrades { // Using confirmTrades as paper trading toggle
+        if settings.confirmTrades { // Using confirmTrades as paper trading toggle
             simulatePaperTrade(signal: signal)
         } else {
-            Log.ai("❌ Live trading disabled for safety")
+            Log.ai.info("❌ Live trading disabled for safety")
         }
     }
     
@@ -593,8 +589,8 @@ final class DashboardVM: ObservableObject {
         let orderType = signal.direction
         let confidence = String(format: "%.1f%%", signal.confidence * 100)
         
-        Log.ai("📝 Paper Trade Simulated: \(orderType) @ \(price) (confidence: \(confidence))")
-        Log.ai("↳ Reason: \(signal.reason)")
+        Log.ai.info("📝 Paper Trade Simulated: \(orderType) @ \(price) (confidence: \(confidence))")
+        Log.ai.info("↳ Reason: \(signal.reason)")
         
         // This would integrate with PaperExchangeClient in a full implementation
         // For now, just log the simulated trade

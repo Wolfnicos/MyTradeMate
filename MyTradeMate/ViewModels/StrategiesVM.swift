@@ -3,7 +3,7 @@ import Combine
 import SwiftUI
 import OSLog
 
-private let logger = Logger(subsystem: "com.mytrademate", category: "Strategies")
+private let logger = os.Logger(subsystem: "com.mytrademate", category: "Strategies")
 
 // MARK: - Strategy Info
 struct StrategyInfo: Identifiable {
@@ -231,8 +231,8 @@ final class StrategiesVM: ObservableObject {
         strategies[index].isEnabled = enabled
         ensembleDecider.enableStrategy(strategyName: strategies[index].name, enabled: enabled)
         
-        logger.info("Strategy \(strategies[index].name) \(enabled ? "enabled" : "disabled")")
-        Haptics.impact(.light)
+        logger.info("Strategy \(self.strategies[index].name) \(enabled ? "enabled" : "disabled")")
+        Haptics.playImpact(.light)
     }
     
     func updateWeight(_ id: String, weight: Double) {
@@ -241,7 +241,7 @@ final class StrategiesVM: ObservableObject {
         strategies[index].weight = weight
         ensembleDecider.updateStrategyWeight(strategyName: strategies[index].name, weight: weight)
         
-        logger.info("Strategy \(strategies[index].name) weight updated to \(weight)")
+        logger.info("Strategy \(self.strategies[index].name) weight updated to \(weight)")
     }
     
     func updateParameter(strategyId: String, paramId: String, value: Double) {
@@ -255,7 +255,7 @@ final class StrategiesVM: ObservableObject {
         // Update the actual strategy parameters
         updateStrategyEngine(strategyId: strategyId, paramId: paramId, value: value)
         
-        logger.info("Parameter \(paramId) for \(strategies[strategyIndex].name) updated to \(value)")
+        logger.info("Parameter \(paramId) for \(self.strategies[strategyIndex].name) updated to \(value)")
     }
     
     // MARK: - Private Methods
@@ -304,10 +304,81 @@ final class StrategiesVM: ObservableObject {
     }
     
     private func updateStrategyEngine(strategyId: String, paramId: String, value: Double) {
-        // This would update the actual strategy engine parameters
-        // For now, just log the change
+        // Update the actual strategy engine parameters
         logger.info("Updating strategy engine: \(strategyId).\(paramId) = \(value)")
         
-        // TODO: Connect to actual strategy instances and update their parameters
+        switch strategyId {
+        case "ema":
+            updateEMAStrategy(paramId: paramId, value: value)
+        case "rsi":
+            updateRSIStrategy(paramId: paramId, value: value)
+        case "macd":
+            updateMACDStrategy(paramId: paramId, value: value)
+        case "meanrev":
+            updateMeanReversionStrategy(paramId: paramId, value: value)
+        case "breakout":
+            updateBreakoutStrategy(paramId: paramId, value: value)
+        default:
+            logger.warning("Unknown strategy ID: \(strategyId)")
+        }
+    }
+    
+    private func updateEMAStrategy(paramId: String, value: Double) {
+        switch paramId {
+        case "fast":
+            EMAStrategy.shared.updateFastPeriod(Int(value))
+        case "slow":
+            EMAStrategy.shared.updateSlowPeriod(Int(value))
+        default:
+            logger.warning("Unknown EMA parameter: \(paramId)")
+        }
+    }
+    
+    private func updateRSIStrategy(paramId: String, value: Double) {
+        switch paramId {
+        case "period":
+            RSIStrategy.shared.updatePeriod(Int(value))
+        case "oversold":
+            RSIStrategy.shared.updateOversoldLevel(value)
+        case "overbought":
+            RSIStrategy.shared.updateOverboughtLevel(value)
+        default:
+            logger.warning("Unknown RSI parameter: \(paramId)")
+        }
+    }
+    
+    private func updateMACDStrategy(paramId: String, value: Double) {
+        switch paramId {
+        case "fast":
+            MACDStrategy.shared.updateFastPeriod(Int(value))
+        case "slow":
+            MACDStrategy.shared.updateSlowPeriod(Int(value))
+        case "signal":
+            MACDStrategy.shared.updateSignalPeriod(Int(value))
+        default:
+            logger.warning("Unknown MACD parameter: \(paramId)")
+        }
+    }
+    
+    private func updateMeanReversionStrategy(paramId: String, value: Double) {
+        switch paramId {
+        case "period":
+            MeanReversionStrategy.shared.updatePeriod(Int(value))
+        case "deviations":
+            MeanReversionStrategy.shared.updateStandardDeviations(value)
+        default:
+            logger.warning("Unknown Mean Reversion parameter: \(paramId)")
+        }
+    }
+    
+    private func updateBreakoutStrategy(paramId: String, value: Double) {
+        switch paramId {
+        case "period":
+            BreakoutStrategy.shared.updateATRPeriod(Int(value))
+        case "multiplier":
+            BreakoutStrategy.shared.updateMultiplier(value)
+        default:
+            logger.warning("Unknown Breakout parameter: \(paramId)")
+        }
     }
 }

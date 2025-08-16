@@ -1,6 +1,8 @@
 import Foundation
 
 public class MeanReversionStrategy: BaseStrategy {
+    public static let shared = MeanReversionStrategy()
+    
     public var period: Int = 20
     public var standardDeviations: Double = 2.0
     
@@ -9,6 +11,20 @@ public class MeanReversionStrategy: BaseStrategy {
             name: "Mean Reversion",
             description: "Bollinger Bands mean reversion strategy"
         )
+    }
+    
+    // MARK: - Parameter Updates
+    
+    public func updatePeriod(_ period: Int) {
+        guard period >= 10 && period <= 50 else { return }
+        self.period = period
+        Log.strategy.info("Mean Reversion period updated to \(period)")
+    }
+    
+    public func updateStandardDeviations(_ deviations: Double) {
+        guard deviations >= 1.0 && deviations <= 3.0 else { return }
+        self.standardDeviations = deviations
+        Log.strategy.info("Mean Reversion standard deviations updated to \(deviations)")
     }
     
     public override func signal(candles: [Candle]) -> StrategySignal {
@@ -22,7 +38,14 @@ public class MeanReversionStrategy: BaseStrategy {
         }
         
         let closes = candles.map { $0.close }
-        let currentPrice = closes.last!
+        guard let currentPrice = closes.last else {
+            return StrategySignal(
+                direction: .hold,
+                confidence: 0.0,
+                reason: "No current price data",
+                strategyName: name
+            )
+        }
         
         // Calculate Bollinger Bands
         let recentCloses = Array(closes.suffix(period))

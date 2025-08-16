@@ -23,7 +23,9 @@
       "Bash(mkdir:*)",
       "Bash(xcrun simctl boot:*)",
       "Bash(xcrun simctl launch:*)",
-      "Bash(swift build:*)"
+      "Bash(swift build:*)",
+      "Bash(sed:*)",
+      "Bash(swift:*)"
     ],
     "deny": []
   }

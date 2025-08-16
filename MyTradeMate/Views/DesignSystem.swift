@@ -45,7 +45,7 @@ struct HeadingM: ViewModifier {
     }
 }
 
-struct Body: ViewModifier {
+struct BodyText: ViewModifier {
     func body(content: Content) -> some View {
         content
             .font(.system(size: 17, weight: .regular, design: .default))
@@ -64,7 +64,7 @@ extension View {
     func headingXL() -> some View { modifier(HeadingXL()) }
     func headingL() -> some View { modifier(HeadingL()) }
     func headingM() -> some View { modifier(HeadingM()) }
-    func bodyStyle() -> some View { modifier(Body()) }
+    func bodyStyle() -> some View { modifier(BodyText()) }
     func captionStyle() -> some View { modifier(Caption()) }
 }
 
@@ -170,7 +170,7 @@ struct SegmentedPill<SelectionValue: Hashable>: View {
                 Button(action: {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         selection = option.value
-                        Haptics.impact(.light)
+                        Haptics.playImpact(.light)
                     }
                 }) {
                     Text(option.label)
@@ -247,7 +247,7 @@ struct AutoSwitch: View {
             Button(action: {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     isAuto = false
-                    Haptics.impact(.medium)
+                    Haptics.playImpact(.medium)
                 }
             }) {
                 Text("Manual")
@@ -263,7 +263,7 @@ struct AutoSwitch: View {
             Button(action: {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     isAuto = true
-                    Haptics.impact(.medium)
+                    Haptics.playImpact(.medium)
                 }
             }) {
                 Text("Auto")

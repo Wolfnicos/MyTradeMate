@@ -1,6 +1,8 @@
 import Foundation
 
 public class MACDStrategy: BaseStrategy {
+    public static let shared = MACDStrategy()
+    
     public var fastPeriod: Int = 12
     public var slowPeriod: Int = 26
     public var signalPeriod: Int = 9
@@ -10,6 +12,26 @@ public class MACDStrategy: BaseStrategy {
             name: "MACD",
             description: "Moving Average Convergence Divergence strategy"
         )
+    }
+    
+    // MARK: - Parameter Updates
+    
+    public func updateFastPeriod(_ period: Int) {
+        guard period > 0 && period < slowPeriod else { return }
+        fastPeriod = period
+        Log.strategy.info("MACD fast period updated to \(period)")
+    }
+    
+    public func updateSlowPeriod(_ period: Int) {
+        guard period > fastPeriod else { return }
+        slowPeriod = period
+        Log.strategy.info("MACD slow period updated to \(period)")
+    }
+    
+    public func updateSignalPeriod(_ period: Int) {
+        guard period > 0 && period <= 20 else { return }
+        signalPeriod = period
+        Log.strategy.info("MACD signal period updated to \(period)")
     }
     
     public override func signal(candles: [Candle]) -> StrategySignal {
@@ -113,7 +135,8 @@ public class MACDStrategy: BaseStrategy {
         
         // Calculate EMA for remaining prices
         for i in period..<prices.count {
-            let value = (prices[i] - ema.last!) * multiplier + ema.last!
+            guard let lastEMA = ema.last else { break }
+            let value = (prices[i] - lastEMA) * multiplier + lastEMA
             ema.append(value)
         }
         

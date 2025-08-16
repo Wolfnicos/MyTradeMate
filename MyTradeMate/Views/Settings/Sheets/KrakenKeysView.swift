@@ -79,13 +79,13 @@ struct KrakenKeysView: View {
             .navigationTitle("Kraken API Keys")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
+                ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") {
                         dismiss()
                     }
                 }
                 
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .topBarTrailing) {
                     Button("Save") {
                         saveCredentials()
                     }
@@ -120,14 +120,14 @@ struct KrakenKeysView: View {
         guard validateCredentials() else { return }
         
         // AppStorage automatically saves the values
-        Log.ai("Kraken API credentials saved")
+        Log.ai.info("Kraken API credentials saved")
         dismiss()
     }
     
     private func clearCredentials() {
         apiKey = ""
         apiSecret = ""
-        Log.ai("Kraken API credentials cleared")
+        Log.ai.info("Kraken API credentials cleared")
     }
     
     private func validateCredentials() -> Bool {

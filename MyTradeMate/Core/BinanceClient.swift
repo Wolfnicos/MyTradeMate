@@ -1,6 +1,17 @@
 import Foundation
 
-actor BinanceClient: ExchangeClient {
+// MARK: - Temporary Protocol Definition
+protocol BinanceClientProtocol {
+    var name: String { get }
+    var supportsWebSocket: Bool { get }
+    var exchange: Exchange { get }
+    
+    func getTickerStream() async -> AsyncStream<Ticker>
+    func connectTickers(symbols: [String]) async throws
+    func disconnectTickers() async throws
+}
+
+actor BinanceClient: BinanceClientProtocol {
     let name = "Binance"
     let supportsWebSocket = true
     let exchange: Exchange = .binance
@@ -9,16 +20,16 @@ actor BinanceClient: ExchangeClient {
     private var continuation: AsyncStream<Ticker>.Continuation?
     private let session = URLSession(configuration: .default)
     
-    private(set) var tickerStream: AsyncStream<Ticker> = {
-        var cont: AsyncStream<Ticker>.Continuation!
-        let stream = AsyncStream<Ticker> { c in cont = c }
-        return stream
-    }()
+    private(set) var tickerStream: AsyncStream<Ticker>
     
     init() {
-        var cont: AsyncStream<Ticker>.Continuation!
+        var cont: AsyncStream<Ticker>.Continuation?
         self.tickerStream = AsyncStream<Ticker> { c in cont = c }
         self.continuation = cont
+    }
+    
+    func getTickerStream() async -> AsyncStream<Ticker> {
+        return tickerStream
     }
     
     func connectTickers(symbols: [String]) async throws {

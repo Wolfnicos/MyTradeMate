@@ -1,7 +1,7 @@
 import Foundation
 import OSLog
 
-private let logger = Logger(subsystem: "com.mytrademate", category: "StrategyEngine")
+private let logger = os.Logger(subsystem: "com.mytrademate", category: "StrategyEngine")
 
 public class EnsembleDecider {
     private var strategies: [Strategy] = []

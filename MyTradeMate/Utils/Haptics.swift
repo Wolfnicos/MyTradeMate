@@ -7,7 +7,7 @@ final class Haptics {
     
     @MainActor
     static func play(_ type: UINotificationFeedbackGenerator.FeedbackType) {
-        guard ThemeManager.shared.isHapticsEnabled else { return }
+        guard AppSettings.shared.haptics else { return }
         
         let generator = UINotificationFeedbackGenerator()
         generator.prepare()
@@ -16,7 +16,7 @@ final class Haptics {
     
     @MainActor
     static func playSelection() {
-        guard ThemeManager.shared.isHapticsEnabled else { return }
+        guard AppSettings.shared.haptics else { return }
         
         let generator = UISelectionFeedbackGenerator()
         generator.prepare()
@@ -25,7 +25,7 @@ final class Haptics {
     
     @MainActor
     static func playImpact(_ style: UIImpactFeedbackGenerator.FeedbackStyle) {
-        guard ThemeManager.shared.isHapticsEnabled else { return }
+        guard AppSettings.shared.haptics else { return }
         
         let generator = UIImpactFeedbackGenerator(style: style)
         generator.prepare()
@@ -65,36 +65,4 @@ final class Haptics {
     }
 }
 
-// MARK: - Theme Management
 
-@MainActor
-final class ThemeManager: ObservableObject {
-    static let shared = ThemeManager()
-    
-    @AppStorage("settings.darkMode") 
-    public var isDarkMode: Bool = false {
-        didSet {
-            objectWillChange.send()
-        }
-    }
-    
-    @AppStorage("settings.haptics")
-    public var isHapticsEnabled: Bool = true {
-        didSet {
-            objectWillChange.send()
-        }
-    }
-    
-    @AppStorage("settings.confirmTrades")
-    public var isConfirmTradesEnabled: Bool = true {
-        didSet {
-            objectWillChange.send()
-        }
-    }
-    
-    private init() {}
-    
-    var colorScheme: ColorScheme? {
-        isDarkMode ? .dark : .light
-    }
-}

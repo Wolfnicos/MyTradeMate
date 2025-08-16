@@ -1,5 +1,10 @@
 import SwiftUI
 import Charts
+import Foundation
+
+// DashboardVM is defined in ViewModels/DashboardVM.swift
+
+// Candle model is defined in Models/Candle.swift
 
 struct CandlePoint: Identifiable {
     let id = UUID()
@@ -9,7 +14,7 @@ struct CandlePoint: Identifiable {
     var isGreen: Bool { close >= open }
 }
 
-struct CandleChartView: View {
+struct CandlestickChartView: View {
     let data: [CandlePoint]
     
     var body: some View {
@@ -75,19 +80,7 @@ struct CandleChartView: View {
     }
 }
 
-extension DashboardVM {
-    var chartData: [CandlePoint] {
-        candles.suffix(50).map { candle in
-            CandlePoint(
-                time: candle.openTime,
-                open: candle.open,
-                high: candle.high,
-                low: candle.low,
-                close: candle.close
-            )
-        }
-    }
-}
+// DashboardVM extension would be in ViewModels/DashboardVM.swift
 
 #Preview {
     let sampleData = (0..<20).map { i in
@@ -103,6 +96,8 @@ extension DashboardVM {
         return CandlePoint(time: time, open: open, high: high, low: low, close: close)
     }.reversed()
     
-    return CandleChartView(data: sampleData)
+    CandleChartView(data: Array(sampleData.map { point in
+        CandleData(timestamp: point.time, open: point.open, high: point.high, low: point.low, close: point.close, volume: 1000.0)
+    }))
         .padding()
 }

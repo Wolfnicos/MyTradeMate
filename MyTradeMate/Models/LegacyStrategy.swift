@@ -85,9 +85,17 @@ final class StrategyStore: ObservableObject {
         let emaFast = calculateEMA(prices: prices, period: fast)
         let emaSlow = calculateEMA(prices: prices, period: slow)
         
-        if emaFast.last! > emaSlow.last! && emaFast[emaFast.count - 2] <= emaSlow[emaSlow.count - 2] {
+        guard let currentFast = emaFast.last,
+              let currentSlow = emaSlow.last,
+              emaFast.count >= 2,
+              emaSlow.count >= 2 else { return nil }
+        
+        let prevFast = emaFast[emaFast.count - 2]
+        let prevSlow = emaSlow[emaSlow.count - 2]
+        
+        if currentFast > currentSlow && prevFast <= prevSlow {
             return "BUY (EMA Cross Up)"
-        } else if emaFast.last! < emaSlow.last! && emaFast[emaFast.count - 2] >= emaSlow[emaSlow.count - 2] {
+        } else if currentFast < currentSlow && prevFast >= prevSlow {
             return "SELL (EMA Cross Down)"
         }
         
@@ -102,7 +110,9 @@ final class StrategyStore: ObservableObject {
         
         let recent = candles.suffix(atrPeriod + 1)
         let atr = calculateATR(candles: Array(recent), period: atrPeriod)
-        let currentPrice = candles.last!.close
+        guard let currentCandle = candles.last,
+              candles.count >= 2 else { return nil }
+        let currentPrice = currentCandle.close
         let prevClose = candles[candles.count - 2].close
         
         let breakoutThreshold = atr * multiplier
@@ -126,8 +136,8 @@ final class StrategyStore: ObservableObject {
         let mean = prices.suffix(lookback).reduce(0, +) / Double(lookback)
         let std = calculateStandardDeviation(prices: Array(prices.suffix(lookback)))
         
-        let currentPrice = prices.last!
-        let z = (currentPrice - mean) / std
+        guard let currentPrice = prices.last else { return nil }
+        let z = std > 0 ? (currentPrice - mean) / std : 0
         
         if z < -zScore {
             return "BUY (Mean Reversion)"
@@ -178,7 +188,8 @@ final class StrategyStore: ObservableObject {
         
         // Calculate EMA
         for i in period..<prices.count {
-            let value = (prices[i] - ema.last!) * multiplier + ema.last!
+            guard let lastEMA = ema.last else { break }
+            let value = (prices[i] - lastEMA) * multiplier + lastEMA
             ema.append(value)
         }
         

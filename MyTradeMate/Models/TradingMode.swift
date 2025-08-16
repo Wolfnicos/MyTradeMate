@@ -3,6 +3,7 @@ import Foundation
 public enum TradingMode: String, CaseIterable, Codable, Sendable {
     case manual
     case auto
+    case demo
     
     // Legacy compatibility for the old paper/live cases
     public static let paper = TradingMode.manual

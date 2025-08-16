@@ -3,13 +3,14 @@ import Combine
 import SwiftUI
 import OSLog
 
-private let logger = Logger(subsystem: "com.mytrademate", category: "Trades")
+private let logger = os.Logger(subsystem: "com.mytrademate", category: "Trades")
 
 @MainActor
 final class TradesVM: ObservableObject {
     // MARK: - Published Properties
-    @Published var openPositions: [Trade] = []
+    @Published var openPositions: [TradingPosition] = []
     @Published var recentFills: [Fill] = []
+    @Published var trades: [Trade] = []
     @Published var totalPnL: Double = 0.0
     @Published var totalPnLPercent: Double = 0.0
     @Published var isLoading = false
@@ -93,24 +94,22 @@ final class TradesVM: ObservableObject {
         // Generate demo positions
         let demoPositions = [
             Trade(
-                id: UUID().uuidString,
+                id: UUID(),
+                date: Date().addingTimeInterval(-3600),
                 symbol: "BTCUSDT",
-                side: .long,
-                size: 0.01,
-                entryPrice: 44500,
-                currentPrice: 45000,
-                leverage: 1,
-                timestamp: Date().addingTimeInterval(-3600)
+                side: .buy,
+                qty: 0.01,
+                price: 44500,
+                pnl: 5.0
             ),
             Trade(
-                id: UUID().uuidString,
+                id: UUID(),
+                date: Date().addingTimeInterval(-7200),
                 symbol: "ETHUSD",
-                side: .short,
-                size: 0.1,
-                entryPrice: 2250,
-                currentPrice: 2230,
-                leverage: 2,
-                timestamp: Date().addingTimeInterval(-7200)
+                side: .sell,
+                qty: 0.1,
+                price: 2250,
+                pnl: 2.0
             )
         ]
         
@@ -146,7 +145,7 @@ final class TradesVM: ObservableObject {
         ]
         
         await MainActor.run {
-            self.openPositions = demoPositions
+            self.trades = demoPositions
             self.recentFills = demoFills
         }
     }
@@ -164,11 +163,16 @@ final class TradesVM: ObservableObject {
         totalPnLPercent = totalPercent
     }
     
+    // MARK: - Public Methods
+    func refreshTrades() async {
+        await loadInitialData()
+    }
+    
     // MARK: - Trading Actions
     func closePosition(_ trade: Trade) {
         logger.info("Closing position: \(trade.id)")
         
-        Haptics.impact(.medium)
+        Haptics.playImpact(.medium)
         
         if AppSettings.shared.confirmTrades {
             // Show confirmation
@@ -180,17 +184,17 @@ final class TradesVM: ObservableObject {
     }
     
     private func executeClose(_ trade: Trade) {
-        // Remove from open positions
-        openPositions.removeAll { $0.id == trade.id }
+        // Remove from trades
+        trades.removeAll { $0.id == trade.id }
         
         // Add to recent fills
         let fill = Fill(
             id: UUID().uuidString,
             symbol: trade.symbol,
-            side: trade.side == .long ? .sell : .buy,
-            size: trade.size,
-            price: trade.currentPrice,
-            fee: trade.size * trade.currentPrice * 0.001,
+            side: trade.side == .buy ? .sell : .buy,
+            size: trade.qty,
+            price: trade.price,
+            fee: trade.qty * trade.price * 0.001,
             timestamp: Date()
         )
         
@@ -203,16 +207,16 @@ final class TradesVM: ObservableObject {
         
         updatePnL()
         
-        logger.info("Position closed: \(trade.symbol) - PnL: \(trade.pnlString)")
+        logger.info("Position closed: \(trade.symbol) - PnL: $\(String(format: "%.2f", trade.pnl))")
     }
     
     func closeAllPositions() {
         logger.info("Closing all positions")
         
-        Haptics.impact(.heavy)
+        Haptics.playImpact(.heavy)
         
-        for position in openPositions {
-            executeClose(position)
+        for trade in trades {
+            executeClose(trade)
         }
     }
     
@@ -221,8 +225,8 @@ final class TradesVM: ObservableObject {
     }
 }
 
-// MARK: - Trade Model
-struct Trade: Identifiable {
+// MARK: - Trading Position Model
+struct TradingPosition: Identifiable {
     enum Side {
         case long, short
         
