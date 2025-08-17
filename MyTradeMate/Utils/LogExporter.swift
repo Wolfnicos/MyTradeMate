@@ -35,6 +35,9 @@ public enum LogExporter {
         // Add app-specific diagnostic information
         logContent += await collectAppDiagnostics()
         
+        // Add prediction and trade logs
+        logContent += collectPredictionAndTradeLogs()
+        
         // Write to file
         guard let data = logContent.data(using: .utf8) else {
             throw LogExportError.encodingFailed
@@ -188,6 +191,42 @@ public enum LogExporter {
     private static func getNetworkStatus() -> String {
         // This is a simplified check - in a real app you might want to use Network framework
         return "Available" // Placeholder - could be enhanced with actual network checking
+    }
+    
+    /// Collect prediction and trade logs from PredictionLogger
+    private static func collectPredictionAndTradeLogs() -> String {
+        var content = "PREDICTION AND TRADE LOGS\n"
+        content += String(repeating: "-", count: 30) + "\n"
+        
+        let logFiles = PredictionLogger.shared.getLogFiles()
+        
+        if logFiles.isEmpty {
+            content += "No prediction or trade logs found.\n\n"
+            return content
+        }
+        
+        for logFile in logFiles {
+            content += "\n=== \(logFile.lastPathComponent) ===\n"
+            
+            if let logData = try? Data(contentsOf: logFile),
+               let logContent = String(data: logData, encoding: .utf8) {
+                
+                // Include last 100 lines to avoid huge files
+                let lines = logContent.components(separatedBy: .newlines)
+                let lastLines = Array(lines.suffix(100))
+                
+                if lines.count > 100 {
+                    content += "... (showing last 100 lines of \(lines.count) total)\n"
+                }
+                
+                content += lastLines.joined(separator: "\n")
+                content += "\n\n"
+            } else {
+                content += "Unable to read log file.\n\n"
+            }
+        }
+        
+        return content
     }
 }
 

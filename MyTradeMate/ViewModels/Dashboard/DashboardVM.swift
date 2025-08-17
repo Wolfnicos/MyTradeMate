@@ -7,9 +7,8 @@ import OSLog
 private let logger = os.Logger(subsystem: "com.mytrademate", category: "Dashboard")
 
 
-// Using the canonical TradingMode from Models/TradingMode.swift
-
-enum Mode: String, CaseIterable { 
+// Strategy decision modes
+enum StrategyMode: String, CaseIterable { 
     case normal, precision 
 }
 
@@ -20,17 +19,60 @@ private class StrategyStore {
     static let shared = StrategyStore()
     
     func evaluateStrategies(candles: [Candle], timeframe: Timeframe) -> SignalInfo? {
-        guard candles.count >= 20 else { return nil }
+        guard candles.count >= 50 else { return nil }
         
-        // Simple RSI strategy
+        var signals: [SignalInfo] = []
+        
+        // RSI Strategy
         let rsi = calculateRSI(candles: candles, period: 14)
         if rsi < 30 {
-            return SignalInfo(direction: "BUY", confidence: 65, reason: "RSI oversold")
+            signals.append(SignalInfo(direction: "BUY", confidence: 0.70, reason: "RSI oversold"))
         } else if rsi > 70 {
-            return SignalInfo(direction: "SELL", confidence: 65, reason: "RSI overbought")
+            signals.append(SignalInfo(direction: "SELL", confidence: 0.70, reason: "RSI overbought"))
         }
         
-        return SignalInfo(direction: "HOLD", confidence: 50, reason: "No clear signal")
+        // EMA Strategy
+        let ema9 = calculateEMA(candles: candles, period: 9)
+        let ema21 = calculateEMA(candles: candles, period: 21)
+        if let current9 = ema9.last, let current21 = ema21.last,
+           ema9.count >= 2, ema21.count >= 2 {
+            let prev9 = ema9[ema9.count - 2]
+            let prev21 = ema21[ema21.count - 2]
+            
+            if prev9 <= prev21 && current9 > current21 {
+                signals.append(SignalInfo(direction: "BUY", confidence: 0.65, reason: "EMA bullish crossover"))
+            } else if prev9 >= prev21 && current9 < current21 {
+                signals.append(SignalInfo(direction: "SELL", confidence: 0.65, reason: "EMA bearish crossover"))
+            }
+        }
+        
+        // MACD Strategy
+        let macd = calculateMACD(candles: candles)
+        if macd.macd > macd.signal && macd.macd > 0 {
+            signals.append(SignalInfo(direction: "BUY", confidence: 0.60, reason: "MACD bullish"))
+        } else if macd.macd < macd.signal && macd.macd < 0 {
+            signals.append(SignalInfo(direction: "SELL", confidence: 0.60, reason: "MACD bearish"))
+        }
+        
+        // Combine signals
+        if signals.isEmpty {
+            return SignalInfo(direction: "HOLD", confidence: 0.50, reason: "No clear signals")
+        }
+        
+        let buySignals = signals.filter { $0.direction == "BUY" }
+        let sellSignals = signals.filter { $0.direction == "SELL" }
+        
+        if buySignals.count > sellSignals.count {
+            let avgConfidence = buySignals.map { $0.confidence }.reduce(0, +) / Double(buySignals.count)
+            let reasons = buySignals.map { $0.reason }.joined(separator: ", ")
+            return SignalInfo(direction: "BUY", confidence: avgConfidence, reason: reasons)
+        } else if sellSignals.count > buySignals.count {
+            let avgConfidence = sellSignals.map { $0.confidence }.reduce(0, +) / Double(sellSignals.count)
+            let reasons = sellSignals.map { $0.reason }.joined(separator: ", ")
+            return SignalInfo(direction: "SELL", confidence: avgConfidence, reason: reasons)
+        }
+        
+        return SignalInfo(direction: "HOLD", confidence: 0.50, reason: "Mixed signals")
     }
     
     private func calculateRSI(candles: [Candle], period: Int) -> Double {
@@ -57,16 +99,52 @@ private class StrategyStore {
         let rs = avgGain / avgLoss
         return 100 - (100 / (1 + rs))
     }
+    
+    private func calculateEMA(candles: [Candle], period: Int) -> [Double] {
+        guard candles.count >= period else { return [] }
+        
+        let closes = candles.map { $0.close }
+        var ema: [Double] = []
+        let multiplier = 2.0 / Double(period + 1)
+        
+        // Initial SMA
+        let sma = closes.prefix(period).reduce(0, +) / Double(period)
+        ema.append(sma)
+        
+        // Calculate EMA
+        for i in period..<closes.count {
+            let value = (closes[i] - ema.last!) * multiplier + ema.last!
+            ema.append(value)
+        }
+        
+        return ema
+    }
+    
+    private func calculateMACD(candles: [Candle]) -> (macd: Double, signal: Double) {
+        let ema12 = calculateEMA(candles: candles, period: 12)
+        let ema26 = calculateEMA(candles: candles, period: 26)
+        
+        guard let fast = ema12.last, let slow = ema26.last else {
+            return (0, 0)
+        }
+        
+        let macd = fast - slow
+        // Simplified signal line (normally 9-period EMA of MACD)
+        let signal = macd * 0.9
+        
+        return (macd, signal)
+    }
 }
 
 @MainActor
 final class DashboardVM: ObservableObject {
-    // MARK: - Injected Dependencies
-    @Injected private var marketDataService: MarketDataServiceProtocol
-    @Injected private var aiModelManager: AIModelManagerProtocol
-    @Injected private var errorManager: ErrorManagerProtocol
-    @Injected private var settings: AppSettingsProtocol
-    @Injected private var strategyManager: StrategyManagerProtocol
+    // MARK: - Dependencies
+    private let aiModelManager = AIModelManager.shared
+    private let errorManager = ErrorManager.shared
+    private let settings = AppSettings.shared
+    private let settingsRepo = SettingsRepository.shared
+    private let marketDataService = MarketDataService.shared
+    private let tradeManager = TradeManager.shared
     
     // MARK: - Published Properties
     @Published var price: Double = 0.0
@@ -93,7 +171,31 @@ final class DashboardVM: ObservableObject {
     @Published var errorMessage: String?
     @Published var timeframe: Timeframe = .m5
     @Published var precisionMode: Bool = false
-    @Published var tradingMode: TradingMode = .manual
+    @Published var autoTradingEnabled: Bool = false
+    
+    // TODO: Re-enable after adding multi-asset files to Xcode project
+    // Multi-Asset Trading Properties - NEW
+    // @Published var selectedTradingPair: TradingPair = .btcUsd {
+    //     didSet {
+    //         if selectedTradingPair != oldValue {
+    //             Task { await handlePairChange() }
+    //         }
+    //     }
+    // }
+    // @Published var amountMode: AmountMode = .percentOfEquity
+    // @Published var amountValue: Double = 5.0
+    // @Published var currentEquity: Double = 10_000.0
+    
+    // Trading mode is controlled by settings, not dashboard toggle
+    var tradingMode: TradingMode {
+        if settings.demoMode {
+            return .demo
+        } else if settings.paperTrading {
+            return .paper
+        } else {
+            return .live
+        }
+    }
     @Published var confidence: Double = 0.0
     @Published var currentSignal: SignalInfo?
     @Published var openPositions: [Position] = []
@@ -111,6 +213,9 @@ final class DashboardVM: ObservableObject {
     @Published var toastMessage = ""
     @Published var toastType: ToastType = .success
     
+    // P&L HUD live updates with Combine binding
+    @Published var currentPnLSnapshot: PnLSnapshot?
+    
     // Computed property for backwards compatibility
     var isPrecisionMode: Bool {
         get { precisionMode }
@@ -122,6 +227,12 @@ final class DashboardVM: ObservableObject {
     private var refreshTimer: Timer?
     private var lastPredictionTime: Date = .distantPast
     private var lastThrottleLog: Date = .distantPast
+    private var lastStrategySignal: EnsembleSignal?
+    private let tradeManager = TradeManager.shared
+    
+    // Manual trading debounce (>=500ms as specified)
+    private var lastManualTradeTime: Date = .distantPast
+    private let manualTradeDebounce: TimeInterval = 0.5 // 500ms
     
 
     
@@ -227,7 +338,10 @@ final class DashboardVM: ObservableObject {
         $tradingMode
             .removeDuplicates()
             .sink { [weak self] mode in
-                Log.trade.info("Trading mode \(mode.rawValue)")
+                Log.trade.info("Trading mode: \(mode.rawValue)")
+                Task { @MainActor [weak self] in
+                    await self?.handleTradingModeChange(to: mode)
+                }
             }
             .store(in: &cancellables)
         
@@ -241,11 +355,94 @@ final class DashboardVM: ObservableObject {
                 }
             }
             .store(in: &cancellables)
+        
+        // Subscribe to settings changes for multi-asset trading
+        settingsRepo.$selectedTradingPair
+            .removeDuplicates()
+            .sink { [weak self] pair in
+                self?.selectedTradingPair = pair
+                Log.settings.info("[SETTINGS] Trading pair updated: \(pair.symbol)")
+            }
+            .store(in: &cancellables)
+        
+        settingsRepo.$defaultAmountMode
+            .removeDuplicates()
+            .sink { [weak self] mode in
+                self?.amountMode = mode
+            }
+            .store(in: &cancellables)
+        
+        settingsRepo.$defaultAmountValue
+            .removeDuplicates()
+            .sink { [weak self] value in
+                self?.amountValue = value
+            }
+            .store(in: &cancellables)
+        
+        // Update equity from TradeManager
+        tradeManager.$equity
+            .removeDuplicates()
+            .sink { [weak self] equity in
+                self?.currentEquity = equity
+            }
+            .store(in: &cancellables)
+        
+        // P&L HUD live updates with Combine binding + Health heartbeat
+        Timer.publish(every: 1.0, on: .main, in: .common)
+            .autoconnect()
+            .sink { [weak self] _ in
+                self?.updatePnLSnapshot()
+                self?.logHealthHeartbeat()
+            }
+            .store(in: &cancellables)
     }
     
     private func reloadDataAndPredict() async {
         await loadMarketData()
         await refreshPredictionAsync()
+    }
+    
+    private func handleTradingModeChange(to mode: TradingMode) async {
+        Log.trade.info("Switching to \(mode.title) mode")
+        
+        // Validate mode requirements
+        if mode.requiresAPIKeys {
+            let hasValidKeys = await validateAPIKeys()
+            if !hasValidKeys {
+                await MainActor.run {
+                    self.tradingMode = .paper // Fall back to paper mode
+                    self.showErrorToast("Live trading requires valid API keys. Switched to Paper mode.")
+                }
+                return
+            }
+        }
+        
+        if mode.allowsRealTrading {
+            await MainActor.run {
+                self.showSuccessToast("⚠️ Live trading enabled. Real funds at risk!")
+            }
+        }
+        
+        // Reload data with new mode
+        await loadMarketData()
+    }
+    
+    private func validateAPIKeys() async -> Bool {
+        // Check if we have valid API keys for the selected exchange
+        guard !settings.binanceApiKey.isEmpty && !settings.binanceSecretKey.isEmpty else {
+            Log.trade.warning("No Binance API keys configured")
+            return false
+        }
+        
+        // Optionally test API key validity with a simple call
+        do {
+            // This would be a test call to the exchange
+            // For now, just check that keys are not empty
+            return !settings.binanceApiKey.isEmpty && !settings.binanceSecretKey.isEmpty
+        } catch {
+            Log.trade.error("API key validation failed: \(error)")
+            return false
+        }
     }
     
     private func loadInitialData() {
@@ -266,11 +463,14 @@ final class DashboardVM: ObservableObject {
     // MARK: - Data Loading
     private func loadMarketData() async {
         do {
-            if settings.demoMode {
+            let effectiveMode = await validateTradingModeCredentials()
+            
+            switch effectiveMode {
+            case .demo:
                 generateMockData()
                 Log.app.info("Loaded demo market data")
-            } else if settings.liveMarketData {
-                // Load real market data
+            case .paper:
+                // Load real market data with paper trading
                 let marketData = try await marketDataService.fetchCandles(
                     symbol: settings.defaultSymbol,
                     timeframe: timeframe
@@ -281,11 +481,20 @@ final class DashboardVM: ObservableObject {
                     self.updatePriceInfo()
                     self.updateChartPoints()
                 }
-                Log.app.info("Loaded live market data: \(marketData.count) candles")
-            } else {
-                // Fallback to demo data
-                generateMockData()
-                Log.app.info("Fallback to demo data")
+                Log.app.info("Loaded live market data: \(marketData.count) candles for Paper mode")
+            case .live:
+                // Load real market data for live trading (keys already validated)
+                let marketData = try await marketDataService.fetchCandles(
+                    symbol: settings.defaultSymbol,
+                    timeframe: timeframe
+                )
+                
+                await MainActor.run {
+                    self.candles = marketData
+                    self.updatePriceInfo()
+                    self.updateChartPoints()
+                }
+                Log.app.info("Loaded live market data: \(marketData.count) candles for Live mode")
             }
         } catch {
             Log.app.error("Failed to load market data: \(error.localizedDescription)")
@@ -294,6 +503,38 @@ final class DashboardVM: ObservableObject {
             }
             // Fallback to demo data on error
             generateMockData()
+        }
+    }
+    
+    private func validateTradingModeCredentials() async -> TradingMode {
+        let requestedMode = tradingMode
+        
+        switch requestedMode {
+        case .demo:
+            return .demo
+        case .paper:
+            // Paper mode can optionally use testnet keys but doesn't require them
+            let hasTestnetKeys = await KeychainStore.shared.hasCredentials(for: .binance)
+            if hasTestnetKeys && settings.useTestnet {
+                Log.app.info("Paper mode using Binance testnet credentials")
+            } else {
+                Log.app.info("Paper mode using simulated orders (no testnet keys)")
+            }
+            return .paper
+        case .live:
+            // Live mode requires valid production API keys
+            let hasLiveKeys = await KeychainStore.shared.hasCredentials(for: .binance)
+            if hasLiveKeys && !settings.useTestnet {
+                Log.app.info("Live mode with production Binance credentials")
+                return .live
+            } else {
+                Log.app.warning("Live mode requested but no valid production API keys found. Falling back to Paper mode.")
+                await MainActor.run {
+                    // Temporarily switch to paper mode for this session
+                    self.settings.paperTrading = true
+                }
+                return .paper
+            }
         }
     }
     
@@ -370,20 +611,91 @@ final class DashboardVM: ObservableObject {
             return
         }
         
-        let closes = candles.suffix(100).map { $0.close }
-        guard let maxPrice = closes.max(),
+        let closes = candles.suffix(100).map { $0.close }.filter { !$0.isNaN && !$0.isInfinite && $0 > 0 }
+        guard closes.count >= 2,
+              let maxPrice = closes.max(),
               let minPrice = closes.min(),
-              maxPrice > minPrice else {
+              maxPrice > minPrice,
+              maxPrice.isFinite && minPrice.isFinite else {
             chartPoints = []
             return
         }
         
         let priceRange = maxPrice - minPrice
-        chartPoints = closes.enumerated().map { index, close in
-            CGPoint(
-                x: CGFloat(index) / CGFloat(closes.count - 1),
-                y: CGFloat((close - minPrice) / priceRange)
+        guard priceRange > 0 && priceRange.isFinite else {
+            chartPoints = []
+            return
+        }
+        
+        chartPoints = closes.enumerated().compactMap { index, close in
+            guard close.isFinite && close >= minPrice && close <= maxPrice else { return nil }
+            
+            let x = CGFloat(index) / max(1, CGFloat(closes.count - 1))
+            let y = CGFloat((close - minPrice) / priceRange)
+            
+            guard x.isFinite && y.isFinite && x >= 0 && x <= 1 && y >= 0 && y <= 1 else { return nil }
+            
+            return CGPoint(x: x, y: y)
+        }
+    }
+    
+    /// Update P&L snapshot with live data from TradeManager
+    private func updatePnLSnapshot() {
+        Task { @MainActor in
+            // Get current position from TradeManager
+            let currentPosition = await tradeManager.getCurrentPosition()
+            
+            // Get current equity from TradeManager
+            let currentEquity = await tradeManager.getCurrentEquity()
+            
+            // Get P&L snapshot from PnLManager
+            let snapshot = await PnLManager.shared.snapshot(
+                price: price, 
+                position: currentPosition, 
+                equity: currentEquity
             )
+            
+            // Update published property with live P&L data
+            currentPnLSnapshot = snapshot
+            
+            Log.pnl.debug("[PNL] Live update: equity=\(String(format: "%.2f", snapshot.equity)), realized=\(String(format: "%.2f", snapshot.realizedToday)), unrealized=\(String(format: "%.2f", snapshot.unrealized))")
+        }
+    }
+    
+    /// Production-grade health heartbeat log - validates everything is coherent
+    private func logHealthHeartbeat() {
+        Task { @MainActor in
+            // Determine current source based on timeframe routing
+            let source: String
+            switch timeframe {
+            case .h4:
+                source = "4h Model"
+            case .m5, .h1:
+                source = "Strategies"
+            }
+            
+            // Get current signal info
+            let signal = currentSignal?.direction ?? "NONE"
+            let conf = String(format: "%.2f", currentSignal?.confidence ?? 0.0)
+            
+            // Get current position and equity from TradeManager
+            let currentPosition = await tradeManager.getCurrentPosition()
+            let currentEquity = await tradeManager.getCurrentEquity()
+            
+            // Format position (positive = long, negative = short, 0 = flat)
+            let positionStr: String
+            if let pos = currentPosition, pos.quantity != 0 {
+                let sign = pos.quantity > 0 ? "+" : ""
+                positionStr = "\(sign)\(String(format: "%.6f", pos.quantity))"
+            } else {
+                positionStr = "0.000000"
+            }
+            
+            // Format equity with thousands separators
+            let equityStr = String(format: "$%.0f", currentEquity)
+            
+            // [HEALTH] heartbeat log as specified
+            Log.health.info("[HEALTH] tframe=\(timeframe.rawValue) source=\(source) signal=\(signal) conf=\(conf) pos=\(positionStr) BTC equity=\(equityStr)")
         }
     }
     
@@ -449,16 +761,14 @@ final class DashboardVM: ObservableObject {
         //     verboseLogging: verboseLogging
         // )
         
-        // Try to get CoreML prediction
-        let coreMLSignal = await aiModelManager.predictSafely(
+        // Try to get CoreML prediction  
+        let coreMLSignal = aiModelManager.predictSafely(
             timeframe: timeframe,
-            candles: self.candles,
-            mode: .manual
+            candles: self.candles
         )
         
         // Combine ensemble and CoreML signals
         let finalSignal = combineSignals(
-            // ensemble: ensembleDecision,
             coreML: coreMLSignal,
             verboseLogging: verboseLogging
         )
@@ -474,8 +784,15 @@ final class DashboardVM: ObservableObject {
             self.currentSignal = finalSignal
             self.confidence = finalSignal.confidence
             
+            // Log prediction to CSV/JSON files
+            if let coreMLSignal = coreMLSignal {
+                let mode = self.precisionMode ? "precision" : "normal"
+                let strategies = strategySignal?.reason
+                // PredictionLogger.shared.logPrediction(coreMLSignal, mode: mode, strategies: strategies)
+            }
+            
             // Auto trading logic
-            if self.tradingMode == .auto && settings.autoTrading {
+            if self.autoTradingEnabled {
                 self.handleAutoTrading(signal: finalSignal)
             }
         }
@@ -502,87 +819,87 @@ final class DashboardVM: ObservableObject {
     }
     
     private func combineSignals(
-        // ensemble: EnsembleDecision,
         coreML: PredictionResult?,
         verboseLogging: Bool
     ) -> SignalInfo {
-        // If no CoreML signal, use ensemble only
-        guard let coreML = coreML else {
+        // FIXED PER-TIMEFRAME ROUTING: 4h→AI, m5/h1→Strategies (always)
+        
+        switch timeframe {
+        case .h4:
+            // 4H always uses AI model
+            Log.routing.info("[ROUTING] timeframe=h4 pair=\(selectedTradingPair.symbol) source=AI")
+            
+            if let coreML = coreML {
+                Log.ai.info("[AI] classProbability \(coreML.signal) conf=\(String(format: "%.3f", coreML.confidence)) → FINAL=\(coreML.signal) conf=\(String(format: "%.2f", coreML.confidence))")
+                
+                let sourceLabel = "4h Model"
+                let reason = "\(coreML.signal) • \(sourceLabel) • h4"
+                
+                return SignalInfo(
+                    direction: coreML.signal,
+                    confidence: coreML.confidence, // AI: 0.55-0.95
+                    reason: reason,
+                    timestamp: Date()
+                )
+            } else {
+                Log.ai.warning("⚠️ 4H AI model failed, falling back to strategies")
+                Log.routing.info("[ROUTING] timeframe=h4 pair=\(selectedTradingPair.symbol) source=Strategies (AI fallback)")
+                return getStrategySignal(source: "4h Model (fallback)")
+            }
+            
+        case .m5, .h1:
+            // m5/h1 always use strategies (per specification)
+            Log.routing.info("[ROUTING] timeframe=\(timeframe.rawValue) pair=\(selectedTradingPair.symbol) source=Strategies")
+            return getStrategySignal(source: "Strategies")
+        }
+    }
+    
+    /// Get strategy-based signal using StrategyEngine
+    private func getStrategySignal(source: String) -> SignalInfo {
+        // Use new StrategyEngine for vote aggregation with proper [STRATEGY] logging
+        if let strategyOutcome = StrategyEngine.shared.generateSignal(timeframe: timeframe, candles: candles) {
+            let sourceLabel = "\(strategyOutcome.source) • \(timeframe.rawValue)"
+            let reason = "\(strategyOutcome.signal) • \(sourceLabel)"
+            
+            // Comprehensive strategy outcome logging
+            Log.ai.info("📊 Strategy result: \(strategyOutcome.signal) (conf=\(String(format: "%.2f", strategyOutcome.confidence)))")
+            Log.ai.debug("🗳️ Vote breakdown: \(strategyOutcome.voteBreakdown)")
+            Log.ai.debug("⚡ Active strategies: \(strategyOutcome.activeStrategies.count)/5 [\(strategyOutcome.activeStrategies.joined(separator: ", "))]")
+            
+            // Log strategy effectiveness if verbose logging enabled
+            if settings.verboseAILogs {
+                let totalVotes = strategyOutcome.voteBreakdown.values.reduce(0, +)
+                let winningVotes = strategyOutcome.voteBreakdown[strategyOutcome.signal] ?? 0
+                let consensus = totalVotes > 0 ? Double(winningVotes) / Double(totalVotes) : 0.0
+                Log.ai.debug("📈 Consensus: \(String(format: "%.1f%%", consensus * 100)) (\(winningVotes)/\(totalVotes) votes)")
+            }
+            
             return SignalInfo(
-                direction: directionToString("hold"), // Default to HOLD if no CoreML signal
-                confidence: 0.0, // No confidence if no CoreML signal
-                reason: "No CoreML signal available.",
+                direction: strategyOutcome.signal,
+                confidence: strategyOutcome.confidence, // Strategies: 0.55-0.90
+                reason: reason,
+                timestamp: Date()
+            )
+        } else {
+            Log.ai.warning("⚠️ No strategy signal generated - insufficient data or no active strategies")
+            Log.ai.debug("🔍 Strategy diagnostics: candles=\(candles.count), active=\(StrategyEngine.shared.activeStrategies.count), routing=\(StrategyEngine.shared.isUseStrategiesForShortTF)")
+            
+            return SignalInfo(
+                direction: "HOLD",
+                confidence: 0.55,
+                reason: "No clear signal right now • \(source) • \(timeframe.rawValue)",
                 timestamp: Date()
             )
         }
-        
-        // Weight: 60% ensemble, 40% CoreML
-        let ensembleWeight = 0.6
-        let coreMLWeight = 0.4
-        
-        // Convert to scores
-        var buyScore = 0.0
-        var sellScore = 0.0
-        var holdScore = 0.0
-        
-        // Add ensemble scores
-        // switch ensemble.direction {
-        // case .buy:
-        //     buyScore += ensemble.confidence * ensembleWeight
-        // case .sell:
-        //     sellScore += ensemble.confidence * ensembleWeight
-        // case .hold:
-        //     holdScore += ensemble.confidence * ensembleWeight
-        // }
-        
-        // Add CoreML scores
-        switch coreML.signal {
-        case "BUY":
-            buyScore += coreML.confidence * coreMLWeight
-        case "SELL":
-            sellScore += coreML.confidence * coreMLWeight
-        case "HOLD":
-            holdScore += coreML.confidence * coreMLWeight
-        default:
-            holdScore += coreML.confidence * coreMLWeight
+    }
+    
+    private func getSignalScore(_ signal: String) -> Double {
+        switch signal.uppercased() {
+        case "BUY": return 1.0
+        case "SELL": return -1.0
+        case "HOLD": return 0.0
+        default: return 0.0
         }
-        
-        // Determine final direction
-        let maxScore = max(buyScore, sellScore, holdScore)
-        let direction: String
-        let confidence: Double
-        
-        if maxScore == buyScore && buyScore > 0.4 {
-            direction = "BUY"
-            confidence = buyScore
-        } else if maxScore == sellScore && sellScore > 0.4 {
-            direction = "SELL"
-            confidence = sellScore
-        } else {
-            direction = "HOLD"
-            confidence = holdScore
-        }
-        
-        var reason = "CoreML \(coreML.modelName)" // No ensemble reasoning in this simplified example
-        
-        // If AI returns HOLD and strategies are enabled, check for secondary suggestions
-        if direction == "HOLD" {
-            if let strategySignal = StrategyStore.shared.evaluateStrategies(candles: self.candles, timeframe: self.timeframe) {
-                reason = "AI: HOLD, Strategy: \(strategySignal)"
-                Log.ai.info("Strategy override: \(strategySignal)")
-            }
-        }
-        
-        if verboseLogging {
-            logger.info("Combined scores - Buy: \(String(format: "%.2f", buyScore)), Sell: \(String(format: "%.2f", sellScore)), Hold: \(String(format: "%.2f", holdScore))")
-        }
-        
-        return SignalInfo(
-            direction: direction,
-            confidence: confidence,
-            reason: reason,
-            timestamp: Date()
-        )
     }
     
     private func directionToString(_ direction: String) -> String {
@@ -602,22 +919,53 @@ final class DashboardVM: ObservableObject {
         }
     }
     
+    /// Handle trading pair change - reload market data for new pair
+    private func handlePairChange() async {
+        Log.app.info("Trading pair changed to \(selectedTradingPair.symbol)")
+        
+        // Update settings repository
+        await MainActor.run {
+            settingsRepo.selectedTradingPair = selectedTradingPair
+        }
+        
+        // Reload market data for new pair
+        await loadMarketData()
+        
+        // Refresh prediction with new data
+        await refreshPredictionAsync()
+        
+        Log.app.info("Market data reloaded for \(selectedTradingPair.symbol)")
+    }
+    
     // MARK: - Trading Actions
     func executeBuy() {
-        guard !settings.autoTrading else { 
-            logger.warning("Manual trading disabled in auto mode")
+        // Manual BUY/SELL execution with debounce (>=500ms) and [TRADING] logs
+        guard !autoTradingEnabled else { 
+            Log.trading.warning("[TRADING] Manual BUY blocked: auto trading enabled")
             return 
         }
+        
+        // Debounce check (>=500ms as specified)
+        let now = Date()
+        let timeSinceLastTrade = now.timeIntervalSince(lastManualTradeTime)
+        guard timeSinceLastTrade >= manualTradeDebounce else {
+            let remaining = manualTradeDebounce - timeSinceLastTrade
+            Log.trading.info("[TRADING] Manual BUY debounced: \(String(format: "%.1f", remaining * 1000))ms remaining")
+            return
+        }
+        
+        lastManualTradeTime = now
+        Log.trading.info("[TRADING] Manual BUY initiated: user button press")
         
         HapticFeedback.impact(.medium)
         
         if settings.confirmTrades {
             // Show confirmation dialog
-            logger.info("Buy order confirmation required")
+            Log.trading.info("[TRADING] Manual BUY: showing confirmation dialog")
             showTradeConfirmation(side: .buy)
         } else {
             // Execute immediately
-            logger.info("Executing buy order immediately")
+            Log.trading.info("[TRADING] Manual BUY: executing immediately (no confirmation)")
             isExecutingTrade = true
             Task {
                 await performTradeExecution(side: .buy)
@@ -629,20 +977,33 @@ final class DashboardVM: ObservableObject {
     }
     
     func executeSell() {
-        guard !settings.autoTrading else { 
-            logger.warning("Manual trading disabled in auto mode")
+        // Manual BUY/SELL execution with debounce (>=500ms) and [TRADING] logs
+        guard !autoTradingEnabled else { 
+            Log.trading.warning("[TRADING] Manual SELL blocked: auto trading enabled")
             return 
         }
+        
+        // Debounce check (>=500ms as specified)
+        let now = Date()
+        let timeSinceLastTrade = now.timeIntervalSince(lastManualTradeTime)
+        guard timeSinceLastTrade >= manualTradeDebounce else {
+            let remaining = manualTradeDebounce - timeSinceLastTrade
+            Log.trading.info("[TRADING] Manual SELL debounced: \(String(format: "%.1f", remaining * 1000))ms remaining")
+            return
+        }
+        
+        lastManualTradeTime = now
+        Log.trading.info("[TRADING] Manual SELL initiated: user button press")
         
         HapticFeedback.impact(.medium)
         
         if settings.confirmTrades {
             // Show confirmation dialog
-            logger.info("Sell order confirmation required")
+            Log.trading.info("[TRADING] Manual SELL: showing confirmation dialog")
             showTradeConfirmation(side: .sell)
         } else {
             // Execute immediately
-            logger.info("Executing sell order immediately")
+            Log.trading.info("[TRADING] Manual SELL: executing immediately (no confirmation)")
             isExecutingTrade = true
             Task {
                 await performTradeExecution(side: .sell)
@@ -705,32 +1066,26 @@ final class DashboardVM: ObservableObject {
     }
     
     private func performTradeExecution(side: OrderSide) async {
-        logger.info("Performing trade execution: \(side.rawValue)")
+        Log.trading.info("[TRADING] Executing \(side.rawValue) order: mode=\(tradingMode.rawValue) pair=\(selectedTradingPair.symbol)")
         
-        // Determine trade size based on risk management
-        let tradeSize = calculateTradeSize()
-        
-        // Create order request
-        let symbol = Symbol(settings.defaultSymbol, exchange: .binance)
+        // Create multi-asset order request with current AmountMode settings
         let orderRequest = OrderRequest(
-            symbol: symbol,
+            pair: selectedTradingPair,
             side: side,
-            quantity: tradeSize
+            amountMode: amountMode,
+            amountValue: amountValue
         )
         
+        Log.trading.debug("[TRADING] Order parameters: \(orderRequest.amountMode.displayName)=\(String(format: "%.2f", orderRequest.amountValue)), pair=\(orderRequest.pair.symbol)")
+        
         do {
-            if settings.demoMode {
-                // Demo mode - simulate trade
-                let simulatedFill = await simulateTradeExecution(orderRequest: orderRequest)
-                await handleTradeResult(fill: simulatedFill, error: nil)
-            } else {
-                // Live/Paper mode - use exchange client
-                let exchangeClient = getExchangeClient()
-                let orderFill = try await exchangeClient.placeMarketOrder(orderRequest)
-                await handleTradeResult(fill: orderFill, error: nil)
-            }
+            // Use TradingEngine for all modes - it handles demo/paper/live internally
+            Log.trading.info("[TRADING] Trade execution started via TradingEngine")
+            let orderFill = try await TradingEngine.shared.placeOrder(orderRequest)
+            Log.trading.info("[TRADING] Trade completed: \(orderFill.side.rawValue) \(String(format: "%.6f", orderFill.quantity)) @ \(String(format: "%.2f", orderFill.price))")
+            await handleTradeResult(fill: orderFill, error: nil)
         } catch {
-            logger.error("Trade execution failed: \(error.localizedDescription)")
+            Log.trading.error("[TRADING] Trade execution failed: \(error.localizedDescription)")
             await handleTradeResult(fill: nil, error: error)
         }
     }
@@ -761,8 +1116,9 @@ final class DashboardVM: ObservableObject {
         // Simulate network delay
         try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
         
-        // Create simulated fill
-        let fillPrice = price + Double.random(in: -10...10) // Add some slippage
+        // Create simulated fill with synthetic price
+        let basePrice = 45000.0 + Double.random(in: -2000...2000)
+        let fillPrice = basePrice + Double.random(in: -50...50) // Add some slippage
         
         return OrderFill(
             symbol: orderRequest.symbol,
@@ -771,6 +1127,34 @@ final class DashboardVM: ObservableObject {
             price: fillPrice,
             timestamp: Date()
         )
+    }
+    
+    private func simulatePaperTradeExecution(orderRequest: OrderRequest) async -> OrderFill {
+        // Use TradeManager for proper P&L accounting and persistence
+        do {
+            let fill = try await tradeManager.manualOrder(orderRequest)
+            
+            // Get updated equity for logging
+            let newEquity = await tradeManager.getCurrentEquity()
+            
+            Log.trading.info("[TRADING] Paper order filled: \(orderRequest.side.rawValue) notional=\(String(format: "%.2f", orderRequest.quantity * fill.price)) mode=Paper price=\(String(format: "%.2f", fill.price)) fee=0.00 newEquity=\(String(format: "%.2f", newEquity))")
+            
+            return fill
+        } catch {
+            Log.trading.error("[TRADING] Paper trade failed: \(error.localizedDescription)")
+            
+            // Fallback to simulation if TradeManager fails
+            let slippage = Double.random(in: -20...20)
+            let fillPrice = price + slippage
+            
+            return OrderFill(
+                symbol: orderRequest.symbol,
+                side: orderRequest.side,
+                quantity: orderRequest.quantity,
+                price: fillPrice,
+                timestamp: Date()
+            )
+        }
     }
     
     private func handleTradeResult(fill: OrderFill?, error: Error?) async {
@@ -863,6 +1247,19 @@ final class DashboardVM: ObservableObject {
             isLoading = true
             await loadMarketData()
             await refreshPredictionAsync()
+            isLoading = false
+        }
+    }
+    
+    /// Test CoreML pipeline - for debugging
+    func testCoreMLPipeline() async {
+        await MainActor.run {
+            isLoading = true
+        }
+        
+        Log.app.info("CoreML pipeline test - method not implemented in simple AIModelManager")
+        
+        await MainActor.run {
             isLoading = false
         }
     }

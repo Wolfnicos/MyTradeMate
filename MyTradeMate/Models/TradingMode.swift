@@ -1,15 +1,32 @@
 import Foundation
 
 public enum TradingMode: String, CaseIterable, Codable, Sendable {
-    case manual
-    case auto
-    case demo
+    case demo       // Simulated data and orders
+    case paper      // Real market data, simulated orders  
+    case live       // Real market data and orders
     
-    // Legacy compatibility for the old paper/live cases
-    public static let paper = TradingMode.manual
-    public static let live = TradingMode.auto
-}
-
-public extension TradingMode {
-    var title: String { self == .manual ? "Manual" : "Auto" }
+    // For UI display
+    var title: String {
+        switch self {
+        case .demo: return "Demo"
+        case .paper: return "Paper"
+        case .live: return "Live"
+        }
+    }
+    
+    var description: String {
+        switch self {
+        case .demo: return "Synthetic data & simulated trading"
+        case .paper: return "Live data & simulated trading"
+        case .live: return "Live data & real trading"
+        }
+    }
+    
+    var requiresAPIKeys: Bool {
+        return self == .live
+    }
+    
+    var allowsRealTrading: Bool {
+        return self == .live
+    }
 }

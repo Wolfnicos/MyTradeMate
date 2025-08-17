@@ -74,7 +74,7 @@ final class PredictionHandlingTests: XCTestCase {
         // Given
         let candles = createMockCandles(count: 100)
         let timeframe = Timeframe.m5
-        let mode = TradingMode.manual
+        let mode = TradingMode.demo
         
         // When
         let result = await aiModelManager.predictSafely(

@@ -37,7 +37,7 @@ final class TradeConfirmationDialogTests: XCTestCase {
             side: .sell,
             amount: 0.001,
             price: 45000.0,
-            mode: .auto,
+            mode: .live,
             isDemo: false
         )
         

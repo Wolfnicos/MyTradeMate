@@ -47,7 +47,18 @@ final class DashboardVM: ObservableObject {
     @Published var errorMessage: String?
     @Published var timeframe: Timeframe = .m5
     @Published var precisionMode: Bool = false
-    @Published var tradingMode: TradingMode = .manual
+    @Published var autoTradingEnabled: Bool = false
+    
+    // Trading mode is controlled by settings, not dashboard toggle
+    var tradingMode: TradingMode {
+        if settings.demoMode {
+            return .demo
+        } else if settings.paperTrading {
+            return .paper
+        } else {
+            return .live
+        }
+    }
     @Published var confidence: Double = 0.0
     @Published var currentSignal: SignalInfo?
     @Published var currentPredictionResult: PredictionResult?
@@ -124,13 +135,7 @@ final class DashboardVM: ObservableObject {
             }
             .store(in: &cancellables)
 
-            // trading mode (just logs)
-        $tradingMode
-            .removeDuplicates()
-            .sink { mode in
-                Log.trade.info("Trading mode \(mode.rawValue)")
-            }
-            .store(in: &cancellables)
+            // trading mode (computed property, no binding needed)
 
             // connection status
         NotificationCenter.default.publisher(for: .init("WebSocketStatusChanged"))
@@ -273,15 +278,11 @@ final class DashboardVM: ObservableObject {
         let verboseLogging = false
         let start = CFAbsoluteTimeGetCurrent()
 
-            // Legacy fallback: use CoreML-only
-        let allPredictions = await getAllModelPredictions()
-
-            // pick current TF
-        let coreMLSignal = allPredictions.first(where: { p in
-            (timeframe == .m5 && p.modelName.contains("5m")) ||
-            (timeframe == .h1 && p.modelName.contains("1h")) ||
-            (timeframe == .h4 && (p.modelName.contains("4h") || p.modelName.contains("4H")))
-        }) ?? allPredictions.first ?? PredictionResult(signal: "HOLD", confidence: 0.0, modelName: "Unknown", timestamp: Date())
+            // Get CoreML prediction using the new method
+        let coreMLSignal = aiModelManager.predictSafely(
+            timeframe: timeframe,
+            candles: self.candles
+        )
 
         let finalSignal = combineSignals(coreML: coreMLSignal, verboseLogging: verboseLogging)
         let elapsed = (CFAbsoluteTimeGetCurrent() - start) * 1000.0
@@ -294,60 +295,15 @@ final class DashboardVM: ObservableObject {
         await MainActor.run {
             self.currentSignal = finalSignal
             self.currentPredictionResult = coreMLSignal
-            self.allModelPredictions = allPredictions
+            self.allModelPredictions = coreMLSignal != nil ? [coreMLSignal!] : []
             self.confidence = finalSignal.confidence
-            if self.tradingMode == .auto && settings.autoTrading, let sig = self.currentSignal {
+            if settings.autoTrading, let sig = self.currentSignal {
                 self.handleAutoTrading(signal: sig)
             }
         }
     }
 
         /// Construiește predicții pentru m5/h1 (dense) + h4 (explicit) folosind AIModelManager actual.
-    private func getAllModelPredictions() async -> [PredictionResult] {
-        var predictions: [PredictionResult] = []
-
-            // Dense features (10) – simple, dar conforme (managerul pad-ează/trunchiază)
-        let dense = buildDenseFeatures(from: candles)
-
-        if let p = aiModelManager.predictSafely(kind: .m5, denseFeatures: dense) {
-            predictions.append(p)
-        }
-        if let p = aiModelManager.predictSafely(kind: .h1, denseFeatures: dense) {
-            predictions.append(p)
-        }
-
-            // 4h explicit (12 features). Încercăm dacă putem construi minimul necesar
-        if let explicit = build4HExplicitInputs(from: candles),
-           let out = try? aiModelManager.predict4H(explicitInputs: explicit) {
-
-                // 1) classProbability (BUY/SELL/HOLD sau 0/1 etc.)
-            if let anyDict = out.featureValue(for: "classProbability")?.dictionaryValue {
-                var buy = 0.0, sell = 0.0, hold = 0.0
-                for (k, v) in anyDict {
-                    if let s = k as? String {
-                        if s.uppercased() == "BUY"  { buy  = v.doubleValue }
-                        if s.uppercased() == "SELL" { sell = v.doubleValue }
-                        if s.uppercased() == "HOLD" { hold = v.doubleValue }
-                    } else if let i = k as? Int {
-                            // fallback convenție văzută în loguri
-                        if i == 0 { sell = v.doubleValue }
-                        if i == 1 { hold = v.doubleValue }
-                    }
-                }
-                let maxVal = max(buy, sell, hold)
-                let dir = (maxVal == buy) ? "BUY" : ((maxVal == sell) ? "SELL" : "HOLD")
-                predictions.append(PredictionResult(signal: dir, confidence: maxVal, model: .h4, timestamp: Date()))
-            }
-                // 2) prediction string (fallback)
-            else if let pred = out.featureValue(for: "prediction")?.stringValue {
-                let dir = pred.uppercased()
-                let conf = 1.0 // dacă nu avem probabilități, punem 1.0 nominal
-                predictions.append(PredictionResult(signal: dir, confidence: conf, model: .h4, timestamp: Date()))
-            }
-        }
-
-        return predictions
-    }
 
         // MARK: - Feature builders (simple & safe)
         /// Construcție 10 features pentru modelele dense (m5/h1). Valorile sunt simple, dar valide.

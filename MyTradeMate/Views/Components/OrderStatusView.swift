@@ -433,7 +433,7 @@ struct CompactOrderStatusView: View {
                         side: .sell,
                         amount: 0.5,
                         price: 3200.0,
-                        mode: .auto,
+                        mode: .live,
                         isDemo: true
                     ),
                     currentStatus: .filled

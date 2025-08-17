@@ -327,7 +327,7 @@ final class MarketDataService: ObservableObject {
     }
     
     private func generateMockCandles(symbol: String, timeframe: Timeframe) -> [Candle] {
-        let basePrice: Double = symbol.contains("BTC") ? 45000 : 2500
+        let basePrice: Double = getBasePriceForSymbol(symbol)
         let count = 200
         var result: [Candle] = []
         
@@ -360,6 +360,21 @@ final class MarketDataService: ObservableObject {
         }
         
         return result.reversed()
+    }
+    
+    /// Get realistic base price for different assets in mock data
+    private func getBasePriceForSymbol(_ symbol: String) -> Double {
+        let upperSymbol = symbol.uppercased()
+        
+        if upperSymbol.contains("BTC") {
+            return 45000.0 // Bitcoin ~$45k
+        } else if upperSymbol.contains("ETH") {
+            return 2500.0   // Ethereum ~$2.5k
+        } else if upperSymbol.contains("DOGE") {
+            return 0.08     // Dogecoin ~$0.08
+        } else {
+            return 1.0      // Default for unknown assets
+        }
     }
     
     // MARK: - Memory Management

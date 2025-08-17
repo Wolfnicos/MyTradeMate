@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 63;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -46,7 +46,6 @@
 		5DE44E95CCF35954BA29E4A3 /* NetworkSecurityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABC6D2EAA3D2DABF037A68B8 /* NetworkSecurityManager.swift */; };
 		6244A78A533B92349F3F1E79 /* MyTradeMateWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = E57EFF270906AEBEAD0390E0 /* MyTradeMateWidget.swift */; };
 		62A22857EC840FC0DD07A2A5 /* ExchangeKeysView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B17E4BE8FEE96A4E4F3672C /* ExchangeKeysView.swift */; };
-		65FA31D5275D08412750DB12 /* BTC_4H_Model.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = 99BBD6029F636841277C66AB /* BTC_4H_Model.mlmodel */; };
 		6E217B9A7FADB80F52F5D827 /* EnsembleDecider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18DF642AC4FAEDCE5EBBC2BB /* EnsembleDecider.swift */; };
 		6E691CC5B0B79EF200FEB2EC /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 534D46227E6D7D231A33FF49 /* KeychainHelper.swift */; };
 		727C2E2CA6D7C711F0E39033 /* CandleProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 337996EFAC158FE38376CF2D /* CandleProvider.swift */; };
@@ -90,6 +89,14 @@
 		C6AF7E0FF27C0605A092C006 /* InterfaceSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA3832766CF8FD5729CFB044 /* InterfaceSection.swift */; };
 		C7BEA3C255191EA1F5066FED /* StrategiesSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77A6BB56FC5FFFC31590E396 /* StrategiesSection.swift */; };
 		C8CB146421817498E7CEC759 /* MeanReversionStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2ED4558AD8D706DD1F775A8 /* MeanReversionStrategy.swift */; };
+		D1461CEC2E51BB9D00EADDCF /* PredictionResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1461CEB2E51BB9D00EADDCF /* PredictionResult.swift */; };
+		D1461CEF2E51BC7100EADDCF /* AIModelManagerProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1461CED2E51BC7100EADDCF /* AIModelManagerProtocol.swift */; };
+		D1461CF12E51C10600EADDCF /* ModelKind.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1461CF02E51C0FA00EADDCF /* ModelKind.swift */; };
+		D1461CF32E5212DF00EADDCF /* BTC_4H_Model.mlpackage in Sources */ = {isa = PBXBuildFile; fileRef = D1461CF22E5212DF00EADDCF /* BTC_4H_Model.mlpackage */; };
+		D1461CF52E525A1F00EADDCF /* Asset.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1461CF42E525A1F00EADDCF /* Asset.swift */; };
+		D1461CF92E525A5300EADDCF /* FXService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1461CF82E525A5300EADDCF /* FXService.swift */; };
+		D1461CFC2E525AA500EADDCF /* TradingPairPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1461CFB2E525AA500EADDCF /* TradingPairPicker.swift */; };
+		D1461CFD2E525AA500EADDCF /* TradeAmountControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1461CFA2E525AA500EADDCF /* TradeAmountControl.swift */; };
 		D1F63F19FCF53C4DC9192D80 /* KrakenLiveClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F23169C504C8F716BF8F2938 /* KrakenLiveClient.swift */; };
 		D2908EF0D56CA5317B1D2ABE /* RootTabs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1096A89C1C175CD4E21BDD56 /* RootTabs.swift */; };
 		D2A8DC87B89A5211B0D608A0 /* Signal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 636E2B38D5FE7FA9BD0C0421 /* Signal.swift */; };
@@ -203,7 +210,6 @@
 		9538B72AA42608EA2E2A6158 /* Exchange.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Exchange.swift; sourceTree = "<group>"; };
 		97D78EC7DDBD6907DAE75677 /* BinanceModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BinanceModels.swift; sourceTree = "<group>"; };
 		98B1313F448BCDC9B141396F /* DashboardVM.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardVM.swift; sourceTree = "<group>"; };
-		99BBD6029F636841277C66AB /* BTC_4H_Model.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = BTC_4H_Model.mlmodel; sourceTree = "<group>"; };
 		9AA36D47FC0DAD86ED1B2DB4 /* WebSocketManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocketManager.swift; sourceTree = "<group>"; };
 		9B339B1573B30F6E26922690 /* MyTradeMate.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = MyTradeMate.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9EDB245E620E171B1EF68D15 /* MACDStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MACDStrategy.swift; sourceTree = "<group>"; };
@@ -214,6 +220,14 @@
 		BF6F8196CD406639F6D54543 /* MarketDataSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketDataSection.swift; sourceTree = "<group>"; };
 		CB5E5920949F9D243E5C23A4 /* PnLVM.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PnLVM.swift; sourceTree = "<group>"; };
 		CDE184395EB4D6C18D2D6324 /* BinanceLiveClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BinanceLiveClient.swift; sourceTree = "<group>"; };
+		D1461CEB2E51BB9D00EADDCF /* PredictionResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PredictionResult.swift; sourceTree = "<group>"; };
+		D1461CED2E51BC7100EADDCF /* AIModelManagerProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIModelManagerProtocol.swift; sourceTree = "<group>"; };
+		D1461CF02E51C0FA00EADDCF /* ModelKind.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelKind.swift; sourceTree = "<group>"; };
+		D1461CF22E5212DF00EADDCF /* BTC_4H_Model.mlpackage */ = {isa = PBXFileReference; lastKnownFileType = folder.mlpackage; path = BTC_4H_Model.mlpackage; sourceTree = "<group>"; };
+		D1461CF42E525A1F00EADDCF /* Asset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Asset.swift; sourceTree = "<group>"; };
+		D1461CF82E525A5300EADDCF /* FXService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FXService.swift; sourceTree = "<group>"; };
+		D1461CFA2E525AA500EADDCF /* TradeAmountControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TradeAmountControl.swift; sourceTree = "<group>"; };
+		D1461CFB2E525AA500EADDCF /* TradingPairPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TradingPairPicker.swift; sourceTree = "<group>"; };
 		D6A3A44D715F014F677FE80E /* StrategiesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrategiesView.swift; sourceTree = "<group>"; };
 		D70E8531CDF8FA9FA0427213 /* Account.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Account.swift; sourceTree = "<group>"; };
 		D89517480CB9B27A9FB8D488 /* RiskModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RiskModels.swift; sourceTree = "<group>"; };
@@ -377,6 +391,8 @@
 		6FAB5688A909777DDB6ECFFE /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				D1461CF42E525A1F00EADDCF /* Asset.swift */,
+				D1461CEB2E51BB9D00EADDCF /* PredictionResult.swift */,
 				D70E8531CDF8FA9FA0427213 /* Account.swift */,
 				E9D17AA8B3BA6F30A72F2ECF /* AppSettings.swift */,
 				3F00768703A3A2D71FF2B9DF /* Candle.swift */,
@@ -446,6 +462,7 @@
 		9F87B2EC6E5E9C5890A295E6 /* MyTradeMate */ = {
 			isa = PBXGroup;
 			children = (
+				D1461CEE2E51BC7100EADDCF /* Protocols */,
 				8A3DE31882AB6A4B55C316F0 /* Info.plist */,
 				58528D3A6A6637E837834C77 /* MyTradeMateApp.swift */,
 				2275731C8A43857D4849751A /* AI */,
@@ -481,7 +498,7 @@
 			children = (
 				038D920DFFD8B9A81780C5DC /* BitcoinAI_1h_enhanced.mlmodel */,
 				861269C0439FB146DD4A7633 /* BitcoinAI_5m_enhanced.mlmodel */,
-				99BBD6029F636841277C66AB /* BTC_4H_Model.mlmodel */,
+				D1461CF22E5212DF00EADDCF /* BTC_4H_Model.mlpackage */,
 			);
 			path = AIModels;
 			sourceTree = "<group>";
@@ -489,6 +506,7 @@
 		B30728955D3307C2099DF11F /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				D1461CF82E525A5300EADDCF /* FXService.swift */,
 				70DD18E574866AA379C65D26 /* AIModelManager.swift */,
 				CDE184395EB4D6C18D2D6324 /* BinanceLiveClient.swift */,
 				337996EFAC158FE38376CF2D /* CandleProvider.swift */,
@@ -508,9 +526,20 @@
 			path = Shared;
 			sourceTree = "<group>";
 		};
+		D1461CEE2E51BC7100EADDCF /* Protocols */ = {
+			isa = PBXGroup;
+			children = (
+				D1461CF02E51C0FA00EADDCF /* ModelKind.swift */,
+				D1461CED2E51BC7100EADDCF /* AIModelManagerProtocol.swift */,
+			);
+			path = Protocols;
+			sourceTree = "<group>";
+		};
 		D4ACC6C52E4A1F910FCE2C25 /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				D1461CFA2E525AA500EADDCF /* TradeAmountControl.swift */,
+				D1461CFB2E525AA500EADDCF /* TradingPairPicker.swift */,
 				22EAD6900AC872F9DB78E85D /* PnLWidget.swift */,
 			);
 			path = Components;
@@ -641,7 +670,6 @@
 			);
 			mainGroup = AB05F3B5FFA9DED67FB4CFE7;
 			minimizedProjectReferenceProxies = 1;
-			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -671,8 +699,8 @@
 				38891E8FF29ED67753418862 /* AppConfig.swift in Sources */,
 				DA5F42235DC394287E40A42F /* AppError.swift in Sources */,
 				DB58A56E881CAAAE5E9ECB11 /* AppSettings.swift in Sources */,
+				D1461CEF2E51BC7100EADDCF /* AIModelManagerProtocol.swift in Sources */,
 				DC282E06403FEBBABD8B3290 /* Audit.swift in Sources */,
-				65FA31D5275D08412750DB12 /* BTC_4H_Model.mlmodel in Sources */,
 				5AA58652C17BDFD1EAF33C96 /* BackgroundExporter.swift in Sources */,
 				BD9B46212D66BDCEE7C308F4 /* BinanceClient.swift in Sources */,
 				480EF00761F23BDED036D088 /* BinanceExchangeClient.swift in Sources */,
@@ -690,17 +718,22 @@
 				87EE39CFE8E5CE50EA0C4B89 /* CandlestickChart.swift in Sources */,
 				120E16683DE94B04C6D04E12 /* CoreMLInspector.swift in Sources */,
 				1D215BADDD4B17ADA679D04A /* DashboardVM.swift in Sources */,
+				D1461CF32E5212DF00EADDCF /* BTC_4H_Model.mlpackage in Sources */,
+				D1461CEC2E51BB9D00EADDCF /* PredictionResult.swift in Sources */,
 				ABAF575D7A2EA32D24519848 /* DashboardView.swift in Sources */,
 				841F18C52A1E8BCCB0E13B15 /* DateFormatter+Extensions.swift in Sources */,
 				1BBE87E9B3E036A5F31D3A48 /* DesignSystem.swift in Sources */,
 				0C6FC16A8E838DAE20FE854E /* DiagnosticsSection.swift in Sources */,
 				270A3D578C247A7EF7C01057 /* EMAStrategy.swift in Sources */,
 				6E217B9A7FADB80F52F5D827 /* EnsembleDecider.swift in Sources */,
+				D1461CF92E525A5300EADDCF /* FXService.swift in Sources */,
 				93DAFC2BA03BC29ED16E29EF /* ErrorManager.swift in Sources */,
 				C197D2CAF841B5C81E875EFA /* Exchange.swift in Sources */,
 				8EFDDAC64672740895533567 /* ExchangeClient.swift in Sources */,
 				62A22857EC840FC0DD07A2A5 /* ExchangeKeysView.swift in Sources */,
 				B7A75DD8111DFCE87F4E8320 /* ExchangesSection.swift in Sources */,
+				D1461CFC2E525AA500EADDCF /* TradingPairPicker.swift in Sources */,
+				D1461CFD2E525AA500EADDCF /* TradeAmountControl.swift in Sources */,
 				873D9FB9E2B7C34F2C975622 /* FeatureBuilder.swift in Sources */,
 				82A23B2ED7E7FD56A95BB9A8 /* Haptics.swift in Sources */,
 				C6AF7E0FF27C0605A092C006 /* InterfaceSection.swift in Sources */,
@@ -708,12 +741,14 @@
 				6E691CC5B0B79EF200FEB2EC /* KeychainHelper.swift in Sources */,
 				5ADD43134A43A11264C0858F /* KeychainStore.swift in Sources */,
 				8CCABCDD6CA5696871FE4029 /* KrakenClient.swift in Sources */,
+				D1461CF52E525A1F00EADDCF /* Asset.swift in Sources */,
 				2DA47E15BE6CDB97A7C14139 /* KrakenExchangeClient.swift in Sources */,
 				B0860E3ADE40F3E6DDDB201A /* KrakenKeysView.swift in Sources */,
 				D1F63F19FCF53C4DC9192D80 /* KrakenLiveClient.swift in Sources */,
 				9329501CC8E59D2777B51B07 /* KrakenModels.swift in Sources */,
 				95A38D774248E46829E4D6AC /* LegacyStrategy.swift in Sources */,
 				DA6971B46A8ED412E25C9013 /* Log.swift in Sources */,
+				D1461CF12E51C10600EADDCF /* ModelKind.swift in Sources */,
 				AF868E2DE3CAE7290234D113 /* Logger.swift in Sources */,
 				3DA578A79D5ED69AC0BB02C3 /* MACDStrategy.swift in Sources */,
 				023726E01CB25E1E56A384F1 /* MarketDataSection.swift in Sources */,

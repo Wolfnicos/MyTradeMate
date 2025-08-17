@@ -31,12 +31,12 @@ public struct TradeRequest {
             return "Demo"
         } else {
             switch mode {
-            case .manual:
-                return "Manual"
-            case .auto:
-                return "Auto"
             case .demo:
                 return "Demo"
+            case .paper:
+                return "Paper"
+            case .live:
+                return "Live"
             }
         }
     }
@@ -46,12 +46,12 @@ public struct TradeRequest {
             return .orange
         } else {
             switch mode {
-            case .manual:
-                return .blue
-            case .auto:
-                return .green
             case .demo:
                 return .orange
+            case .paper:
+                return .blue
+            case .live:
+                return .green
             }
         }
     }

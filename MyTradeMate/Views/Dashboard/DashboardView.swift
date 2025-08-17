@@ -182,6 +182,8 @@ struct DashboardView: View {
         ScrollView {
             VStack(spacing: Spacing.sectionSpacing) {
                 headerSection
+                tradingModeBanner
+                pnlHUDSection
                 priceSection
                 miniChartSection
                 controlsSection
@@ -362,6 +364,18 @@ struct DashboardView: View {
     // MARK: - Controls Section
     private var controlsSection: some View {
         VStack(spacing: Spacing.lg) {
+            // Trading pair picker - NEW
+            TradingPairPicker(selectedPair: $vm.selectedTradingPair)
+            
+            // Trade amount control - NEW
+            TradeAmountControl(
+                amountMode: $vm.amountMode,
+                amountValue: $vm.amountValue,
+                quoteCurrency: vm.selectedTradingPair.quote,
+                currentEquity: vm.currentEquity,
+                currentPrice: vm.price
+            )
+            
             // Timeframe selector
             HStack {
                 Text("Timeframe")
@@ -398,9 +412,9 @@ struct DashboardView: View {
                 
                 Spacer()
                 
-                Picker("Trading", selection: $vm.tradingMode) {
-                    Text("Manual").tag(TradingMode.manual)
-                    Text("Auto").tag(TradingMode.auto)
+                Picker("Mode", selection: $vm.autoTradingEnabled) {
+                    Text("Manual").tag(false)
+                    Text("Auto").tag(true)
                 }
                 .pickerStyle(.segmented)
             }
@@ -421,6 +435,7 @@ struct DashboardView: View {
             signal: vm.currentSignal,
             isRefreshing: vm.isRefreshing,
             timeframe: vm.timeframe,
+            tradingPair: vm.selectedTradingPair,
             lastUpdated: vm.lastUpdated,
             onRefresh: {
                 vm.refreshPrediction()
@@ -460,7 +475,7 @@ struct DashboardView: View {
             } else {
                 HStack(spacing: Spacing.md) {
                     BuyButton(
-                        isDisabled: vm.tradingMode == .auto || vm.isExecutingTrade,
+                        isDisabled: vm.autoTradingEnabled || vm.isExecutingTrade,
                         isDemoMode: AppSettings.shared.demoMode,
                         action: {
                             vm.executeBuy()
@@ -468,14 +483,14 @@ struct DashboardView: View {
                     )
                     
                     SellButton(
-                        isDisabled: vm.tradingMode == .auto || vm.isExecutingTrade,
+                        isDisabled: vm.autoTradingEnabled || vm.isExecutingTrade,
                         isDemoMode: AppSettings.shared.demoMode,
                         action: {
                             vm.executeSell()
                         }
                     )
                 }
-                .opacity(vm.tradingMode == .auto || vm.isExecutingTrade ? 0.5 : 1.0)
+                .opacity(vm.autoTradingEnabled || vm.isExecutingTrade ? 0.5 : 1.0)
             }
         }
     }
@@ -566,6 +581,36 @@ struct DashboardView: View {
         }
     }
     
+    // MARK: - P&L HUD Section
+    private var pnlHUDSection: some View {
+        Group {
+            if let pnlSnapshot = vm.currentPnLSnapshot {
+                PnLWidget(
+                    snapshot: pnlSnapshot,
+                    isDemoMode: vm.tradingMode == .demo
+                )
+            } else {
+                // Loading state for P&L
+                VStack(spacing: Spacing.sm) {
+                    HStack {
+                        Text("Portfolio")
+                            .calloutMediumStyle()
+                        Spacer()
+                        ProgressView()
+                            .scaleEffect(0.8)
+                    }
+                    
+                    Text("Loading account data...")
+                        .caption1Style()
+                        .foregroundColor(.secondary)
+                }
+                .padding(Spacing.cardPadding)
+                .background(Color(.secondarySystemBackground))
+                .cornerRadius(CornerRadius.lg)
+            }
+        }
+    }
+    
     // MARK: - Helpers
 }
 
@@ -628,6 +673,76 @@ struct PositionRow: View {
             //     .foregroundColor(position.pnl >= 0 ? .green : .red)
         }
         .padding(.vertical, Spacing.xs)
+    }
+    
+    // MARK: - Trading Mode Banner
+    private var tradingModeBanner: some View {
+        HStack(spacing: Spacing.md) {
+            // Mode indicator
+            Circle()
+                .fill(vm.tradingMode.color)
+                .frame(width: 8, height: 8)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(vm.tradingMode.title.uppercased())
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(vm.tradingMode.color)
+                
+                Text(vm.tradingMode.description)
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            if vm.tradingMode == .demo {
+                Text("VIRTUAL")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(.orange)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.orange.opacity(0.1))
+                    .cornerRadius(4)
+            }
+        }
+        .padding(.horizontal, Spacing.lg)
+        .padding(.vertical, Spacing.sm)
+        .background(
+            RoundedRectangle(cornerRadius: CornerRadius.md)
+                .fill(vm.tradingMode.backgroundColor.opacity(0.1))
+                .overlay(
+                    RoundedRectangle(cornerRadius: CornerRadius.md)
+                        .stroke(vm.tradingMode.color.opacity(0.3), lineWidth: 1)
+                )
+        )
+        .padding(.horizontal)
+    }
+}
+
+// MARK: - Trading Mode Extensions
+extension TradingMode {
+    var color: Color {
+        switch self {
+        case .demo: return .orange
+        case .paper: return .blue
+        case .live: return .green
+        }
+    }
+    
+    var backgroundColor: Color {
+        switch self {
+        case .demo: return .orange
+        case .paper: return .blue
+        case .live: return .green
+        }
+    }
+    
+    var description: String {
+        switch self {
+        case .demo: return "Simulated trading with virtual money"
+        case .paper: return "Real market data, simulated orders"
+        case .live: return "Real trading with actual funds"
+        }
     }
 }
 

@@ -23,6 +23,11 @@ public actor PnLManager {
     
     public func addRealized(_ v: Double) { realizedToday += v }
     
+    public func reset() {
+        realizedToday = 0
+        startOfDay = Calendar.current.startOfDay(for: Date())
+    }
+    
     public func snapshot(price: Double, position: Position?, equity: Double) -> PnLSnapshot {
         let unrealized: Double
         if let p = position, p.quantity > 0 {

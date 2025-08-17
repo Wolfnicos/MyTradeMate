@@ -83,7 +83,7 @@ final class RefactoredDashboardVM: ObservableObject {
             .compactMap { $0 }
             .sink { [weak self] signal in
                 guard let self = self else { return }
-                if self.tradingMode == .auto && self.settings.autoTrading {
+                if self.settings.autoTrading {
                     self.tradingManager.handleAutoTrading(signal: signal, currentPrice: self.price)
                 }
             }

@@ -7,13 +7,35 @@ public enum CloseReason: String, Sendable { case manual, stopLoss, takeProfit }
 public final class TradeManager: ObservableObject {
     public static let shared = TradeManager()
 
-    public private(set) var mode: TradingMode = .paper
-    public private(set) var equity: Double = 10_000
-    public private(set) var position: Position?
-    public private(set) var fills: [OrderFill] = []
+    @Published public private(set) var mode: TradingMode = .paper
+    @Published public private(set) var equity: Double
+    @Published public private(set) var position: Position?
+    @Published public private(set) var fills: [OrderFill] = []
     
     private var exchangeClient: ExchangeClient = PaperExchangeClient(exchange: .binance)
     private let risk = RiskManager.shared
+    
+    // MARK: - Persistence Keys
+    private let equityKey = "TradeManager.equity"
+    private let fillsKey = "TradeManager.fills"
+    private let positionKey = "TradeManager.position"
+    
+    private init() {
+        // Load persisted equity or use default
+        self.equity = UserDefaults.standard.object(forKey: equityKey) as? Double ?? 10_000.0
+        
+        // Load persisted fills
+        if let fillsData = UserDefaults.standard.data(forKey: fillsKey),
+           let decodedFills = try? JSONDecoder().decode([OrderFill].self, from: fillsData) {
+            self.fills = decodedFills
+        }
+        
+        // Load persisted position
+        if let positionData = UserDefaults.standard.data(forKey: positionKey),
+           let decodedPosition = try? JSONDecoder().decode(Position.self, from: positionData) {
+            self.position = decodedPosition
+        }
+    }
     
     public func setMode(_ newMode: TradingMode) {
         mode = newMode
@@ -33,6 +55,9 @@ public final class TradeManager: ObservableObject {
         do {
             let fill = try await exchangeClient.placeMarketOrder(req)
             fills.append(fill)
+            
+            // Log trade to CSV files (TODO: Add PredictionLogger.swift to Xcode project)
+            // PredictionLogger.shared.logTrade(fill)
 
             var pos = position ?? Position(symbol: req.symbol, quantity: 0, avgPrice: 0)
             let (newPos, realized) = applyFill(fill: fill, to: pos)
@@ -44,6 +69,10 @@ public final class TradeManager: ObservableObject {
             }
             
             position = newPos.isFlat ? nil : newPos
+            
+            // Persist changes
+            await persistState()
+            
             return fill
         } catch let error as ExchangeError {
             // Convert ExchangeError to AppError for consistent error handling
@@ -155,9 +184,70 @@ public final class TradeManager: ObservableObject {
             timestamp: Date()
         ))
         position = nil
+        
+        // Persist changes
+        await persistState()
     }
     
     public func fillsSnapshot() async -> [OrderFill] {
         fills
+    }
+    
+    // MARK: - Persistence
+    
+    private func persistState() async {
+        await MainActor.run {
+            // Save equity
+            UserDefaults.standard.set(self.equity, forKey: self.equityKey)
+            
+            // Save fills
+            if let fillsData = try? JSONEncoder().encode(self.fills) {
+                UserDefaults.standard.set(fillsData, forKey: self.fillsKey)
+            }
+            
+            // Save position
+            if let position = self.position,
+               let positionData = try? JSONEncoder().encode(position) {
+                UserDefaults.standard.set(positionData, forKey: self.positionKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: self.positionKey)
+            }
+            
+            UserDefaults.standard.synchronize()
+        }
+    }
+    
+    /// Reset paper account to initial state
+    public func resetPaperAccount() async {
+        await MainActor.run {
+            self.equity = 10_000.0
+            self.position = nil
+            self.fills = []
+            
+            // Clear persisted data
+            UserDefaults.standard.removeObject(forKey: self.equityKey)
+            UserDefaults.standard.removeObject(forKey: self.fillsKey)
+            UserDefaults.standard.removeObject(forKey: self.positionKey)
+            UserDefaults.standard.synchronize()
+        }
+        
+        // Reset related managers
+        await PnLManager.shared.reset()
+    }
+    
+    // MARK: - Public Access Methods
+    
+    /// Get current equity (thread-safe access)
+    public func getCurrentEquity() async -> Double {
+        await MainActor.run {
+            return self.equity
+        }
+    }
+    
+    /// Get current position (thread-safe access)
+    public func getCurrentPosition() async -> Position? {
+        await MainActor.run {
+            return self.position
+        }
     }
 }

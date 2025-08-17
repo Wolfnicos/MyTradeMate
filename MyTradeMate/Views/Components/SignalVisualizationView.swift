@@ -5,6 +5,7 @@ struct SignalVisualizationView: View {
     let signal: SignalInfo?
     let isRefreshing: Bool
     let timeframe: Timeframe
+    let tradingPair: TradingPair
     let lastUpdated: Date
     let onRefresh: () -> Void
     
@@ -13,7 +14,7 @@ struct SignalVisualizationView: View {
             // Header with title and refresh button
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("AI Signal")
+                    Text("Trading Signal")
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(.primary)
                     
@@ -91,11 +92,21 @@ struct SignalContentView: View {
                         }
                     }
                     
-                    // Confidence and metadata
+                    // Confidence and metadata with source labels
                     HStack(spacing: 8) {
                         Text(confidenceDisplayText)
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.primary)
+                        
+                        if let sourceLabel = extractSourceLabel() {
+                            Text("•")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                            
+                            Text(sourceLabel)
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.blue)
+                        }
                         
                         Text("•")
                             .font(.system(size: 14))
@@ -105,13 +116,15 @@ struct SignalContentView: View {
                             .font(.system(size: 14))
                             .foregroundColor(.secondary)
                         
-                        Text("•")
-                            .font(.system(size: 14))
-                            .foregroundColor(.secondary)
-                        
-                        Text(lastUpdatedString)
-                            .font(.system(size: 14))
-                            .foregroundColor(.secondary)
+                        if !isVeryLowConfidence {
+                            Text("•")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                            
+                            Text(lastUpdatedString)
+                                .font(.system(size: 14))
+                                .foregroundColor(.tertiary)
+                        }
                     }
                 }
                 
@@ -142,14 +155,18 @@ struct SignalContentView: View {
     }
     
     private var signalSubtitle: String {
-        switch signal.direction {
-        case "BUY":
-            return "Bullish signal detected"
-        case "SELL":
-            return "Bearish signal detected"
-        default:
-            return "Neutral market conditions"
+        // Deterministic subtitle format as specified: confidence: XX% • {Strategies|4h Model} • {5m|1h|4h} • BTC/USD
+        let confidence = Int(signal.confidence * 100)
+        let source: String
+        
+        switch timeframe {
+        case .h4:
+            source = "4h Model"
+        case .m5, .h1:
+            source = "Strategies"
         }
+        
+        return "confidence: \(confidence)% • \(source) • \(timeframe.rawValue) • \(tradingPair.symbol)"
     }
     
     private var signalColor: Color {
@@ -166,7 +183,38 @@ struct SignalContentView: View {
             return "Monitoring conditions"
         }
         
-        return "\(Int(signal.confidence * 100))% confidence"
+        return "confidence: \(Int(signal.confidence * 100))%"
+    }
+    
+    private var isVeryLowConfidence: Bool {
+        return signal.confidence < 0.01
+    }
+    
+    /// Extract source label from signal reason (e.g., "4h Model", "Strategies")
+    private func extractSourceLabel() -> String? {
+        let reason = signal.reason
+        
+        // Look for source patterns in the reason text
+        if reason.contains("4h Model") {
+            return "4h Model"
+        } else if reason.contains("Strategies") {
+            return "Strategies"
+        } else if reason.contains("Model") {
+            return "AI Model"
+        } else if reason.contains("Strategy") {
+            return "Strategy"
+        }
+        
+        // Fallback: try to extract text between "•" separators
+        let components = reason.components(separatedBy: " • ")
+        if components.count >= 2 {
+            let secondComponent = components[1].trimmingCharacters(in: .whitespaces)
+            if !secondComponent.isEmpty && !secondComponent.contains("confidence") {
+                return secondComponent
+            }
+        }
+        
+        return nil
     }
     
     private var lastUpdatedString: String {
@@ -181,38 +229,22 @@ struct SignalDirectionIndicator: View {
     let direction: String
     
     var body: some View {
-        ZStack {
-            Circle()
-                .fill(backgroundColor)
-                .frame(width: 40, height: 40)
-            
-            Image(systemName: iconName)
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(iconColor)
-        }
+        // Color-coded badge with text as specified
+        Text(direction.uppercased())
+            .font(.system(size: 12, weight: .bold))
+            .foregroundColor(.white)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(badgeColor)
+            .cornerRadius(8)
     }
     
-    private var backgroundColor: Color {
-        switch direction {
-        case "BUY": return .green.opacity(0.15)
-        case "SELL": return .red.opacity(0.15)
-        default: return .secondary.opacity(0.15)
-        }
-    }
-    
-    private var iconColor: Color {
+    /// Color-coded badges: BUY (green), SELL (red), HOLD (gray/blue)
+    private var badgeColor: Color {
         switch direction {
         case "BUY": return .green
         case "SELL": return .red
-        default: return .secondary
-        }
-    }
-    
-    private var iconName: String {
-        switch direction {
-        case "BUY": return "arrow.up"
-        case "SELL": return "arrow.down"
-        default: return "minus"
+        default: return .blue  // HOLD gets blue instead of gray for better visibility
         }
     }
 }
@@ -396,30 +428,32 @@ struct SignalReasoningView: View {
 struct SignalVisualizationView_Previews: PreviewProvider {
     static var previews: some View {
         VStack(spacing: 20) {
-            // Strong BUY signal
+            // Strong BUY signal from AI
             SignalVisualizationView(
                 signal: SignalInfo(
                     direction: "BUY",
                     confidence: 0.85,
-                    reason: "Strong bullish momentum detected with RSI oversold conditions and positive MACD crossover. Multiple technical indicators align for upward movement.",
+                    reason: "BUY • 4h Model • 4h",
                     timestamp: Date()
                 ),
                 isRefreshing: false,
-                timeframe: .h1,
+                timeframe: .h4,
+                tradingPair: .btcUsd,
                 lastUpdated: Date().addingTimeInterval(-120),
                 onRefresh: {}
             )
             
-            // Weak SELL signal
+            // Moderate SELL signal from Strategies
             SignalVisualizationView(
                 signal: SignalInfo(
                     direction: "SELL",
-                    confidence: 0.35,
-                    reason: "Bearish divergence in momentum indicators",
+                    confidence: 0.67,
+                    reason: "SELL • Strategies • 5m",
                     timestamp: Date()
                 ),
                 isRefreshing: false,
                 timeframe: .m5,
+                tradingPair: .ethEur,
                 lastUpdated: Date().addingTimeInterval(-30),
                 onRefresh: {}
             )
@@ -429,6 +463,7 @@ struct SignalVisualizationView_Previews: PreviewProvider {
                 signal: nil,
                 isRefreshing: true,
                 timeframe: .h4,
+                tradingPair: .btcUsd,
                 lastUpdated: Date(),
                 onRefresh: {}
             )
@@ -438,6 +473,7 @@ struct SignalVisualizationView_Previews: PreviewProvider {
                 signal: nil,
                 isRefreshing: false,
                 timeframe: .h1,
+                tradingPair: .dogeUsd,
                 lastUpdated: Date(),
                 onRefresh: {}
             )

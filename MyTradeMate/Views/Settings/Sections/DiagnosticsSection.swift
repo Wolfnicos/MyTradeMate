@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreML
 
 struct DiagnosticsSection: View {
     var body: some View {
@@ -43,8 +44,9 @@ struct DiagnosticsSection: View {
             Log.ai.info("✅ CoreML models validated successfully")
             
             for (kind, model) in aiManager.models {
-                let inputs = model.modelDescription.inputDescriptionsByName
-                let outputs = model.modelDescription.outputDescriptionsByName
+                guard let mlModel = model as? MLModel else { continue }
+                let inputs = mlModel.modelDescription.inputDescriptionsByName
+                let outputs = mlModel.modelDescription.outputDescriptionsByName
                 
                 Log.ai.info("📊 Model: \(kind.modelName)")
                 for (key, desc) in inputs {

@@ -151,7 +151,7 @@ final class TradingManager: ObservableObject {
     
     func handleAutoTrading(signal: SignalInfo, currentPrice: Double) {
         guard settings.autoTrading else { return }
-        guard tradingMode == .auto else { return }
+        // Auto trading is already gated by settings.autoTrading check above
         
         // Cooldown check
         let timeSinceLastTrade = Date().timeIntervalSince(lastAutoTradeTime)

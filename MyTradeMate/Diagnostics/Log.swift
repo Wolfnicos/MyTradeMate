@@ -18,6 +18,12 @@ enum Log {
     static let ui = OSLog(subsystem: subsystem, category: "UI")
     static let strategy = OSLog(subsystem: subsystem, category: "Strategy")
     
+    // MARK: - Production-grade standardized loggers
+    static let routing = OSLog(subsystem: subsystem, category: "ROUTING")
+    static let trading = OSLog(subsystem: subsystem, category: "TRADING")
+    static let settings = OSLog(subsystem: subsystem, category: "SETTINGS")
+    static let health = OSLog(subsystem: subsystem, category: "HEALTH")
+    
     // MARK: - Convenience Methods
     
     /// Log a message with automatic category detection based on context

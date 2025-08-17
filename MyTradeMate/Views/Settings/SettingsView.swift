@@ -71,6 +71,7 @@ struct HelpIconView: View {
 
 struct SettingsView: View {
     @ObservedObject private var settings = AppSettings.shared
+    @ObservedObject private var settingsRepo = SettingsRepository.shared
     @EnvironmentObject private var navigationCoordinator: NavigationCoordinator
     @EnvironmentObject private var toastManager: ToastManager
     @State private var searchText = ""
@@ -267,6 +268,34 @@ struct SettingsView: View {
                                 .navigationTitle("Strategy Configuration")
                                 .navigationBarTitleDisplayMode(.inline)
                             )
+                        )
+                    )
+                ),
+                SettingsItem(
+                    title: "Routing & Confidence",
+                    description: "Configure per-timeframe routing and confidence controls for AI vs Strategy systems",
+                    view: AnyView(
+                        SettingsNavigationRow(
+                            title: "Routing & Confidence",
+                            description: "Configure per-timeframe routing and confidence controls for AI vs Strategy systems",
+                            destination: AnyView(routingConfidenceView)
+                        )
+                    )
+                ),
+                SettingsItem(
+                    title: "Reset Paper Account",
+                    description: "Reset paper trading account to initial state with default balance",
+                    view: AnyView(
+                        SettingsButtonRow(
+                            title: "Reset Paper Account",
+                            description: "Reset paper trading account to $10,000 and clear all trades and positions",
+                            action: {
+                                Task {
+                                    await settingsRepo.resetPaperAccount()
+                                    toastManager.showSuccess("Paper account reset to $10,000")
+                                }
+                            },
+                            style: .destructive
                         )
                     )
                 )
@@ -519,6 +548,145 @@ struct SettingsView: View {
             )
         }
         .padding(.vertical, Spacing.xs)
+    }
+    
+    // MARK: - Routing & Confidence Configuration View
+    private var routingConfidenceView: some View {
+        List {
+            Section {
+                SettingsToggleRow(
+                    title: "Strategy Routing for Short Timeframes",
+                    description: "Use strategies for 5m/1h timeframes, AI for 4h. When disabled, AI is used for all timeframes.",
+                    helpText: "Per-timeframe routing optimizes predictions:\n\n• 5m/1h: Strategy aggregation (faster, less complex)\n• 4h: AI model (deeper analysis)\n\nDisabling uses AI for all timeframes.",
+                    isOn: $settingsRepo.useStrategyRouting,
+                    style: .prominent
+                )
+            } header: {
+                Text("Per-Timeframe Routing")
+                    .font(.settingsHeadline)
+            } footer: {
+                Text("Controls which system handles predictions for different timeframes. Recommended: enabled for optimal performance.")
+                    .font(.settingsFootnote)
+                    .foregroundColor(.settingsTertiary)
+            }
+            
+            Section {
+                VStack(spacing: Spacing.md) {
+                    HStack {
+                        Text("Strategy Confidence Range")
+                            .font(.settingsBody)
+                            .fontWeight(.medium)
+                        
+                        Spacer()
+                        
+                        Text("\(String(format: "%.2f", settingsRepo.strategyConfidenceMin)) - \(String(format: "%.2f", settingsRepo.strategyConfidenceMax))")
+                            .font(.settingsBody)
+                            .foregroundColor(.settingsSecondary)
+                    }
+                    
+                    VStack(spacing: Spacing.sm) {
+                        HStack {
+                            Text("Min")
+                                .font(.settingsCaption)
+                                .foregroundColor(.settingsSecondary)
+                            Spacer()
+                            Text("Max")
+                                .font(.settingsCaption)
+                                .foregroundColor(.settingsSecondary)
+                        }
+                        
+                        HStack(spacing: Spacing.md) {
+                            Slider(
+                                value: $settingsRepo.strategyConfidenceMin,
+                                in: 0.55...0.89,
+                                step: 0.01
+                            )
+                            .frame(maxWidth: 120)
+                            
+                            Text("to")
+                                .font(.settingsCaption)
+                                .foregroundColor(.settingsSecondary)
+                            
+                            Slider(
+                                value: $settingsRepo.strategyConfidenceMax,
+                                in: 0.56...0.90,
+                                step: 0.01
+                            )
+                            .frame(maxWidth: 120)
+                        }
+                    }
+                }
+                .padding(.vertical, Spacing.xs)
+                
+            } header: {
+                Text("Confidence Controls")
+                    .font(.settingsHeadline)
+            } footer: {
+                Text("Strategy confidence is clamped to this range (0.55-0.90). AI confidence uses 0.55-0.95 range automatically.")
+                    .font(.settingsFootnote)
+                    .foregroundColor(.settingsTertiary)
+            }
+            
+            Section {
+                let strategyNames = ["RSI", "EMA Crossover", "MACD", "Mean Reversion", "ATR Breakout"]
+                
+                ForEach(strategyNames, id: \.self) { strategyName in
+                    VStack(spacing: Spacing.sm) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: Spacing.xs) {
+                                Text(strategyName)
+                                    .font(.settingsBody)
+                                    .fontWeight(.medium)
+                                
+                                Text("Weight: \(String(format: "%.1f", settingsRepo.getStrategyWeight(strategyName)))")
+                                    .font(.settingsCaption)
+                                    .foregroundColor(.settingsSecondary)
+                            }
+                            
+                            Spacer()
+                            
+                            Toggle("", isOn: Binding(
+                                get: { settingsRepo.isStrategyEnabled(strategyName) },
+                                set: { settingsRepo.updateStrategyEnabled(strategyName, enabled: $0) }
+                            ))
+                            .toggleStyle(SwitchToggleStyle())
+                        }
+                        
+                        if settingsRepo.isStrategyEnabled(strategyName) {
+                            HStack {
+                                Text("Weight")
+                                    .font(.settingsCaption)
+                                    .foregroundColor(.settingsSecondary)
+                                
+                                Slider(
+                                    value: Binding(
+                                        get: { settingsRepo.getStrategyWeight(strategyName) },
+                                        set: { settingsRepo.updateStrategyWeight(strategyName, weight: $0) }
+                                    ),
+                                    in: 0.1...2.0,
+                                    step: 0.1
+                                )
+                                
+                                Text("\(String(format: "%.1f", settingsRepo.getStrategyWeight(strategyName)))")
+                                    .font(.settingsCaption)
+                                    .foregroundColor(.settingsSecondary)
+                                    .frame(width: 30)
+                            }
+                        }
+                    }
+                    .padding(.vertical, Spacing.xs)
+                }
+            } header: {
+                Text("Strategy Settings")
+                    .font(.settingsHeadline)
+            } footer: {
+                Text("Enable/disable individual strategies and adjust their voting weights. Higher weights have more influence in final decisions.")
+                    .font(.settingsFootnote)
+                    .foregroundColor(.settingsTertiary)
+            }
+        }
+        .navigationTitle("Routing & Confidence")
+        .navigationBarTitleDisplayMode(.inline)
     }
     
     // MARK: - Helper Methods

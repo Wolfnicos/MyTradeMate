@@ -176,7 +176,8 @@ struct CandlestickChart: View {
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [5, 5]))
             }
         }
-        .frame(width: .infinity, height: 280)
+        .frame(maxWidth: .infinity)
+        .frame(height: 280)
         .chartXAxis {
             AxisMarks(values: .automatic(desiredCount: 5)) { _ in
                 AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5))
@@ -252,7 +253,8 @@ struct CandlestickChart: View {
                 .opacity(selectedCandle?.id == validatedCandle.id ? 1.0 : 0.7)
             }
         }
-        .frame(width: .infinity, height: 80)
+        .frame(maxWidth: .infinity)
+        .frame(height: 80)
         .chartXAxis(.hidden)
         .chartYAxis {
             AxisMarks(position: .trailing, values: .automatic(desiredCount: 3)) { value in

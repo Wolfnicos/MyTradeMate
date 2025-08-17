@@ -110,12 +110,12 @@ struct TradeConfirmationDialog: View {
             return "DEMO"
         } else {
             switch trade.mode {
-            case .manual:
-                return "LIVE - MANUAL"
-            case .auto:
-                return "LIVE - AUTO"
             case .demo:
                 return "DEMO"
+            case .paper:
+                return "PAPER TRADING"
+            case .live:
+                return "LIVE TRADING"
             }
         }
     }
@@ -380,7 +380,7 @@ struct OrderSummaryRow: View {
                     side: .sell,
                     amount: 0.5,
                     price: 3200.0,
-                    mode: .auto,
+                    mode: .live,
                     isDemo: false
                 ),
                 onConfirm: {},

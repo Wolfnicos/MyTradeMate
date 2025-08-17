@@ -226,9 +226,9 @@ struct DashboardView: View {
                 
                 Spacer()
                 
-                Picker("Trading", selection: $vm.tradingMode) {
-                    Text("Manual").tag(TradingMode.manual)
-                    Text("Auto").tag(TradingMode.auto)
+                Picker("Mode", selection: $vm.autoTradingEnabled) {
+                    Text("Manual").tag(false)
+                    Text("Auto").tag(true)
                 }
                 .pickerStyle(.segmented)
             }
@@ -424,7 +424,7 @@ struct DashboardView: View {
                     .background(.green)
                     .cornerRadius(12)
             }
-            .disabled(vm.tradingMode == .auto)
+            .disabled(vm.autoTradingEnabled)
             
             Button(action: {
                 vm.executeSell()
@@ -437,9 +437,9 @@ struct DashboardView: View {
                     .background(.red)
                     .cornerRadius(12)
             }
-            .disabled(vm.tradingMode == .auto)
+            .disabled(vm.autoTradingEnabled)
         }
-        .opacity(vm.tradingMode == .auto ? 0.5 : 1.0)
+        .opacity(vm.autoTradingEnabled ? 0.5 : 1.0)
     }
     
     // MARK: - Positions Preview Section

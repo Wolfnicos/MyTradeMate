@@ -1,7 +1,7 @@
 import Foundation
 
 // MARK: - Order Fill Model
-public struct OrderFill: Identifiable {
+public struct OrderFill: Identifiable, Codable {
     public let id: UUID
     public let symbol: Symbol
     public let side: OrderSide

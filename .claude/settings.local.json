@@ -25,7 +25,8 @@
       "Bash(xcrun simctl launch:*)",
       "Bash(swift build:*)",
       "Bash(sed:*)",
-      "Bash(swift:*)"
+      "Bash(swift:*)",
+      "Bash(python3:*)"
     ],
     "deny": []
   }
