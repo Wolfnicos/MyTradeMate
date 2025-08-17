@@ -45,12 +45,6 @@ protocol MarketDataServiceProtocol {
     func subscribeToTickers(symbols: [String]) -> AsyncStream<Ticker>
 }
 
-protocol AIModelManagerProtocol {
-    var models: [ModelKind: Any] { get }
-    
-    func validateModels() async throws
-    func predictSafely(timeframe: Timeframe, candles: [Candle], mode: TradingMode) async -> PredictionResult?
-}
 
 // MARK: - Exchange Client Protocols
 
@@ -153,12 +147,6 @@ struct StrategyParameter {
     }
 }
 
-struct PredictionResult {
-    let signal: String
-    let confidence: Double
-    let modelName: String
-    let timestamp: Date
-}
 
 struct Trade {
     let id: String

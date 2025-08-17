@@ -145,25 +145,28 @@ struct CandlestickChart: View {
     private var mainChartView: some View {
         Chart {
             ForEach(Array(candles.enumerated()), id: \.offset) { index, candle in
+                // Validate candle data before rendering
+                let validatedCandle = validateCandleData(candle)
+                
                 // Candlestick body
                 RectangleMark(
-                    x: .value("Time", candle.openTime),
-                    yStart: .value("Open", min(candle.open, candle.close)),
-                    yEnd: .value("Close", max(candle.open, candle.close)),
+                    x: .value("Time", validatedCandle.openTime),
+                    yStart: .value("Open", min(validatedCandle.open, validatedCandle.close)),
+                    yEnd: .value("Close", max(validatedCandle.open, validatedCandle.close)),
                     width: .fixed(candleWidth)
                 )
-                .foregroundStyle(candle.close >= candle.open ? themeManager.candleUpColor : themeManager.candleDownColor)
-                .opacity(selectedCandle?.id == candle.id ? 0.8 : 1.0)
+                .foregroundStyle(validatedCandle.close >= validatedCandle.open ? themeManager.candleUpColor : themeManager.candleDownColor)
+                .opacity(selectedCandle?.id == validatedCandle.id ? 0.8 : 1.0)
                 
                 // Candlestick wick
                 RectangleMark(
-                    x: .value("Time", candle.openTime),
-                    yStart: .value("Low", candle.low),
-                    yEnd: .value("High", candle.high),
-                    width: .fixed(1)
+                    x: .value("Time", validatedCandle.openTime),
+                    yStart: .value("Low", validatedCandle.low),
+                    yEnd: .value("High", validatedCandle.high),
+                    width: .fixed(1.0)
                 )
-                .foregroundStyle(candle.close >= candle.open ? themeManager.candleUpColor : themeManager.candleDownColor)
-                .opacity(selectedCandle?.id == candle.id ? 0.8 : 1.0)
+                .foregroundStyle(validatedCandle.close >= validatedCandle.open ? themeManager.candleUpColor : themeManager.candleDownColor)
+                .opacity(selectedCandle?.id == validatedCandle.id ? 0.8 : 1.0)
             }
             
             // Selection indicator
@@ -173,7 +176,7 @@ struct CandlestickChart: View {
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [5, 5]))
             }
         }
-        .frame(height: 280)
+        .frame(width: .infinity, height: 280)
         .chartXAxis {
             AxisMarks(values: .automatic(desiredCount: 5)) { _ in
                 AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5))
@@ -233,19 +236,23 @@ struct CandlestickChart: View {
     private var volumeChartView: some View {
         Chart {
             ForEach(candles, id: \.id) { candle in
+                // Validate candle data before rendering
+                let validatedCandle = validateCandleData(candle)
+                
                 BarMark(
-                    x: .value("Time", candle.openTime),
-                    y: .value("Volume", candle.volume)
+                    x: .value("Time", validatedCandle.openTime),
+                    y: .value("Volume", validatedCandle.volume),
+                    width: .fixed(candleWidth * 0.8)
                 )
                 .foregroundStyle(
-                    candle.close >= candle.open ? 
+                    validatedCandle.close >= validatedCandle.open ? 
                     themeManager.candleUpColor.opacity(0.6) : 
                     themeManager.candleDownColor.opacity(0.6)
                 )
-                .opacity(selectedCandle?.id == candle.id ? 1.0 : 0.7)
+                .opacity(selectedCandle?.id == validatedCandle.id ? 1.0 : 0.7)
             }
         }
-        .frame(height: 80)
+        .frame(width: .infinity, height: 80)
         .chartXAxis(.hidden)
         .chartYAxis {
             AxisMarks(position: .trailing, values: .automatic(desiredCount: 3)) { value in
@@ -353,6 +360,33 @@ struct CandlestickChart: View {
     }
     
     // MARK: - Helper Methods
+    
+    /// Validates candle data to prevent chart rendering errors
+    private func validateCandleData(_ candle: Candle) -> Candle {
+        // Define safe default values
+        let safeDefault = 50000.0 // Safe fallback price
+        let safeVolumeDefault = 100.0 // Safe fallback volume
+        
+        // Validate and sanitize each price component
+        let safeOpen = candle.open.isNaN || candle.open.isInfinite || candle.open <= 0 ? safeDefault : candle.open
+        let safeHigh = candle.high.isNaN || candle.high.isInfinite || candle.high <= 0 ? safeDefault : candle.high
+        let safeLow = candle.low.isNaN || candle.low.isInfinite || candle.low <= 0 ? safeDefault : candle.low
+        let safeClose = candle.close.isNaN || candle.close.isInfinite || candle.close <= 0 ? safeDefault : candle.close
+        let safeVolume = candle.volume.isNaN || candle.volume.isInfinite || candle.volume < 0 ? safeVolumeDefault : candle.volume
+        
+        // Ensure high >= low logic for proper candlestick rendering
+        let validatedHigh = max(safeHigh, safeLow, safeOpen, safeClose)
+        let validatedLow = min(safeLow, safeHigh, safeOpen, safeClose)
+        
+        return Candle(
+            openTime: candle.openTime,
+            open: safeOpen,
+            high: validatedHigh,
+            low: validatedLow,
+            close: safeClose,
+            volume: safeVolume
+        )
+    }
     
     private var candleWidth: CGFloat {
         let baseWidth: CGFloat = 8

@@ -143,22 +143,70 @@ final class MarketDataService: ObservableObject {
         let interval = mapTimeframeToBinanceInterval(timeframe)
         let limit = 500 // Maximum allowed by Binance
         
-        guard let url = URL(string: "https://api.binance.com/api/v3/klines?symbol=\(symbol)&interval=\(interval)&limit=\(limit)") else {
+        // Ensure symbol format is "BTCUSDT" (no slash)
+        let binanceSymbol = symbol.replacingOccurrences(of: "/", with: "").uppercased()
+        
+        // Select API endpoint based on demo/testnet mode
+        let baseURL: String
+        if AppSettings.shared.demoMode {
+            baseURL = "https://testnet.binance.vision/api/v3/klines"
+        } else {
+            baseURL = "https://api.binance.com/api/v3/klines"
+        }
+        
+        guard let url = URL(string: "\(baseURL)?symbol=\(binanceSymbol)&interval=\(interval)&limit=\(limit)") else {
             throw MarketDataError.invalidSymbol
         }
         
-        let (data, response) = try await URLSession.shared.data(from: url)
+        var retryCount = 0
+        let maxRetries = 3
         
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
-            throw MarketDataError.networkError("HTTP error: \((response as? HTTPURLResponse)?.statusCode ?? 0)")
+        while retryCount < maxRetries {
+            do {
+                let (data, response) = try await URLSession.shared.data(from: url)
+                
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    throw MarketDataError.networkError("Invalid response type")
+                }
+                
+                if httpResponse.statusCode == 200 {
+                    // Success - break out of retry loop
+                    return try parseBinanceKlineData(data)
+                } else if httpResponse.statusCode == 400 {
+                    // HTTP 400 - handle gracefully and retry
+                    retryCount += 1
+                    if retryCount < maxRetries {
+                        logger.warning("Binance API returned 400, retrying (\(retryCount)/\(maxRetries))...")
+                        try await Task.sleep(nanoseconds: UInt64(retryCount * 1_000_000_000)) // Progressive backoff
+                        continue
+                    } else {
+                        throw MarketDataError.networkError("HTTP 400 after \(maxRetries) retries")
+                    }
+                } else {
+                    throw MarketDataError.networkError("HTTP error: \(httpResponse.statusCode)")
+                }
+            } catch {
+                retryCount += 1
+                if retryCount < maxRetries {
+                    logger.warning("Binance API request failed, retrying (\(retryCount)/\(maxRetries)): \(error)")
+                    try await Task.sleep(nanoseconds: UInt64(retryCount * 1_000_000_000)) // Progressive backoff
+                    continue
+                } else {
+                    throw error
+                }
+            }
         }
+        
+        throw MarketDataError.networkError("Failed after \(maxRetries) retries")
+    }
+    
+    private func parseBinanceKlineData(_ data: Data) throws -> [Candle] {
         
         guard let jsonArray = try JSONSerialization.jsonObject(with: data) as? [[Any]] else {
             throw MarketDataError.networkError("Invalid JSON response")
         }
         
-        let candles = try jsonArray.compactMap { klineData -> Candle? in
+        let candles = jsonArray.compactMap { klineData -> Candle? in
             guard klineData.count >= 11,
                   let openTimeMs = klineData[0] as? Double,
                   let openStr = klineData[1] as? String,

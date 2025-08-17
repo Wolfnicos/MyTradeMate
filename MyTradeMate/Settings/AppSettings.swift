@@ -3,7 +3,7 @@ import Combine
 import SwiftUI
 
 @MainActor
-public final class AppSettings: AppSettingsProtocol {
+public final class AppSettings: ObservableObject {
     public static let shared = AppSettings()
     
     // MARK: - @AppStorage Properties

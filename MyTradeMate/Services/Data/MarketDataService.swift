@@ -140,18 +140,44 @@ final class MarketDataService: ObservableObject {
         let interval = mapTimeframeToBinanceInterval(timeframe)
         let limit = 500 // Maximum allowed by Binance
         
-        guard let url = URL(string: "https://api.binance.com/api/v3/klines?symbol=\(symbol)&interval=\(interval)&limit=\(limit)") else {
+        // Fix symbol formatting for Binance API
+        let binanceSymbol = formatSymbolForBinance(symbol)
+        
+        // Use testnet endpoint when in demo mode or testnet is configured
+        let baseURL = (AppSettings.shared.demoMode || AppSettings.shared.useTestnet) ? 
+            "https://testnet.binance.vision/api/v3" : 
+            "https://api.binance.com/api/v3"
+        
+        let urlString = "\(baseURL)/klines?symbol=\(binanceSymbol)&interval=\(interval)&limit=\(limit)"
+        
+        logger.debug("Fetching Binance data: \(urlString)")
+        
+        guard let url = URL(string: urlString) else {
             throw MarketDataError.invalidSymbol
         }
         
-        let (data, response) = try await URLSession.shared.data(from: url)
+        var request = URLRequest(url: url)
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("MyTradeMate/2.0", forHTTPHeaderField: "User-Agent")
+        request.timeoutInterval = 30.0
         
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
-            throw MarketDataError.networkError("HTTP error: \((response as? HTTPURLResponse)?.statusCode ?? 0)")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw MarketDataError.networkError("Invalid response type")
+        }
+        
+        logger.debug("Binance API response: \(httpResponse.statusCode)")
+        
+        if httpResponse.statusCode != 200 {
+            let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
+            logger.error("Binance API error (\(httpResponse.statusCode)): \(errorMessage)")
+            throw MarketDataError.networkError("HTTP \(httpResponse.statusCode): \(errorMessage)")
         }
         
         guard let jsonArray = try JSONSerialization.jsonObject(with: data) as? [[Any]] else {
+            let responseString = String(data: data, encoding: .utf8) ?? "Unable to decode"
+            logger.error("Invalid JSON response: \(responseString)")
             throw MarketDataError.networkError("Invalid JSON response")
         }
         
@@ -255,6 +281,33 @@ final class MarketDataService: ObservableObject {
         case .m5: return 5
         case .h1: return 60
         case .h4: return 240
+        }
+    }
+    
+    private func formatSymbolForBinance(_ symbol: String) -> String {
+        // Convert common symbol formats to Binance format
+        let cleanSymbol = symbol.uppercased()
+            .replacingOccurrences(of: "/", with: "")
+            .replacingOccurrences(of: "-", with: "")
+            .replacingOccurrences(of: "_", with: "")
+        
+        // Handle common symbol mappings
+        switch cleanSymbol {
+        case "BTC/USDT", "BTCUSDT", "BTC-USDT":
+            return "BTCUSDT"
+        case "ETH/USDT", "ETHUSDT", "ETH-USDT":
+            return "ETHUSDT"
+        case "BNB/USDT", "BNBUSDT", "BNB-USDT":
+            return "BNBUSDT"
+        default:
+            // Default: assume it's already in correct format or try to fix common patterns
+            if cleanSymbol.contains("USDT") {
+                return cleanSymbol
+            } else if cleanSymbol.contains("USD") {
+                return cleanSymbol.replacingOccurrences(of: "USD", with: "USDT")
+            } else {
+                return cleanSymbol + "USDT" // Default to USDT pair
+            }
         }
     }
     

@@ -47,9 +47,12 @@ struct CandleChartView: View {
             } else {
                 Chart {
                     ForEach(data) { candle in
+                        // Validate price data before charting
+                        let safePrice = candle.close.isNaN || candle.close.isInfinite || candle.close <= 0 ? 50000.0 : candle.close
+                        
                         LineMark(
                             x: .value("Time", candle.timestamp),
-                            y: .value("Price", candle.close)
+                            y: .value("Price", safePrice)
                         )
                         .foregroundStyle(.blue)
                         .interpolationMethod(.catmullRom)
@@ -250,33 +253,102 @@ struct DashboardView: View {
                             .font(.system(size: 24, weight: .bold))
                             .foregroundColor(signalColor)
                         
-                        /* // Temporarily disabled
-                        if settings.demoMode {
-                            Pill(text: "DEMO", color: Accent.yellow)
+                        if AppSettings.shared.demoMode {
+                            Text("DEMO")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(.orange)
+                                .cornerRadius(4)
                         }
-                        */
                     }
                     
-                    HStack(spacing: 8) {
-                        Text(confidenceDisplayText)
-                            .font(.system(size: 14))
-                            .foregroundColor(.secondary)
+                    VStack(alignment: .leading, spacing: 4) {
+                        // TODO: Re-enable when production AI is implemented
+                        if false, AppSettings.shared.productionAIEnabled { // let uiDisplay = vm.uiDisplayResult {
+                            // Production AI display
+                            // TODO: Re-enable when production AI is implemented
+                            HStack(spacing: 8) {
+                                // Text(uiDisplay.confidenceDisplay)
+                                //     .font(.system(size: 14))
+                                //     .foregroundColor(.secondary)
+                                
+                                Text("•")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                                
+                                Text("Production AI")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.blue)
+                                
+                                Text("•")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                                
+                                Text(vm.timeframe.displayName)
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            // if AppSettings.shared.showDetailedAI && uiDisplay.shouldShowDetails {
+                            //     Text(uiDisplay.detailedInfo.modelAgreement)
+                            //         .font(.system(size: 12))
+                            //         .foregroundColor(.secondary)
+                            //         .lineLimit(1)
+                            // }
+                        } else if shouldShowAllModels {
+                            // Show all model predictions when they disagree
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack(spacing: 8) {
+                                    Text("Models disagree:")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.secondary)
+                                    
+                                    Text("•")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.secondary)
+                                    
+                                    Text(vm.timeframe.displayName)
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                Text(allModelsDisplayText)
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(2)
+                            }
+                        } else {
+                            // Show single model when they agree
+                            HStack(spacing: 8) {
+                                Text(confidenceDisplayText)
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                                
+                                Text("•")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                                
+                                Text(modelDisplayText)
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                                
+                                Text("•")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                                
+                                Text(vm.timeframe.displayName)
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
                         
-                        Text("•")
-                            .font(.system(size: 14))
-                            .foregroundColor(.secondary)
-                        
-                        Text(vm.timeframe.displayName)
-                            .font(.system(size: 14))
-                            .foregroundColor(.secondary)
-                        
-                        Text("•")
-                            .font(.system(size: 14))
-                            .foregroundColor(.secondary)
-                        
-                        Text(vm.lastUpdatedString)
-                            .font(.system(size: 14))
-                            .foregroundColor(.secondary)
+                        HStack(spacing: 8) {
+                            Text("Updated: \(vm.lastUpdatedString)")
+                                .font(.system(size: 12))
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
                 
@@ -295,11 +367,42 @@ struct DashboardView: View {
                 .disabled(vm.isRefreshing)
             }
             
-            if let reason = vm.currentSignal?.reason {
-                Text(reason)
-                    .font(.system(size: 13))
-                    .foregroundColor(.secondary)
+            // Show warnings or error messages
+            if let predictionResult = vm.currentPredictionResult {
+                if let errorMessage = predictionResult.meta["error"] {
+                    HStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.orange)
+                            .font(.system(size: 12))
+                        
+                        Text("Warning: \(errorMessage)")
+                            .font(.system(size: 13))
+                            .foregroundColor(.orange)
+                    }
                     .frame(maxWidth: .infinity, alignment: .leading)
+                } else if let reason = predictionResult.meta["reason"], reason.contains("insufficient") {
+                    HStack(spacing: 8) {
+                        Image(systemName: "info.circle.fill")
+                            .foregroundColor(.blue)
+                            .font(.system(size: 12))
+                        
+                        Text("Insufficient data for prediction")
+                            .font(.system(size: 13))
+                            .foregroundColor(.blue)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                } else if let fallbackInfo = predictionResult.meta["fallback"] {
+                    HStack(spacing: 8) {
+                        Image(systemName: "gear")
+                            .foregroundColor(.secondary)
+                            .font(.system(size: 12))
+                        
+                        Text("Using fallback: \(fallbackInfo)")
+                            .font(.system(size: 13))
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
         }
         .padding()
@@ -429,6 +532,7 @@ struct DashboardView: View {
         switch signal.direction {
         case "BUY": return .green
         case "SELL": return .red
+        case "HOLD": return .orange  // Yellow/orange for HOLD signals
         default: return .secondary
         }
     }
@@ -438,12 +542,22 @@ struct DashboardView: View {
             return "No clear signal right now"
         }
         
-        // If confidence is very low (0% or close to 0), show user-friendly text
-        if signal.confidence < 0.01 {
+        // Map signal to appropriate display text with strength
+        switch signal.direction {
+        case "BUY":
+            return "\(signal.direction) signal"
+        case "SELL":
+            return "\(signal.direction) signal"
+        case "HOLD":
+            // Show HOLD signals with proper confidence
+            if signal.confidence >= 0.3 {
+                return "HOLD / Neutral"
+            } else {
+                return "No clear signal right now"
+            }
+        default:
             return "No clear signal right now"
         }
-        
-        return signal.direction.uppercased()
     }
     
     private var confidenceDisplayText: String {
@@ -451,12 +565,78 @@ struct DashboardView: View {
             return "Monitoring market conditions"
         }
         
-        // If confidence is very low (0% or close to 0), show user-friendly text
-        if signal.confidence < 0.01 {
+        let confidencePercent = Int(signal.confidence * 100)
+        
+        // Always show confidence for all signals
+        switch signal.direction {
+        case "BUY", "SELL":
+            return "\(confidencePercent)% confidence"
+        case "HOLD":
+            if signal.confidence >= 0.3 {
+                return "confidence: \(confidencePercent)%"
+            } else {
+                return "Monitoring market conditions"
+            }
+        default:
             return "Monitoring market conditions"
         }
+    }
+    
+    private var modelDisplayText: String {
+        guard let predictionResult = vm.currentPredictionResult else {
+            return "Model"
+        }
         
-        return "\(Int(signal.confidence * 100))% confidence"
+        let modelName = predictionResult.modelName
+        
+        // Clean up model names for display
+        if modelName.contains("BitcoinAI_5m") {
+            return "5m Model"
+        } else if modelName.contains("BitcoinAI_1h") {
+            return "1h Model"
+        } else if modelName.contains("BitcoinAI_4h") || modelName.contains("BTC_4H") {
+            return "4h Model"
+        } else if modelName == "Ensemble" {
+            return "Ensemble"
+        } else if modelName == "DEMO" || modelName == "Demo Model" {
+            return "Demo"
+        } else {
+            return modelName
+        }
+    }
+    
+    private var allModelsDisplayText: String {
+        guard !vm.allModelPredictions.isEmpty else {
+            return "No predictions available"
+        }
+        
+        var modelTexts: [String] = []
+        
+        for prediction in vm.allModelPredictions {
+            let timeframeName: String
+            if prediction.modelName.contains("5m") {
+                timeframeName = "5m"
+            } else if prediction.modelName.contains("1h") {
+                timeframeName = "1h"
+            } else if prediction.modelName.contains("4h") || prediction.modelName.contains("4H") {
+                timeframeName = "4h"
+            } else {
+                timeframeName = "Unknown"
+            }
+            
+            let confidencePercent = Int(prediction.confidence * 100)
+            modelTexts.append("\(timeframeName): \(prediction.signal) (\(confidencePercent)%)")
+        }
+        
+        return modelTexts.joined(separator: ", ")
+    }
+    
+    private var shouldShowAllModels: Bool {
+        guard vm.allModelPredictions.count >= 2 else { return false }
+        
+        // Check if models disagree
+        let signals = Set(vm.allModelPredictions.map { $0.signal })
+        return signals.count > 1 // Show all if they disagree
     }
 }
 

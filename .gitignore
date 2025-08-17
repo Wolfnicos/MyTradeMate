@@ -21,3 +21,5 @@ all_swift_on_disk.txt
 missing_on_disk.txt
 not_in_project.txt
 swift_referenced_by_xcode.txt
+.DS_Store
+**/.DS_Store

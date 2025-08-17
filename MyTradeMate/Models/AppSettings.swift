@@ -19,6 +19,19 @@ public final class AppSettings: ObservableObject {
     @AppStorage("themeDark") public var themeDark = false
     @AppStorage("haptics") public var haptics = true
     @AppStorage("confirmTrades") public var confirmTrades = true
+    @AppStorage("useTestnet") public var useTestnet = false
+    
+    // MARK: - Production AI System Settings
+    @AppStorage("productionAIEnabled") public var productionAIEnabled = true
+    @AppStorage("calibrationMethod") private var calibrationMethodRaw = "ensemble"
+    @AppStorage("uncertaintyMethod") private var uncertaintyMethodRaw = "ensemble"
+    @AppStorage("conformalAlpha") public var conformalAlpha = 0.1
+    @AppStorage("normalModeThreshold") public var normalModeThreshold = 0.65
+    @AppStorage("precisionModeThreshold") public var precisionModeThreshold = 0.8
+    @AppStorage("maxDisplayConfidence") public var maxDisplayConfidence = 0.9
+    @AppStorage("minDisplayConfidence") public var minDisplayConfidence = 0.5
+    @AppStorage("conservativeScaling") public var conservativeScaling = 0.9
+    @AppStorage("showDetailedAI") public var showDetailedAI = false
     
     // MARK: - Trading Mode
     @AppStorage("tradingMode") private var tradingModeRaw = "demo"
@@ -31,6 +44,9 @@ public final class AppSettings: ObservableObject {
             tradingModeRaw = newValue.rawValue
         }
     }
+    
+    // MARK: - Production AI Computed Properties
+    // Note: Actual enum conversions are handled in the production AI components
     
     // MARK: - Computed Helpers
     public var timeframe: Timeframe { 

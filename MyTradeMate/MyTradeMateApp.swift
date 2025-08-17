@@ -2,6 +2,7 @@ import SwiftUI
 import OSLog
 import UIKit
 import WidgetKit
+import CoreML
 
 private let logger = os.Logger(subsystem: "com.mytrademate", category: "App")
 
@@ -109,18 +110,19 @@ struct MyTradeMateApp: App {
             Log.ai.success("AI models validated successfully")
             
             // Print model info at startup
-            for (kind, model) in AIModelManager.shared.models {
-                let inputs = model.modelDescription.inputDescriptionsByName
-                let outputs = model.modelDescription.outputDescriptionsByName
-                
-                Log.ai.info("📊 Model: \(kind.modelName)")
+            // Print model info at startup
+            for (name, mlModel) in AIModelManager.shared.models {
+                let inputs  = mlModel.modelDescription.inputDescriptionsByName
+                let outputs = mlModel.modelDescription.outputDescriptionsByName
+
+                Log.ai.info("📊 Model: \(name)")
                 for (key, desc) in inputs {
                     let shape = desc.multiArrayConstraint?.shape ?? []
-                    Log.ai.debug("  Input: \(key) → \(shape)")
+                    Log.ai.debug("🐛   Input: \(key) → \(shape)")
                 }
                 for (key, desc) in outputs {
                     let shape = desc.multiArrayConstraint?.shape ?? []
-                    Log.ai.debug("  Output: \(key) → \(shape)")
+                    Log.ai.debug("🐛   Output: \(key) → \(shape)")
                 }
             }
         } catch {
