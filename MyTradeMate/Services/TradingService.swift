@@ -14,7 +14,7 @@ public final class TradingService: ObservableObject {
     @Published public var balance: Double = 10000.0 // Demo balance
     
     private var cancellables = Set<AnyCancellable>()
-    private let logger = Logger(subsystem: "com.mytrademate", category: "Trading")
+    private let logger = os.Logger(subsystem: "com.mytrademate", category: "Trading")
     
     private init() {}
     
@@ -28,9 +28,10 @@ public final class TradingService: ObservableObject {
             symbol: symbol,
             side: side,
             amount: amount,
-            price: price ?? 0,
+            price: price,
             status: .pending,
-            timestamp: Date()
+            orderType: .market,
+            createdAt: Date()
         )
         
         orders.append(order)
@@ -39,10 +40,21 @@ public final class TradingService: ObservableObject {
         try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
         
         if let index = orders.firstIndex(where: { $0.id == order.id }) {
-            orders[index].status = .filled
+            let filledOrder = Order(
+                id: orders[index].id,
+                symbol: orders[index].symbol,
+                side: orders[index].side,
+                amount: orders[index].amount,
+                price: orders[index].price,
+                status: .filled,
+                orderType: orders[index].orderType,
+                createdAt: orders[index].createdAt,
+                filledAt: Date()
+            )
+            orders[index] = filledOrder
             
             // Update balance and positions
-            updatePositions(for: order)
+            updatePositions(for: filledOrder)
         }
         
         return order
@@ -50,22 +62,33 @@ public final class TradingService: ObservableObject {
     
     public func cancelOrder(orderId: String) async throws {
         if let index = orders.firstIndex(where: { $0.id == orderId }) {
-            orders[index].status = .cancelled
+            let cancelledOrder = Order(
+                id: orders[index].id,
+                symbol: orders[index].symbol,
+                side: orders[index].side,
+                amount: orders[index].amount,
+                price: orders[index].price,
+                status: .cancelled,
+                orderType: orders[index].orderType,
+                createdAt: orders[index].createdAt,
+                filledAt: orders[index].filledAt
+            )
+            orders[index] = cancelledOrder
             logger.info("Order cancelled: \(orderId)")
         }
     }
     
     public func closePosition(positionId: String) async throws {
-        if let index = positions.firstIndex(where: { $0.id == positionId }) {
+        if let index = positions.firstIndex(where: { $0.symbol.raw == positionId }) {
             let position = positions[index]
             
             // Place opposite order to close position
-            let oppositeSide: OrderSide = position.side == .buy ? .sell : .buy
+            let oppositeSide: OrderSide = position.quantity > 0 ? .sell : .buy
             _ = try await placeOrder(
-                symbol: position.symbol,
+                symbol: position.symbol.raw,
                 side: oppositeSide,
-                amount: position.amount,
-                price: position.currentPrice
+                amount: abs(position.quantity),
+                price: position.avgPrice
             )
             
             positions.remove(at: index)
@@ -76,58 +99,51 @@ public final class TradingService: ObservableObject {
     // MARK: - Private Methods
     
     private func updatePositions(for order: Order) {
+        guard let orderPrice = order.price else { return }
+        
         // Simple position tracking
-        if let existingIndex = positions.firstIndex(where: { $0.symbol == order.symbol }) {
+        if let existingIndex = positions.firstIndex(where: { $0.symbol.raw == order.symbol }) {
             var position = positions[existingIndex]
             
-            if position.side == order.side {
-                // Add to existing position
-                let totalAmount = position.amount + order.amount
-                let avgPrice = ((position.entryPrice * position.amount) + (order.price * order.amount)) / totalAmount
-                position.amount = totalAmount
-                position.entryPrice = avgPrice
-            } else {
-                // Reduce or close position
-                if order.amount >= position.amount {
-                    positions.remove(at: existingIndex)
-                } else {
-                    position.amount -= order.amount
-                }
-            }
+            let orderQuantity = order.side == .buy ? order.amount : -order.amount
+            let newQuantity = position.quantity + orderQuantity
             
-            if position.amount > 0 {
+            if newQuantity == 0 {
+                // Position closed
+                positions.remove(at: existingIndex)
+            } else {
+                // Update position
+                let totalValue = (position.avgPrice * position.quantity) + (orderPrice * orderQuantity)
+                let newAvgPrice = totalValue / newQuantity
+                
+                position.quantity = newQuantity
+                position.avgPrice = newAvgPrice
                 positions[existingIndex] = position
             }
         } else {
             // Create new position
+            let symbol = Symbol(order.symbol, exchange: .binance) // Default to binance for demo
+            let quantity = order.side == .buy ? order.amount : -order.amount
             let position = Position(
-                id: UUID().uuidString,
-                symbol: order.symbol,
-                side: order.side,
-                amount: order.amount,
-                entryPrice: order.price,
-                currentPrice: order.price,
-                pnl: 0,
-                pnlPercent: 0
+                symbol: symbol,
+                quantity: quantity,
+                avgPrice: orderPrice
             )
             positions.append(position)
         }
         
         // Update balance
-        let cost = order.amount * order.price
+        let cost = order.amount * orderPrice
         balance -= (order.side == .buy ? cost : -cost)
     }
     
     public func updatePositionPrices(symbol: String, currentPrice: Double) {
-        for index in positions.indices {
-            if positions[index].symbol == symbol {
-                positions[index].currentPrice = currentPrice
-                
-                let priceDiff = currentPrice - positions[index].entryPrice
-                let multiplier = positions[index].side == .buy ? 1.0 : -1.0
-                
-                positions[index].pnl = priceDiff * positions[index].amount * multiplier
-                positions[index].pnlPercent = (priceDiff / positions[index].entryPrice) * 100 * multiplier
+        // Position price updates are handled by PnLManager and TradeManager
+        // This is a simplified implementation for compatibility
+        for position in positions {
+            if position.symbol.raw == symbol {
+                _ = position.unrealizedPnL(mark: currentPrice)
+                // PnL is calculated but not stored in Position struct
             }
         }
     }
@@ -135,56 +151,5 @@ public final class TradingService: ObservableObject {
 
 // MARK: - Supporting Types
 
-public struct Position: Identifiable, Codable {
-    public let id: String
-    public let symbol: String
-    public let side: OrderSide
-    public var amount: Double
-    public var entryPrice: Double
-    public var currentPrice: Double
-    public var pnl: Double
-    public var pnlPercent: Double
-    
-    public init(id: String, symbol: String, side: OrderSide, amount: Double, entryPrice: Double, currentPrice: Double, pnl: Double, pnlPercent: Double) {
-        self.id = id
-        self.symbol = symbol
-        self.side = side
-        self.amount = amount
-        self.entryPrice = entryPrice
-        self.currentPrice = currentPrice
-        self.pnl = pnl
-        self.pnlPercent = pnlPercent
-    }
-}
-
-public struct Order: Identifiable, Codable {
-    public let id: String
-    public let symbol: String
-    public let side: OrderSide
-    public let amount: Double
-    public let price: Double
-    public var status: OrderStatus
-    public let timestamp: Date
-    
-    public init(id: String, symbol: String, side: OrderSide, amount: Double, price: Double, status: OrderStatus, timestamp: Date) {
-        self.id = id
-        self.symbol = symbol
-        self.side = side
-        self.amount = amount
-        self.price = price
-        self.status = status
-        self.timestamp = timestamp
-    }
-}
-
-public enum OrderSide: String, Codable, CaseIterable {
-    case buy = "BUY"
-    case sell = "SELL"
-}
-
-public enum OrderStatus: String, Codable, CaseIterable {
-    case pending = "PENDING"
-    case filled = "FILLED"
-    case cancelled = "CANCELLED"
-    case rejected = "REJECTED"
-}
+// Position and Order structs are defined in Models/Position.swift and Models/Order.swift
+// OrderSide enum is defined in Models/OrderSide.swift

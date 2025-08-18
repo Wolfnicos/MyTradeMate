@@ -8,7 +8,7 @@ private let logger = os.Logger(subsystem: "com.mytrademate", category: "Trades")
 @MainActor
 final class TradesVM: ObservableObject {
     // MARK: - Published Properties
-    @Published var openPositions: [TradingPosition] = []
+    @Published var openPositions: [TradesVMPosition] = []
     @Published var recentFills: [Fill] = []
     @Published var trades: [Trade] = []
     @Published var totalPnL: Double = 0.0
@@ -226,7 +226,7 @@ final class TradesVM: ObservableObject {
 }
 
 // MARK: - Trading Position Model
-struct TradingPosition: Identifiable {
+struct TradesVMPosition: Identifiable {
     enum Side {
         case long, short
         

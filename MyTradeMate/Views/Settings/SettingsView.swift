@@ -249,25 +249,12 @@ struct SettingsView: View {
                 ),
                 SettingsItem(
                     title: "Strategy Configuration",
-                    description: "Configure trading strategies",
+                    description: "Configure and manage trading strategies with detailed information",
                     view: AnyView(
                         SettingsNavigationRow(
                             title: "Strategy Configuration",
-                            description: "Configure trading strategies",
-                            destination: AnyView(
-                                List {
-                                    Section {
-                                        Text("Strategy configuration will be implemented in a future update")
-                                            .font(.settingsBody)
-                                            .foregroundColor(.settingsSecondary)
-                                    } header: {
-                                        Text("Available Strategies")
-                                            .font(.settingsHeadline)
-                                    }
-                                }
-                                .navigationTitle("Strategy Configuration")
-                                .navigationBarTitleDisplayMode(.inline)
-                            )
+                            description: "Configure and manage trading strategies with detailed information",
+                            destination: AnyView(StrategyConfigurationView())
                         )
                     )
                 ),
@@ -992,16 +979,7 @@ struct SettingsItem {
     let view: AnyView
 }
 
-// MARK: - Bundle Extension
-extension Bundle {
-    var appVersion: String {
-        return infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
-    }
-    
-    var buildNumber: String {
-        return infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"
-    }
-}
+// Bundle extension is defined in Utils/LogExporter.swift
 
 #Preview {
     SettingsView()

@@ -4,28 +4,8 @@ import BackgroundTasks
 import OSLog
 
 // MARK: - Signal Strength Helper
-
-private enum SignalStrength: String, CaseIterable {
-    case veryWeak = "Very Weak"
-    case weak = "Weak"
-    case moderate = "Moderate"
-    case strong = "Strong"
-    case veryStrong = "Very Strong"
-    
-    static func from(confidence: Double) -> SignalStrength {
-        if confidence >= 0.8 {
-            return .veryStrong
-        } else if confidence >= 0.6 {
-            return .strong
-        } else if confidence >= 0.4 {
-            return .moderate
-        } else if confidence >= 0.2 {
-            return .weak
-        } else {
-            return .veryWeak
-        }
-    }
-}
+// Using SignalStrength from Models/SignalInfo.swift
+// The from(confidence:) method is already defined in SignalInfo.swift
 
 // MARK: - Widget Configuration
 

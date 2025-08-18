@@ -23,9 +23,10 @@ public actor StopMonitor {
         await evaluate(currentPrice: price)
     }
     
+    @MainActor
     private func evaluate(currentPrice: Double? = nil) async {
-        let pos = await TradeManager.shared.position
-        guard let p = pos, !p.isFlat else { return }
+        let pos = await TradeManager.shared.getCurrentPosition()
+        guard let p = pos, abs(p.quantity) > 0.000001 else { return }
         
         // Prefer latest tick pushed; else compute mid
         let lastPrice: Double
@@ -36,29 +37,29 @@ public actor StopMonitor {
         }
         
         // Read current SL/TP from RiskManager
-        let risk = await RiskManager.shared.params
-        let slPercent = risk.defaultSLPercent / 100.0
-        let tpPercent = risk.defaultTPPercent / 100.0
+        let risk = RiskManager.shared
+        let slPercent = risk.stopLossPercentage
+        let tpPercent = risk.takeProfitRatio
         
         if p.quantity > 0 {
             // Long position: SL below, TP above
-            let sl = p.avgPrice * (1.0 - slPercent)
-            let tp = p.avgPrice * (1.0 + tpPercent)
+            let sl = p.averagePrice * (1.0 - slPercent)
+            let tp = p.averagePrice * (1.0 + tpPercent)
             
             if lastPrice <= sl {
-                await TradeManager.shared.close(reason: .stopLoss, execPrice: lastPrice)
+                try? await TradeManager.shared.close(reason: .stopLoss, execPrice: lastPrice)
             } else if lastPrice >= tp {
-                await TradeManager.shared.close(reason: .takeProfit, execPrice: lastPrice)
+                try? await TradeManager.shared.close(reason: .takeProfit, execPrice: lastPrice)
             }
         } else {
             // Short position: SL above, TP below
-            let sl = p.avgPrice * (1.0 + slPercent)
-            let tp = p.avgPrice * (1.0 - tpPercent)
+            let sl = p.averagePrice * (1.0 + slPercent)
+            let tp = p.averagePrice * (1.0 - tpPercent)
             
             if lastPrice >= sl {
-                await TradeManager.shared.close(reason: .stopLoss, execPrice: lastPrice)
+                try? await TradeManager.shared.close(reason: .stopLoss, execPrice: lastPrice)
             } else if lastPrice <= tp {
-                await TradeManager.shared.close(reason: .takeProfit, execPrice: lastPrice)
+                try? await TradeManager.shared.close(reason: .takeProfit, execPrice: lastPrice)
             }
         }
     }

@@ -1,253 +1,269 @@
 import Foundation
-import SwiftUI
-
-public enum CloseReason: String, Sendable { case manual, stopLoss, takeProfit }
+import Combine
 
 @MainActor
-public final class TradeManager: ObservableObject {
-    public static let shared = TradeManager()
-
-    @Published public private(set) var mode: TradingMode = .paper
-    @Published public private(set) var equity: Double
-    @Published public private(set) var position: Position?
-    @Published public private(set) var fills: [OrderFill] = []
+final class TradeManager: ObservableObject {
+    static let shared = TradeManager()
     
-    private var exchangeClient: ExchangeClient = PaperExchangeClient(exchange: .binance)
-    private let risk = RiskManager.shared
+    @Published var equity: Double = 10000.0
+    @Published var currentPosition: TradingPosition?
+    @Published var isExecutingTrade = false
     
-    // MARK: - Persistence Keys
-    private let equityKey = "TradeManager.equity"
-    private let fillsKey = "TradeManager.fills"
-    private let positionKey = "TradeManager.position"
+    private let settings = AppSettings.shared
     
-    private init() {
-        // Load persisted equity or use default
-        self.equity = UserDefaults.standard.object(forKey: equityKey) as? Double ?? 10_000.0
+    private init() {}
+    
+    func executeTrade(_ request: TradeRequest) async throws -> TradeResult {
+        isExecutingTrade = true
+        defer { isExecutingTrade = false }
         
-        // Load persisted fills
-        if let fillsData = UserDefaults.standard.data(forKey: fillsKey),
-           let decodedFills = try? JSONDecoder().decode([OrderFill].self, from: fillsData) {
-            self.fills = decodedFills
-        }
+        // Simulate network delay
+        try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
         
-        // Load persisted position
-        if let positionData = UserDefaults.standard.data(forKey: positionKey),
-           let decodedPosition = try? JSONDecoder().decode(Position.self, from: positionData) {
-            self.position = decodedPosition
-        }
-    }
-    
-    public func setMode(_ newMode: TradingMode) {
-        mode = newMode
-        // For now paper only; wire live client later
-    }
-    
-    public func setExchange(_ ex: Exchange) async {
-        exchangeClient = PaperExchangeClient(exchange: ex)
-        // await MarketDataService.shared.setPaperExchange(ex)
-    }
-    
-        public func manualOrder(_ req: OrderRequest) async throws -> OrderFill {
-        guard await risk.canTrade(equity: equity) else {
-            throw AppError.riskLimitExceeded(limit: "Daily loss limit reached")
-        }
-
-        do {
-            let fill = try await exchangeClient.placeMarketOrder(req)
-            fills.append(fill)
-            
-            // Log trade to CSV files (TODO: Add PredictionLogger.swift to Xcode project)
-            // PredictionLogger.shared.logTrade(fill)
-
-            var pos = position ?? Position(symbol: req.symbol, quantity: 0, avgPrice: 0)
-            let (newPos, realized) = applyFill(fill: fill, to: pos)
-            
-            if realized != 0 {
-                equity += realized
-                await risk.record(realizedPnL: realized, equity: equity)
-                await PnLManager.shared.addRealized(realized)
-            }
-            
-            position = newPos.isFlat ? nil : newPos
-            
-            // Persist changes
-            await persistState()
-            
-            return fill
-        } catch let error as ExchangeError {
-            // Convert ExchangeError to AppError for consistent error handling
-            let appError = convertExchangeError(error, for: req)
-            throw appError
-        } catch {
-            // Handle any other errors
-            throw AppError.tradeExecutionFailed(details: error.localizedDescription)
-        }
-    }
-    
-    /// Convert ExchangeError to AppError with appropriate context
-    private func convertExchangeError(_ error: ExchangeError, for request: OrderRequest) -> AppError {
-        switch error {
-        case .invalidResponse:
-            return .tradeExecutionFailed(details: "Invalid response from exchange")
-        case .networkError(let underlying):
-            return .tradeExecutionFailed(details: "Network error: \(underlying.localizedDescription)")
-        case .missingCredentials:
-            return .credentialsNotFound(exchange: exchangeClient.exchange.rawValue)
-        case .rateLimitExceeded:
-            return .tradeExecutionFailed(details: "Rate limit exceeded. Please wait before placing another order")
-        case .serverError(let message):
-            return .tradeExecutionFailed(details: "Exchange server error: \(message)")
-        case .invalidConfiguration:
-            return .invalidConfiguration(component: "Exchange client")
-        case .securityValidationFailed:
-            return .networkSecurityFailed(reason: "Exchange security validation failed")
-        }
-    }
-    
-    /// Apply a fill to a position, correctly handling both long and short positions
-    private func applyFill(fill: OrderFill, to position: Position) -> (Position, Double) {
-        var pos = position
-        var realizedPnL = 0.0
-        
-        let fillValue = fill.quantity * fill.price
-        
-        switch fill.side {
-        case .buy:
-            if pos.quantity >= 0 {
-                // Long position: add to position
-                let totalCost = pos.avgPrice * pos.quantity + fillValue
-                pos.quantity += fill.quantity
-                pos.avgPrice = pos.quantity > 0 ? totalCost / pos.quantity : 0
-            } else {
-                // Short position: buying to cover
-                let qtyToCover = min(abs(pos.quantity), fill.quantity)
-                realizedPnL = (pos.avgPrice - fill.price) * qtyToCover
-                
-                pos.quantity += qtyToCover
-                let remainingFillQty = fill.quantity - qtyToCover
-                
-                if remainingFillQty > 0 {
-                    // Flip to long position
-                    pos.quantity = remainingFillQty
-                    pos.avgPrice = fill.price
-                } else if pos.quantity == 0 {
-                    pos.avgPrice = 0
-                }
-            }
-            
-        case .sell:
-            if pos.quantity > 0 {
-                // Long position: selling to close or flip short
-                let qtyToClose = min(pos.quantity, fill.quantity)
-                realizedPnL = (fill.price - pos.avgPrice) * qtyToClose
-                
-                pos.quantity -= qtyToClose
-                let remainingFillQty = fill.quantity - qtyToClose
-                
-                if remainingFillQty > 0 {
-                    // Flip to short position
-                    pos.quantity = -remainingFillQty
-                    pos.avgPrice = fill.price
-                } else if pos.quantity == 0 {
-                    pos.avgPrice = 0
-                }
-            } else {
-                // Short position: add to short position
-                let totalValue = abs(pos.quantity) * pos.avgPrice + fillValue
-                pos.quantity -= fill.quantity
-                pos.avgPrice = pos.quantity < 0 ? totalValue / abs(pos.quantity) : 0
-            }
-        }
-        
-        return (pos, realizedPnL)
-    }
-    
-    public func close(reason: CloseReason, execPrice: Double) async {
-        guard let p = position, !p.isFlat else { return }
-        
-        let (side, quantity, realized) = if p.quantity > 0 {
-            // Close long position by selling
-            (OrderSide.sell, p.quantity, (execPrice - p.avgPrice) * p.quantity)
+        // Simulate trade execution based on mode
+        if settings.demoMode {
+            return try await executeDemoTrade(request)
+        } else if settings.paperTrading {
+            return try await executePaperTrade(request)
         } else {
-            // Close short position by buying
-            (OrderSide.buy, abs(p.quantity), (p.avgPrice - execPrice) * abs(p.quantity))
+            return try await executeLiveTrade(request)
         }
+    }
+    
+    private func executeDemoTrade(_ request: TradeRequest) async throws -> TradeResult {
+        // Demo mode - always succeeds with simulated data
+        let orderId = "DEMO_\(UUID().uuidString.prefix(8))"
+        let executedPrice = request.price + Double.random(in: -10...10) // Small price variation
+        let executedAmount = request.amount
         
-        equity += realized
-        await PnLManager.shared.addRealized(realized)
-        fills.append(OrderFill(
-            id: UUID(),
-            symbol: p.symbol,
-            side: side,
-            quantity: quantity,
-            price: execPrice,
+        // Update demo position
+        updateDemoPosition(request: request, executedPrice: executedPrice, executedAmount: executedAmount)
+        
+        return TradeResult(
+            orderId: orderId,
+            symbol: request.symbol,
+            side: request.side,
+            executedAmount: executedAmount,
+            executedPrice: executedPrice,
+            status: .filled,
             timestamp: Date()
-        ))
-        position = nil
+        )
+    }
+    
+    private func executePaperTrade(_ request: TradeRequest) async throws -> TradeResult {
+        // Paper trading - uses real market data but simulated execution
+        let orderId = "PAPER_\(UUID().uuidString.prefix(8))"
+        let executedPrice = request.price // Use current market price
+        let executedAmount = request.amount
         
-        // Persist changes
-        await persistState()
+        // Update paper position
+        updatePaperPosition(request: request, executedPrice: executedPrice, executedAmount: executedAmount)
+        
+        return TradeResult(
+            orderId: orderId,
+            symbol: request.symbol,
+            side: request.side,
+            executedAmount: executedAmount,
+            executedPrice: executedPrice,
+            status: .filled,
+            timestamp: Date()
+        )
     }
     
-    public func fillsSnapshot() async -> [OrderFill] {
-        fills
+    private func executeLiveTrade(_ request: TradeRequest) async throws -> TradeResult {
+        // Live trading - would connect to actual exchange API
+        // For now, throw an error as live trading is not fully implemented
+        throw TradeError.liveTradeNotImplemented
     }
     
-    // MARK: - Persistence
-    
-    private func persistState() async {
-        await MainActor.run {
-            // Save equity
-            UserDefaults.standard.set(self.equity, forKey: self.equityKey)
+    private func updateDemoPosition(request: TradeRequest, executedPrice: Double, executedAmount: Double) {
+        let positionChange = request.side == .buy ? executedAmount : -executedAmount
+        
+        if let existingPosition = currentPosition {
+            let newQuantity = existingPosition.quantity + positionChange
             
-            // Save fills
-            if let fillsData = try? JSONEncoder().encode(self.fills) {
-                UserDefaults.standard.set(fillsData, forKey: self.fillsKey)
-            }
-            
-            // Save position
-            if let position = self.position,
-               let positionData = try? JSONEncoder().encode(position) {
-                UserDefaults.standard.set(positionData, forKey: self.positionKey)
+            if abs(newQuantity) < 0.000001 { // Close to zero
+                currentPosition = nil
             } else {
-                UserDefaults.standard.removeObject(forKey: self.positionKey)
+                // Update average price for the position
+                let totalValue = existingPosition.quantity * existingPosition.averagePrice + positionChange * executedPrice
+                let averagePrice = totalValue / newQuantity
+                
+                currentPosition = TradingPosition(
+                    id: existingPosition.id,
+                    symbol: request.symbol,
+                    quantity: newQuantity,
+                    averagePrice: averagePrice,
+                    currentPrice: executedPrice,
+                    timestamp: Date()
+                )
             }
-            
-            UserDefaults.standard.synchronize()
-        }
-    }
-    
-    /// Reset paper account to initial state
-    public func resetPaperAccount() async {
-        await MainActor.run {
-            self.equity = 10_000.0
-            self.position = nil
-            self.fills = []
-            
-            // Clear persisted data
-            UserDefaults.standard.removeObject(forKey: self.equityKey)
-            UserDefaults.standard.removeObject(forKey: self.fillsKey)
-            UserDefaults.standard.removeObject(forKey: self.positionKey)
-            UserDefaults.standard.synchronize()
+        } else {
+            // Create new position
+            currentPosition = TradingPosition(
+                id: UUID().uuidString,
+                symbol: request.symbol,
+                quantity: positionChange,
+                averagePrice: executedPrice,
+                currentPrice: executedPrice,
+                timestamp: Date()
+            )
         }
         
-        // Reset related managers
-        await PnLManager.shared.reset()
+        // Update equity (subtract fees, etc.)
+        let tradingFee = executedAmount * executedPrice * 0.001 // 0.1% fee
+        equity -= tradingFee
     }
     
-    // MARK: - Public Access Methods
+    private func updatePaperPosition(request: TradeRequest, executedPrice: Double, executedAmount: Double) {
+        // Same logic as demo but with real market prices
+        updateDemoPosition(request: request, executedPrice: executedPrice, executedAmount: executedAmount)
+    }
     
-    /// Get current equity (thread-safe access)
-    public func getCurrentEquity() async -> Double {
-        await MainActor.run {
-            return self.equity
+    func getCurrentPosition() async -> TradingPosition? {
+        return currentPosition
+    }
+    
+    func getCurrentEquity() async -> Double {
+        return equity
+    }
+    
+    func close(reason: CloseReason, execPrice: Double) async throws {
+        guard let position = currentPosition else {
+            throw TradeError.invalidAmount // No position to close
         }
+        
+        // Create a trade request to close the position
+        let closeRequest = TradeRequest(
+            symbol: position.symbol,
+            side: position.quantity > 0 ? .sell : .buy, // Opposite side to close
+            amount: abs(position.quantity),
+            price: execPrice,
+            type: .market,
+            timeInForce: .goodTillCanceled
+        )
+        
+        // Execute the closing trade
+        _ = try await executeTrade(closeRequest)
+        
+        Log.trade.info("Position closed due to \(reason.rawValue) at price \(execPrice)")
     }
     
-    /// Get current position (thread-safe access)
-    public func getCurrentPosition() async -> Position? {
-        await MainActor.run {
-            return self.position
+    func fillsSnapshot() async -> [OrderFill] {
+        // Return empty array for now - in production this would return actual fills
+        return []
+    }
+    
+    func manualOrder(_ orderRequest: OrderRequest) async throws -> OrderFill {
+        // Convert OrderRequest to TradeRequest for internal processing
+        let tradeRequest = TradeRequest(
+            symbol: orderRequest.symbol.raw,
+            side: orderRequest.side == .buy ? .buy : .sell,
+            amount: orderRequest.quantity,
+            price: orderRequest.limitPrice ?? 0.0, // Use limit price or 0 for market
+            type: orderRequest.limitPrice != nil ? .limit : .market,
+            timeInForce: .goodTillCanceled
+        )
+        
+        // Execute the trade
+        let result = try await executeTrade(tradeRequest)
+        
+        // Convert result to OrderFill
+        return OrderFill(
+            id: UUID(),
+            symbol: orderRequest.symbol,
+            side: orderRequest.side,
+            quantity: orderRequest.quantity,
+            price: result.executedPrice,
+            timestamp: result.timestamp
+        )
+    }
+}
+
+// MARK: - Supporting Types
+
+public struct TradeResult: Codable {
+    let orderId: String
+    let symbol: String
+    let side: TradeSide
+    let executedAmount: Double
+    let executedPrice: Double
+    let status: OrderStatus
+    let timestamp: Date
+}
+
+public enum OrderStatus: String, Codable {
+    case pending = "PENDING"
+    case partiallyFilled = "PARTIALLY_FILLED"
+    case filled = "FILLED"
+    case canceled = "CANCELED"
+    case rejected = "REJECTED"
+}
+
+
+
+public struct TradingPosition: Codable, Identifiable {
+    public let id: String
+    public let symbol: String
+    public let quantity: Double // Positive = long, negative = short
+    public let averagePrice: Double
+    public let currentPrice: Double
+    public let timestamp: Date
+    
+    public var unrealizedPnL: Double {
+        quantity * (currentPrice - averagePrice)
+    }
+    
+    public var unrealizedPnLPercent: Double {
+        guard averagePrice > 0 else { return 0 }
+        return (unrealizedPnL / (abs(quantity) * averagePrice)) * 100
+    }
+    
+    public var side: String {
+        quantity > 0 ? "LONG" : "SHORT"
+    }
+    
+    public var displayQuantity: String {
+        String(format: "%.6f", abs(quantity))
+    }
+    
+    public var displayPnL: String {
+        let sign = unrealizedPnL >= 0 ? "+" : ""
+        return "\(sign)$\(String(format: "%.2f", unrealizedPnL))"
+    }
+    
+    public var displayPnLPercent: String {
+        let sign = unrealizedPnLPercent >= 0 ? "+" : ""
+        return "\(sign)\(String(format: "%.2f", unrealizedPnLPercent))%"
+    }
+}
+
+public enum CloseReason: String, Codable {
+    case stopLoss = "stop_loss"
+    case takeProfit = "take_profit"
+    case manual = "manual"
+    case liquidation = "liquidation"
+}
+
+public enum TradeError: LocalizedError {
+    case liveTradeNotImplemented
+    case insufficientBalance
+    case invalidAmount
+    case marketClosed
+    case apiError(String)
+    
+    public var errorDescription: String? {
+        switch self {
+        case .liveTradeNotImplemented:
+            return "Live trading is not yet implemented"
+        case .insufficientBalance:
+            return "Insufficient balance for this trade"
+        case .invalidAmount:
+            return "Invalid trade amount"
+        case .marketClosed:
+            return "Market is currently closed"
+        case .apiError(let message):
+            return "API Error: \(message)"
         }
     }
 }

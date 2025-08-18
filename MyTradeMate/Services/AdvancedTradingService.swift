@@ -13,7 +13,7 @@ public final class AdvancedTradingService: ObservableObject {
     @Published public var dcaOrders: [DCAOrder] = []
     @Published public var trailingStops: [TrailingStopOrder] = []
     
-    private let logger = Logger(subsystem: "com.mytrademate", category: "AdvancedTrading")
+    private let logger = os.Logger(subsystem: "com.mytrademate", category: "AdvancedTrading")
     private var cancellables = Set<AnyCancellable>()
     private var priceMonitorTimer: Timer?
     

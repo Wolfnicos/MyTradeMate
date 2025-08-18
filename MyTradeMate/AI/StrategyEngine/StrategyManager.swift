@@ -12,6 +12,11 @@ final class StrategyManager: ObservableObject {
     @Published var ensembleSignal: EnsembleSignal?
     @Published var isGeneratingSignals: Bool = false
     
+    // Computed property for enabled strategies
+    var enabledStrategies: [any Strategy] {
+        return strategies.filter { $0.isEnabled }
+    }
+    
     private var cancellables = Set<AnyCancellable>()
     
     private init() {
@@ -23,23 +28,47 @@ final class StrategyManager: ObservableObject {
     
     private func setupStrategies() {
         strategies = [
-            RSIStrategy(),
-            EMAStrategy(),
-            MACDStrategy(),
-            MeanReversionStrategy(),
-            BreakoutStrategy()
+            // Original strategies
+            RSIStrategy(),                    // 0
+            EMAStrategy(),                    // 1
+            MACDStrategy(),                   // 2
+            MeanReversionStrategy(),          // 3
+            BreakoutStrategy(),               // 4
+            
+            // Technical analysis strategies
+            BollingerBandsStrategy(),         // 5
+            StochasticStrategy(),             // 6
+            WilliamsRStrategy(),              // 7
+            ADXStrategy(),                    // 8
+            IchimokuStrategy(),               // 9
+            ParabolicSARStrategy(),           // 10
+            VolumeStrategy(),                 // 11
+            
+            // Specialized trading strategies
+            ScalpingStrategy(),               // 12
+            SwingTradingStrategy(),           // 13
+            GridTradingStrategy()             // 14
         ]
         
-        // Enable default strategies
-        strategies[0].isEnabled = true // RSI
-        strategies[1].isEnabled = false // EMA
-        strategies[2].isEnabled = false // MACD
-        strategies[3].isEnabled = false // Mean Reversion
-        strategies[4].isEnabled = false // Breakout
+        // Enable some default strategies for demonstration
+        strategies[0].isEnabled = true   // RSI
+        strategies[5].isEnabled = true   // Bollinger Bands
+        strategies[6].isEnabled = true   // Stochastic
+        strategies[9].isEnabled = true   // Ichimoku
+        strategies[13].isEnabled = true  // Swing Trading
+        
+        // Disable others by default
+        let disabledIndices = [1, 2, 3, 4, 7, 8, 10, 11, 12, 14]
+        for i in disabledIndices {
+            if i < strategies.count {
+                strategies[i].isEnabled = false
+            }
+        }
         
         updateActiveStrategies()
         
-        Log.ai.info("Initialized \(strategies.count) strategies")
+        Log.ai.info("Initialized \(strategies.count) strategies with \(enabledStrategies.count) enabled")
+        Log.ai.info("Enabled strategies: \(enabledStrategies.map { $0.name }.joined(separator: ", "))")
     }
     
     func enableStrategy(named name: String) {

@@ -16,6 +16,9 @@ struct MyTradeMateApp: App {
         setupDependencyInjection()
         setupAppearance()
         configureLogging()
+        
+        // Initialize StrategyManager to ensure strategies are loaded
+        _ = StrategyManager.shared
     }
     
     var body: some Scene {

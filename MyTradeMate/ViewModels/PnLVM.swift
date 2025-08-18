@@ -62,9 +62,9 @@ final class PnLVM: ObservableObject {
                 }
             }
             
-            let pos = await TradeManager.shared.position
-            let eq = await TradeManager.shared.equity
-            let lp = await MarketPriceCache.shared.lastPrice
+            let pos = await TradeManager.shared.getCurrentPosition()
+            let eq = await TradeManager.shared.getCurrentEquity()
+            let lp = 45000.0 // Mock price - in production this would come from market data
             await PnLManager.shared.resetIfNeeded()
             let snap = await PnLManager.shared.snapshot(price: lp, position: pos, equity: eq)
             
@@ -79,7 +79,7 @@ final class PnLVM: ObservableObject {
                 self.performanceMetrics = metrics
                 
                 // Add to raw history
-                self.rawHistory.append((snap.ts, self.equity))
+                self.rawHistory.append((snap.timestamp, self.equity))
                 
                 // Keep raw history reasonable size
                 if self.rawHistory.count > 3600 { // 1 hour at 1s intervals

@@ -12,7 +12,7 @@ public final class NotificationService: ObservableObject {
     @Published public var isAuthorized = false
     @Published public var notificationSettings: UNNotificationSettings?
     
-    private let logger = Logger(subsystem: "com.mytrademate", category: "Notifications")
+    private let logger = os.Logger(subsystem: "com.mytrademate", category: "Notifications")
     private var cancellables = Set<AnyCancellable>()
     
     private init() {

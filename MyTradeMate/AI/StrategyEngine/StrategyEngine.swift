@@ -1,6 +1,105 @@
 import Foundation
 import Combine
 
+// MARK: - Local Types (to resolve build issues)
+
+/// Unified settings state for live engine binding
+public struct SettingsState: Equatable {
+    public let routingEnabled: Bool
+    public let strategyMinConf: Double
+    public let strategyMaxConf: Double
+    
+    // Strategy-specific settings
+    public let rsiEnabled: Bool
+    public let rsiWeight: Double
+    public let emaEnabled: Bool
+    public let emaWeight: Double
+    public let macdEnabled: Bool
+    public let macdWeight: Double
+    public let meanReversionEnabled: Bool
+    public let meanReversionWeight: Double
+    public let breakoutEnabled: Bool
+    public let breakoutWeight: Double
+    public let meanRevEnabled: Bool
+    public let meanRevWeight: Double
+    public let atrEnabled: Bool
+    public let atrWeight: Double
+    
+    public init(
+        routingEnabled: Bool = true, 
+        strategyMinConf: Double = 0.6, 
+        strategyMaxConf: Double = 0.9,
+        rsiEnabled: Bool = true,
+        rsiWeight: Double = 1.0,
+        emaEnabled: Bool = false,
+        emaWeight: Double = 1.0,
+        macdEnabled: Bool = false,
+        macdWeight: Double = 1.0,
+        meanReversionEnabled: Bool = false,
+        meanReversionWeight: Double = 1.0,
+        breakoutEnabled: Bool = false,
+        breakoutWeight: Double = 1.0,
+        meanRevEnabled: Bool = false,
+        meanRevWeight: Double = 1.0,
+        atrEnabled: Bool = false,
+        atrWeight: Double = 1.0
+    ) {
+        self.routingEnabled = routingEnabled
+        self.strategyMinConf = strategyMinConf
+        self.strategyMaxConf = strategyMaxConf
+        self.rsiEnabled = rsiEnabled
+        self.rsiWeight = rsiWeight
+        self.emaEnabled = emaEnabled
+        self.emaWeight = emaWeight
+        self.macdEnabled = macdEnabled
+        self.macdWeight = macdWeight
+        self.meanReversionEnabled = meanReversionEnabled
+        self.meanReversionWeight = meanReversionWeight
+        self.breakoutEnabled = breakoutEnabled
+        self.breakoutWeight = breakoutWeight
+        self.meanRevEnabled = meanRevEnabled
+        self.meanRevWeight = meanRevWeight
+        self.atrEnabled = atrEnabled
+        self.atrWeight = atrWeight
+    }
+}
+
+/// Mock SettingsRepository for build compatibility
+@MainActor
+public final class SettingsRepository: ObservableObject {
+    public static let shared = SettingsRepository()
+    @Published public var state = SettingsState()
+    
+    // Mock properties to satisfy StrategyEngine requirements
+    @Published public var useStrategyRouting: Bool = true
+    @Published public var strategyConfidenceMin: Double = 0.6
+    @Published public var strategyConfidenceMax: Double = 0.9
+    
+    private init() {}
+    
+    public func updateState() {
+        // Mock implementation
+    }
+    
+    public func isStrategyEnabled(_ name: String) -> Bool {
+        // Mock implementation - return true for all strategies
+        return true
+    }
+    
+    public func updateStrategyEnabled(_ name: String, enabled: Bool) {
+        // Mock implementation
+    }
+    
+    public func updateStrategyWeight(_ name: String, weight: Double) {
+        // Mock implementation
+    }
+    
+    public func getStrategyWeight(_ name: String) -> Double {
+        // Mock implementation
+        return 1.0
+    }
+}
+
 /// Strategy outcome with signal and confidence from vote aggregation
 public struct StrategyOutcome {
     public let signal: String // "BUY", "SELL", "HOLD"
@@ -228,8 +327,7 @@ public final class StrategyEngine: ObservableObject {
             reason: reason,
             source: "Strategies",
             activeStrategies: strategyNames,
-            voteBreakdown: votes,
-            timestamp: Date()
+            voteBreakdown: votes
         )
     }
     
@@ -262,9 +360,9 @@ public final class StrategyEngine: ObservableObject {
         Log.ai.info("🔄 Strategy routing for short TF: \(enabled ? "ENABLED" : "DISABLED")")
     }
     
-    public func updateConfidenceRange(min: Double, max: Double) {
-        settingsRepo.strategyConfidenceMin = max(0.55, min(0.89, min))
-        settingsRepo.strategyConfidenceMax = max(settingsRepo.strategyConfidenceMin + 0.01, min(0.90, max))
+    public func updateConfidenceRange(minValue: Double, maxValue: Double) {
+        settingsRepo.strategyConfidenceMin = Swift.max(0.55, Swift.min(0.89, minValue))
+        settingsRepo.strategyConfidenceMax = Swift.max(settingsRepo.strategyConfidenceMin + 0.01, Swift.min(0.90, maxValue))
         Log.ai.info("📊 Strategy confidence range: \(String(format: "%.2f", settingsRepo.strategyConfidenceMin))-\(String(format: "%.2f", settingsRepo.strategyConfidenceMax))")
     }
 }

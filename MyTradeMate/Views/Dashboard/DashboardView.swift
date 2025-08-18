@@ -177,6 +177,8 @@ struct CandleChartView: View {
 
 struct DashboardView: View {
     @StateObject private var vm = DashboardVM()
+    @StateObject private var strategyManager = StrategyManager.shared
+    @StateObject private var riskManager = RiskManager.shared
     
     var body: some View {
         ScrollView {
@@ -186,6 +188,9 @@ struct DashboardView: View {
                 pnlHUDSection
                 priceSection
                 miniChartSection
+                strategiesOverviewSection
+                riskManagementSection
+                portfolioSummarySection
                 controlsSection
                 signalCardSection
                 quickActionsSection
@@ -611,6 +616,213 @@ struct DashboardView: View {
         }
     }
     
+    // MARK: - Strategies Overview Section
+    private var strategiesOverviewSection: some View {
+        VStack(alignment: .leading, spacing: Spacing.md) {
+            HStack {
+                VStack(alignment: .leading, spacing: Spacing.xs) {
+                    Text("Active Strategies")
+                        .calloutMediumStyle()
+                    
+                    Text("\(strategyManager.enabledStrategies.count) of \(strategyManager.strategies.count) enabled")
+                        .caption1Style()
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                NavigationLink(destination: StrategiesView()) {
+                    Text("View All")
+                        .footnoteMediumStyle()
+                        .foregroundColor(.blue)
+                }
+            }
+            
+            if strategyManager.strategies.isEmpty {
+                VStack(spacing: Spacing.sm) {
+                    Image(systemName: "brain.head.profile")
+                        .font(.title2)
+                        .foregroundColor(.secondary)
+                    
+                    Text("No strategies loaded")
+                        .caption1Style()
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, Spacing.xl)
+            } else {
+                LazyVGrid(columns: [
+                    GridItem(.flexible()),
+                    GridItem(.flexible())
+                ], spacing: Spacing.sm) {
+                    ForEach(Array(strategyManager.enabledStrategies.prefix(4).enumerated()), id: \.offset) { _, strategy in
+                        StrategyMiniCard(
+                            strategy: strategy,
+                            lastSignal: strategyManager.lastSignals[strategy.name]
+                        )
+                    }
+                }
+                
+                if let ensembleSignal = strategyManager.ensembleSignal {
+                    VStack(alignment: .leading, spacing: Spacing.sm) {
+                        Text("Ensemble Signal")
+                            .caption1MediumStyle()
+                        
+                        HStack {
+                            Text(ensembleSignal.direction.description.uppercased())
+                                .footnoteMediumStyle()
+                                .foregroundColor(signalColor(for: ensembleSignal.direction))
+                            
+                            Text("\(Int(ensembleSignal.confidence * 100))%")
+                                .caption2Style()
+                                .foregroundColor(.secondary)
+                            
+                            Spacer()
+                            
+                            Text("\(ensembleSignal.contributingStrategies.count) strategies")
+                                .caption2Style()
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding(Spacing.sm)
+                    .background(Color(.tertiarySystemBackground))
+                    .cornerRadius(CornerRadius.sm)
+                }
+            }
+        }
+        .padding(Spacing.cardPadding)
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(CornerRadius.lg)
+    }
+    
+    // MARK: - Risk Management Section
+    private var riskManagementSection: some View {
+        VStack(alignment: .leading, spacing: Spacing.md) {
+            HStack {
+                VStack(alignment: .leading, spacing: Spacing.xs) {
+                    Text("Risk Management")
+                        .calloutMediumStyle()
+                    
+                    Text("Portfolio protection & limits")
+                        .caption1Style()
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                Button("Settings") {
+                    // Navigate to risk settings
+                }
+                .font(.footnote)
+                .foregroundColor(.blue)
+            }
+            
+            LazyVGrid(columns: [
+                GridItem(.flexible()),
+                GridItem(.flexible())
+            ], spacing: Spacing.sm) {
+                RiskMetricCard(
+                    title: "Daily Risk",
+                    value: "\(Int(riskManager.currentDailyRisk * 100))%",
+                    limit: "\(Int(riskManager.maxDailyRisk * 100))%",
+                    isWarning: riskManager.currentDailyRisk > riskManager.maxDailyRisk * 0.8
+                )
+                
+                RiskMetricCard(
+                    title: "Position Size",
+                    value: "\(Int(riskManager.currentPositionRisk * 100))%",
+                    limit: "\(Int(riskManager.maxPositionRisk * 100))%",
+                    isWarning: riskManager.currentPositionRisk > riskManager.maxPositionRisk * 0.8
+                )
+                
+                RiskMetricCard(
+                    title: "Portfolio Risk",
+                    value: "\(Int(riskManager.currentPortfolioRisk * 100))%",
+                    limit: "\(Int(riskManager.maxPortfolioRisk * 100))%",
+                    isWarning: riskManager.currentPortfolioRisk > riskManager.maxPortfolioRisk * 0.8
+                )
+                
+                RiskMetricCard(
+                    title: "Open Positions",
+                    value: "\(riskManager.openPositionsCount)",
+                    limit: "\(riskManager.maxOpenPositions)",
+                    isWarning: riskManager.openPositionsCount > Int(Double(riskManager.maxOpenPositions) * 0.8)
+                )
+            }
+        }
+        .padding(Spacing.cardPadding)
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(CornerRadius.lg)
+    }
+    
+    // MARK: - Portfolio Summary Section
+    private var portfolioSummarySection: some View {
+        VStack(alignment: .leading, spacing: Spacing.md) {
+            HStack {
+                VStack(alignment: .leading, spacing: Spacing.xs) {
+                    Text("Portfolio Summary")
+                        .calloutMediumStyle()
+                    
+                    Text("Account balance & performance")
+                        .caption1Style()
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                NavigationLink(destination: TradesView()) {
+                    Text("View Trades")
+                        .footnoteMediumStyle()
+                        .foregroundColor(.blue)
+                }
+            }
+            
+            LazyVGrid(columns: [
+                GridItem(.flexible()),
+                GridItem(.flexible())
+            ], spacing: Spacing.sm) {
+                PortfolioMetricCard(
+                    title: "Total Balance",
+                    value: "$\(vm.totalBalance, specifier: "%.2f")",
+                    change: vm.totalBalanceChange,
+                    changePercent: vm.totalBalanceChangePercent
+                )
+                
+                PortfolioMetricCard(
+                    title: "Available",
+                    value: "$\(vm.availableBalance, specifier: "%.2f")",
+                    change: nil,
+                    changePercent: nil
+                )
+                
+                PortfolioMetricCard(
+                    title: "Today's P&L",
+                    value: "$\(vm.todayPnL, specifier: "%.2f")",
+                    change: vm.todayPnL,
+                    changePercent: vm.todayPnLPercent
+                )
+                
+                PortfolioMetricCard(
+                    title: "Open P&L",
+                    value: "$\(vm.unrealizedPnL, specifier: "%.2f")",
+                    change: vm.unrealizedPnL,
+                    changePercent: vm.unrealizedPnLPercent
+                )
+            }
+        }
+        .padding(Spacing.cardPadding)
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(CornerRadius.lg)
+    }
+    
+    private func signalColor(for direction: StrategySignal.Direction) -> Color {
+        switch direction {
+        case .buy: return .green
+        case .sell: return .red
+        case .hold: return .secondary
+        }
+    }
+    
     // MARK: - Helpers
 }
 
@@ -652,7 +864,7 @@ struct SparklineChart: View {
 
 // MARK: - Position Row
 struct PositionRow: View {
-    let position: Position
+    let position: TradingPosition
     
     var body: some View {
         HStack {
@@ -742,6 +954,134 @@ extension TradingMode {
         case .demo: return "Simulated trading with virtual money"
         case .paper: return "Real market data, simulated orders"
         case .live: return "Real trading with actual funds"
+        }
+    }
+}
+
+// MARK: - Strategy Mini Card
+struct StrategyMiniCard: View {
+    let strategy: any Strategy
+    let lastSignal: StrategySignal?
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.xs) {
+            HStack {
+                Text(strategy.name)
+                    .caption1MediumStyle()
+                    .lineLimit(1)
+                
+                Spacer()
+                
+                Circle()
+                    .fill(strategy.isEnabled ? .green : .gray)
+                    .frame(width: 6, height: 6)
+            }
+            
+            if let signal = lastSignal {
+                HStack {
+                    Text(signal.direction.description)
+                        .caption2Style()
+                        .foregroundColor(signalColor(for: signal.direction))
+                    
+                    Spacer()
+                    
+                    Text("\(Int(signal.confidence * 100))%")
+                        .caption2Style()
+                        .foregroundColor(.secondary)
+                }
+            } else {
+                Text("No signal")
+                    .caption2Style()
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(Spacing.sm)
+        .background(Color(.tertiarySystemBackground))
+        .cornerRadius(CornerRadius.sm)
+    }
+    
+    private func signalColor(for direction: StrategySignal.Direction) -> Color {
+        switch direction {
+        case .buy: return .green
+        case .sell: return .red
+        case .hold: return .secondary
+        }
+    }
+}
+
+// MARK: - Risk Metric Card
+struct RiskMetricCard: View {
+    let title: String
+    let value: String
+    let limit: String
+    let isWarning: Bool
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.xs) {
+            Text(title)
+                .caption1Style()
+                .foregroundColor(.secondary)
+            
+            Text(value)
+                .footnoteMediumStyle()
+                .foregroundColor(isWarning ? .orange : .primary)
+            
+            Text("Limit: \(limit)")
+                .caption2Style()
+                .foregroundColor(.secondary)
+        }
+        .padding(Spacing.sm)
+        .background(Color(.tertiarySystemBackground))
+        .cornerRadius(CornerRadius.sm)
+        .overlay(
+            RoundedRectangle(cornerRadius: CornerRadius.sm)
+                .stroke(isWarning ? .orange.opacity(0.5) : .clear, lineWidth: 1)
+        )
+    }
+}
+
+// MARK: - Portfolio Metric Card
+struct PortfolioMetricCard: View {
+    let title: String
+    let value: String
+    let change: Double?
+    let changePercent: Double?
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.xs) {
+            Text(title)
+                .caption1Style()
+                .foregroundColor(.secondary)
+            
+            Text(value)
+                .footnoteMediumStyle()
+                .foregroundColor(.primary)
+            
+            if let change = change, let changePercent = changePercent {
+                HStack(spacing: Spacing.xxs) {
+                    Image(systemName: change >= 0 ? "arrow.up" : "arrow.down")
+                        .font(.caption2)
+                        .foregroundColor(change >= 0 ? .green : .red)
+                    
+                    Text("\(changePercent, specifier: "%.2f")%")
+                        .caption2Style()
+                        .foregroundColor(change >= 0 ? .green : .red)
+                }
+            }
+        }
+        .padding(Spacing.sm)
+        .background(Color(.tertiarySystemBackground))
+        .cornerRadius(CornerRadius.sm)
+    }
+}
+
+// MARK: - Extensions
+extension StrategySignal.Direction {
+    var description: String {
+        switch self {
+        case .buy: return "Buy"
+        case .sell: return "Sell"
+        case .hold: return "Hold"
         }
     }
 }

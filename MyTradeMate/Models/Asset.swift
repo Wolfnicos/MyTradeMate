@@ -171,4 +171,9 @@ extension TradingPair {
     public static let btcEur = TradingPair(base: .bitcoin, quote: .EUR)
     public static let ethEur = TradingPair(base: .ethereum, quote: .EUR)
     public static let dogeEur = TradingPair(base: .dogecoin, quote: .EUR)
+    
+    /// Popular trading pairs
+    public static let popular: [TradingPair] = [
+        .btcUsd, .ethUsd, .dogeUsd, .btcEur, .ethEur, .dogeEur
+    ]
 }

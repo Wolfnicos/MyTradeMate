@@ -155,6 +155,16 @@ final class DashboardVM: ObservableObject {
     @Published var isLoading = false
     @Published var isRefreshing = false
     
+    // Portfolio properties
+    @Published var totalBalance: Double = 10000.0
+    @Published var availableBalance: Double = 8500.0
+    @Published var totalBalanceChange: Double = 250.0
+    @Published var totalBalanceChangePercent: Double = 2.56
+    @Published var todayPnL: Double = 125.50
+    @Published var todayPnLPercent: Double = 1.28
+    @Published var unrealizedPnL: Double = -45.20
+    @Published var unrealizedPnLPercent: Double = -0.46
+    
     // Chart data
     var chartData: [CandleData] {
         return candles.map { candle in
@@ -173,18 +183,11 @@ final class DashboardVM: ObservableObject {
     @Published var precisionMode: Bool = false
     @Published var autoTradingEnabled: Bool = false
     
-    // TODO: Re-enable after adding multi-asset files to Xcode project
-    // Multi-Asset Trading Properties - NEW
-    // @Published var selectedTradingPair: TradingPair = .btcUsd {
-    //     didSet {
-    //         if selectedTradingPair != oldValue {
-    //             Task { await handlePairChange() }
-    //         }
-    //     }
-    // }
-    // @Published var amountMode: AmountMode = .percentOfEquity
-    // @Published var amountValue: Double = 5.0
-    // @Published var currentEquity: Double = 10_000.0
+    // Multi-Asset Trading Properties
+    @Published var selectedTradingPair: TradingPair = TradingPair(base: "BTC", quote: "USDT", symbol: "BTCUSDT")
+    @Published var amountMode: AmountMode = .percentOfEquity
+    @Published var amountValue: Double = 5.0
+    @Published var currentEquity: Double = 10_000.0
     
     // Trading mode is controlled by settings, not dashboard toggle
     var tradingMode: TradingMode {
@@ -198,7 +201,7 @@ final class DashboardVM: ObservableObject {
     }
     @Published var confidence: Double = 0.0
     @Published var currentSignal: SignalInfo?
-    @Published var openPositions: [Position] = []
+    @Published var openPositions: [TradingPosition] = []
     @Published var isConnected: Bool = false
     @Published var connectionStatus: String = "Connecting..."
     @Published var lastUpdated: Date = Date()
@@ -234,7 +237,177 @@ final class DashboardVM: ObservableObject {
     private var lastManualTradeTime: Date = .distantPast
     private let manualTradeDebounce: TimeInterval = 0.5 // 500ms
     
-
+    // MARK: - Trade Execution Methods
+    func executeBuy() {
+        guard canExecuteTrade() else { return }
+        
+        let tradeRequest = createTradeRequest(side: .buy)
+        
+        if settings.requireTradeConfirmation {
+            pendingTradeRequest = tradeRequest
+            showingTradeConfirmation = true
+        } else {
+            executeTradeDirectly(tradeRequest)
+        }
+    }
+    
+    func executeSell() {
+        guard canExecuteTrade() else { return }
+        
+        let tradeRequest = createTradeRequest(side: .sell)
+        
+        if settings.requireTradeConfirmation {
+            pendingTradeRequest = tradeRequest
+            showingTradeConfirmation = true
+        } else {
+            executeTradeDirectly(tradeRequest)
+        }
+    }
+    
+    func confirmTrade() {
+        guard let tradeRequest = pendingTradeRequest else { return }
+        
+        showingTradeConfirmation = false
+        pendingTradeRequest = nil
+        
+        executeTradeDirectly(tradeRequest)
+    }
+    
+    func cancelTrade() {
+        showingTradeConfirmation = false
+        pendingTradeRequest = nil
+    }
+    
+    private func canExecuteTrade() -> Bool {
+        let now = Date()
+        let timeSinceLastTrade = now.timeIntervalSince(lastManualTradeTime)
+        
+        guard timeSinceLastTrade >= manualTradeDebounce else {
+            showErrorToast("Please wait before placing another trade")
+            return false
+        }
+        
+        guard !isExecutingTrade else {
+            showErrorToast("Trade already in progress")
+            return false
+        }
+        
+        return true
+    }
+    
+    private func createTradeRequest(side: TradeSide) -> TradeRequest {
+        let amount = calculateTradeAmount()
+        
+        return TradeRequest(
+            symbol: selectedTradingPair.symbol,
+            side: side,
+            amount: amount,
+            price: price,
+            type: .market,
+            timeInForce: .goodTillCanceled
+        )
+    }
+    
+    private func calculateTradeAmount() -> Double {
+        switch amountMode {
+        case .percentOfEquity:
+            return currentEquity * (amountValue / 100)
+        case .fixedNotional:
+            return amountValue
+        case .riskPercent:
+            // Risk-based calculation would involve stop-loss distance
+            return currentEquity * (amountValue / 100)
+        }
+    }
+    
+    private func executeTradeDirectly(_ tradeRequest: TradeRequest) {
+        isExecutingTrade = true
+        lastManualTradeTime = Date()
+        
+        Task {
+            do {
+                let result = try await tradeManager.executeTrade(tradeRequest)
+                
+                await MainActor.run {
+                    self.isExecutingTrade = false
+                    self.showSuccessToast("Order placed successfully")
+                    
+                    // Refresh data after successful trade
+                    Task {
+                        await self.loadMarketData()
+                        await self.refreshPredictionAsync()
+                    }
+                }
+                
+                Log.trade.info("Manual trade executed: \(tradeRequest.side.rawValue) \(tradeRequest.amount) \(tradeRequest.symbol)")
+                
+            } catch {
+                await MainActor.run {
+                    self.isExecutingTrade = false
+                    self.showErrorToast("Trade failed: \(error.localizedDescription)")
+                }
+                
+                Log.trade.error("Manual trade failed: \(error)")
+            }
+        }
+    }
+    
+    func showSuccessToast(_ message: String) {
+        toastMessage = message
+        toastType = .success
+        showingToast = true
+        
+        // Auto-dismiss after 3 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            self.showingToast = false
+        }
+    }
+    
+    func showErrorToast(_ message: String) {
+        toastMessage = message
+        toastType = .error
+        showingToast = true
+        
+        // Auto-dismiss after 4 seconds for errors
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+            self.showingToast = false
+        }
+    }
+    
+    private func handleAutoTrading(signal: SignalInfo) {
+        guard autoTradingEnabled else { return }
+        guard signal.confidence >= 0.7 else { return } // Only trade on high confidence signals
+        
+        Task {
+            do {
+                let tradeRequest: TradeRequest
+                
+                switch signal.direction.uppercased() {
+                case "BUY":
+                    tradeRequest = createTradeRequest(side: .buy)
+                case "SELL":
+                    tradeRequest = createTradeRequest(side: .sell)
+                default:
+                    return // Don't trade on HOLD signals
+                }
+                
+                let result = try await tradeManager.executeTrade(tradeRequest)
+                
+                await MainActor.run {
+                    self.showSuccessToast("Auto trade executed: \(signal.direction)")
+                }
+                
+                Log.trade.info("Auto trade executed: \(signal.direction) with \(String(format: "%.1f%%", signal.confidence * 100)) confidence")
+                
+            } catch {
+                await MainActor.run {
+                    self.showErrorToast("Auto trade failed: \(error.localizedDescription)")
+                }
+                
+                Log.trade.error("Auto trade failed: \(error)")
+            }
+        }
+    }
     
     // MARK: - Computed Properties
     var priceString: String {

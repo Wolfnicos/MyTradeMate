@@ -10,13 +10,9 @@ enum Mode: String, CaseIterable {
     case normal, precision
 }
 
-    // MARK: - Signal Info (publicat deja mai jos și folosit în VM)
-struct SignalInfo {
-    let direction: String  // "BUY", "SELL", "HOLD"
-    let confidence: Double // 0...1
-    let reason: String
-    let timestamp: Date
-}
+    // MARK: - Using SignalInfo from Models/SignalInfo.swift
+    // Local typealias to avoid conflicts
+typealias DashboardSignalInfo = SignalInfo
 
 @MainActor
 final class DashboardVM: ObservableObject {
@@ -60,7 +56,7 @@ final class DashboardVM: ObservableObject {
         }
     }
     @Published var confidence: Double = 0.0
-    @Published var currentSignal: SignalInfo?
+    @Published var currentSignal: DashboardSignalInfo?
     @Published var currentPredictionResult: PredictionResult?
     @Published var allModelPredictions: [PredictionResult] = []
     @Published var openPositions: [Position] = []
@@ -425,15 +421,15 @@ final class DashboardVM: ObservableObject {
         return dict
     }
 
-    private func combineSignals(coreML: PredictionResult?, verboseLogging: Bool) -> SignalInfo {
+    private func combineSignals(coreML: PredictionResult?, verboseLogging: Bool) -> DashboardSignalInfo {
         guard let coreML = coreML else {
-            return SignalInfo(direction: "HOLD", confidence: 0.0, reason: "No CoreML signal available.", timestamp: Date())
+            return DashboardSignalInfo(direction: "HOLD", confidence: 0.0, reason: "No CoreML signal available.", timestamp: Date())
         }
         if verboseLogging {
             logger.info("CoreML Raw Signal: \(coreML.signal) @ \(String(format: "%.1f%%", coreML.confidence * 100))")
         }
         let reason = "CoreML \(coreML.modelName)"
-        return SignalInfo(direction: coreML.signal, confidence: coreML.confidence, reason: reason, timestamp: Date())
+        return DashboardSignalInfo(direction: coreML.signal, confidence: coreML.confidence, reason: reason, timestamp: Date())
     }
 
     private func modelKindForTimeframe(_ timeframe: Timeframe) -> ModelKind {
@@ -475,7 +471,7 @@ final class DashboardVM: ObservableObject {
     private var lastAutoTradeTime: Date = .distantPast
     private let autoTradeCooldown: TimeInterval = 60.0
 
-    private func handleAutoTrading(signal: SignalInfo) {
+    private func handleAutoTrading(signal: DashboardSignalInfo) {
         let dt = Date().timeIntervalSince(lastAutoTradeTime)
         guard dt >= autoTradeCooldown else {
             Log.ai.info("Auto trading on cooldown: \(String(format: "%.1f", dt))s / \(autoTradeCooldown)s")
@@ -492,7 +488,7 @@ final class DashboardVM: ObservableObject {
         }
     }
 
-    private func simulatePaperTrade(signal: SignalInfo) {
+    private func simulatePaperTrade(signal: DashboardSignalInfo) {
         lastAutoTradeTime = Date()
         let orderType = signal.direction
         let confStr = String(format: "%.1f%%", signal.confidence * 100)

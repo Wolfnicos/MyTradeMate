@@ -34,7 +34,7 @@ final class TradeHistoryVM: ObservableObject {
     
     func reload() {
         Task {
-            let all = await TradeManager.shared.fills
+            let all = await TradeManager.shared.fillsSnapshot()
             await MainActor.run {
                 self.allFills = all
                 self.page = 0

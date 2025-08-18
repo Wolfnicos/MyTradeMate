@@ -1,7 +1,7 @@
 import Foundation
 import Security
 
-actor KeychainStore: KeychainStoreProtocol {
+actor KeychainStore {
     static let shared = KeychainStore()
     
     private init() {}

@@ -15,7 +15,7 @@ public final class WebSocketService: ObservableObject {
     
     private var webSocketTask: URLSessionWebSocketTask?
     private var cancellables = Set<AnyCancellable>()
-    private let logger = Logger(subsystem: "com.mytrademate", category: "WebSocket")
+    private let logger = os.Logger(subsystem: "com.mytrademate", category: "WebSocket")
     
     private let reconnectDelay: TimeInterval = 5.0
     private var reconnectAttempts = 0
@@ -26,7 +26,9 @@ public final class WebSocketService: ObservableObject {
     }
     
     deinit {
-        disconnect()
+        Task { @MainActor in
+            disconnect()
+        }
     }
     
     // MARK: - Connection Management

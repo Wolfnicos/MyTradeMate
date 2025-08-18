@@ -11,7 +11,7 @@ public final class AnalyticsService: ObservableObject {
     @Published public var tradingStats: TradingStats = TradingStats()
     @Published public var performanceMetrics: PerformanceMetrics = PerformanceMetrics()
     
-    private let logger = Logger(subsystem: "com.mytrademate", category: "Analytics")
+    private let logger = os.Logger(subsystem: "com.mytrademate", category: "Analytics")
     private var cancellables = Set<AnyCancellable>()
     
     // Data storage
@@ -55,7 +55,10 @@ public final class AnalyticsService: ObservableObject {
         performanceMetrics.accuracy = Double(performanceMetrics.correctSignals) / Double(performanceMetrics.totalSignals)
         performanceMetrics.averageConfidence = (performanceMetrics.averageConfidence + confidence) / 2.0
         
-        logger.info("Signal accuracy updated: \(String(format: "%.1f", performanceMetrics.accuracy * 100))%")
+        logger
+            .info(
+                "Signal accuracy updated: \(String(format: "%.1f", self.performanceMetrics.accuracy * 100))%"
+            )
     }
     
     // MARK: - Statistics Calculation

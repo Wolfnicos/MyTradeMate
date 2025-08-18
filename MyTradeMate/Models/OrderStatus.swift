@@ -10,6 +10,7 @@ public struct OrderStatusUpdate: Identifiable, Sendable {
     public let message: String?
     public let timestamp: Date
     public let progress: Double // 0.0 to 1.0 for UI progress indicators
+    public let previousStatus: ExtendedOrderStatus?
     
     public init(
         id: String = UUID().uuidString,
@@ -17,7 +18,8 @@ public struct OrderStatusUpdate: Identifiable, Sendable {
         status: Order.Status,
         message: String? = nil,
         timestamp: Date = Date(),
-        progress: Double = 0.0
+        progress: Double = 0.0,
+        previousStatus: ExtendedOrderStatus? = nil
     ) {
         self.id = id
         self.orderId = orderId
@@ -25,6 +27,7 @@ public struct OrderStatusUpdate: Identifiable, Sendable {
         self.message = message
         self.timestamp = timestamp
         self.progress = progress
+        self.previousStatus = previousStatus
     }
 }
 
@@ -153,6 +156,7 @@ public struct TrackedOrder: Identifiable, Sendable {
         orderFill: OrderFill? = nil,
         errorMessage: String? = nil
     ) {
+        let previousStatus = self.currentStatus
         self.currentStatus = status
         self.orderFill = orderFill
         self.errorMessage = errorMessage
@@ -161,7 +165,8 @@ public struct TrackedOrder: Identifiable, Sendable {
             orderId: id,
             status: status.baseStatus,
             message: message ?? status.displayText,
-            progress: status.progress
+            progress: status.progress,
+            previousStatus: previousStatus
         )
         
         statusHistory.append(update)

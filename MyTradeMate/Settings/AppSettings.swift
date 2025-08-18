@@ -19,6 +19,10 @@ public final class AppSettings: ObservableObject {
     @AppStorage("themeDark") public var themeDark = false
     @AppStorage("haptics") public var haptics = true
     @AppStorage("confirmTrades") public var confirmTrades = true
+    @AppStorage("requireTradeConfirmation") public var requireTradeConfirmation = true
+    @AppStorage("useTestnet") public var useTestnet = false
+    @AppStorage("binanceApiKey") public var binanceApiKey = ""
+    @AppStorage("binanceSecretKey") public var binanceSecretKey = ""
     
     // MARK: - Computed Helpers
     public var timeframe: Timeframe { 

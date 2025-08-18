@@ -91,16 +91,7 @@ struct SettingsView: View {
                     }
                     
                     NavigationLink("Strategy Configuration") {
-                        List {
-                            Section {
-                                Text("Strategy configuration will be implemented in a future update")
-                                    .foregroundColor(.secondary)
-                            } header: {
-                                Text("Available Strategies")
-                            }
-                        }
-                        .navigationTitle("Strategy Configuration")
-                        .navigationBarTitleDisplayMode(.inline)
+                        StrategyConfigurationView()
                     }
                 } header: {
                     Label("Trading", systemImage: "chart.line.uptrend.xyaxis")
@@ -226,16 +217,7 @@ struct SettingsView: View {
     }
 }
 
-// MARK: - Bundle Extension
-extension Bundle {
-    var appVersion: String {
-        return infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
-    }
-    
-    var buildNumber: String {
-        return infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"
-    }
-}
+// Bundle extension is defined in Utils/LogExporter.swift
 
 #Preview {
     SettingsView()

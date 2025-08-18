@@ -13,7 +13,7 @@ public final class AuthenticationService: ObservableObject {
     @Published public var currentUser: User?
     @Published public var authenticationStatus: AuthStatus = .unauthenticated
     
-    private let logger = Logger(subsystem: "com.mytrademate", category: "Auth")
+    private let logger = os.Logger(subsystem: "com.mytrademate", category: "Auth")
     private let keychain = KeychainManager()
     
     private init() {

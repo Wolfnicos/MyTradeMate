@@ -1,103 +1,173 @@
 import SwiftUI
 
+struct PnLSnapshot {
+    let equity: Double
+    let realizedToday: Double
+    let unrealized: Double
+    let totalPnL: Double
+    let totalPnLPercent: Double
+    let timestamp: Date
+    
+    init(equity: Double, realizedToday: Double, unrealized: Double) {
+        self.equity = equity
+        self.realizedToday = realizedToday
+        self.unrealized = unrealized
+        self.totalPnL = realizedToday + unrealized
+        self.totalPnLPercent = equity > 0 ? (totalPnL / equity) * 100 : 0
+        self.timestamp = Date()
+    }
+}
+
 struct PnLWidget: View {
     let snapshot: PnLSnapshot
     let isDemoMode: Bool
     
-    init(snapshot: PnLSnapshot, isDemoMode: Bool = false) {
-        self.snapshot = snapshot
-        self.isDemoMode = isDemoMode
+    private let spacing: CGFloat = 12
+    private let cardPadding: CGFloat = 16
+    private let cornerRadius: CGFloat = 12
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: spacing) {
+            // Header
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Portfolio P&L")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundColor(.primary)
+                    
+                    if isDemoMode {
+                        Text("DEMO MODE")
+                            .font(.caption2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.orange)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.orange.opacity(0.1))
+                            .cornerRadius(4)
+                    }
+                }
+                
+                Spacer()
+                
+                Text(snapshot.timestamp, style: .time)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            // Main metrics
+            LazyVGrid(columns: [
+                GridItem(.flexible()),
+                GridItem(.flexible())
+            ], spacing: 8) {
+                PnLMetricCard(
+                    title: "Total Equity",
+                    value: String(format: "$%.2f", snapshot.equity),
+                    change: nil,
+                    changeColor: .primary
+                )
+                
+                PnLMetricCard(
+                    title: "Today's P&L",
+                    value: String(format: "$%.2f", snapshot.realizedToday),
+                    change: snapshot.realizedToday,
+                    changeColor: snapshot.realizedToday >= 0 ? .green : .red
+                )
+                
+                PnLMetricCard(
+                    title: "Unrealized P&L",
+                    value: String(format: "$%.2f", snapshot.unrealized),
+                    change: snapshot.unrealized,
+                    changeColor: snapshot.unrealized >= 0 ? .green : .red
+                )
+                
+                PnLMetricCard(
+                    title: "Total P&L",
+                    value: String(format: "$%.2f", snapshot.totalPnL),
+                    change: snapshot.totalPnL,
+                    changeColor: snapshot.totalPnL >= 0 ? .green : .red,
+                    showPercent: true,
+                    percentValue: snapshot.totalPnLPercent
+                )
+            }
+        }
+        .padding(cardPadding)
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(cornerRadius)
+    }
+}
+
+struct PnLMetricCard: View {
+    let title: String
+    let value: String
+    let change: Double?
+    let changeColor: Color
+    let showPercent: Bool
+    let percentValue: Double?
+    
+    init(title: String, value: String, change: Double?, changeColor: Color, showPercent: Bool = false, percentValue: Double? = nil) {
+        self.title = title
+        self.value = value
+        self.change = change
+        self.changeColor = changeColor
+        self.showPercent = showPercent
+        self.percentValue = percentValue
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Equity: \(snapshot.equity, format: .currency(code: "USD"))")
-                        .font(.headline)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                    
-                    Text("Total account value")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                }
-                
-                Spacer()
-                
-                if isDemoMode {
-                    Text("DEMO")
-                        .font(.caption2.weight(.semibold))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.orange.opacity(0.2))
-                        .foregroundColor(.orange)
-                        .cornerRadius(4)
-                }
-            }
-            .padding(.horizontal)
-            .padding(.top, 8)
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption)
+                .foregroundColor(.secondary)
             
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Realized Today")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Text(snapshot.realizedToday, format: .currency(code: "USD"))
-                        .font(.subheadline.monospacedDigit())
-                        .foregroundColor(snapshot.realizedToday >= 0 ? .green : .red)
-                    Text("Closed positions")
+            Text(value)
+                .font(.footnote)
+                .fontWeight(.medium)
+                .foregroundColor(changeColor)
+            
+            if let change = change {
+                HStack(spacing: 4) {
+                    Image(systemName: change >= 0 ? "arrow.up" : "arrow.down")
                         .font(.caption2)
-                        .foregroundColor(.secondary)
-                        .opacity(0.7)
-                }
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Unrealized")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Text(snapshot.unrealized, format: .currency(code: "USD"))
-                        .font(.subheadline.monospacedDigit())
-                        .foregroundColor(snapshot.unrealized >= 0 ? .green : .red)
-                    Text("Open positions")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                        .opacity(0.7)
-                }
-                
-                Spacer()
-                
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text("Updated")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Text(snapshot.ts, style: .time)
-                        .font(.subheadline.monospacedDigit())
-                    Text("Live data")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                        .opacity(0.7)
+                        .foregroundColor(changeColor)
+                    
+                    if showPercent, let percent = percentValue {
+                        Text(String(format: "%.2f%%", percent))
+                            .font(.caption2)
+                            .foregroundColor(changeColor)
+                    } else {
+                        Text(abs(change), format: .currency(code: "USD"))
+                            .font(.caption2)
+                            .foregroundColor(changeColor)
+                    }
                 }
             }
-            .padding(.horizontal)
-            .padding(.bottom, 8)
         }
-        .background(Color(.systemBackground))
-        .cornerRadius(10)
-        .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
-        // Use safeAreaInset to ensure proper spacing
-        .safeAreaInset(edge: .top) { Color.clear.frame(height: 0) }
-        .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 0) }
+        .padding(8)
+        .background(Color(.tertiarySystemBackground))
+        .cornerRadius(6)
     }
 }
 
 #Preview {
-    PnLWidget(snapshot: PnLSnapshot(
-        equity: 10500.0,
-        realizedToday: 250.0,
-        unrealized: 500.0,
-        ts: Date()
-    ), isDemoMode: true)
+    VStack(spacing: 16) {
+        PnLWidget(
+            snapshot: PnLSnapshot(
+                equity: 10250.75,
+                realizedToday: 125.50,
+                unrealized: -45.20
+            ),
+            isDemoMode: false
+        )
+        
+        PnLWidget(
+            snapshot: PnLSnapshot(
+                equity: 9875.30,
+                realizedToday: -124.70,
+                unrealized: 89.15
+            ),
+            isDemoMode: true
+        )
+    }
     .padding()
-    .background(Color(.systemGroupedBackground))
 }

@@ -19,7 +19,7 @@ public final class MarketsService: ObservableObject {
     @Published public var isLoading = false
     @Published public var lastUpdated: Date = Date()
     
-    private let logger = Logger(subsystem: "com.mytrademate", category: "Markets")
+    private let logger = os.Logger(subsystem: "com.mytrademate", category: "Markets")
     private var cancellables = Set<AnyCancellable>()
     private var refreshTimer: Timer?
     
