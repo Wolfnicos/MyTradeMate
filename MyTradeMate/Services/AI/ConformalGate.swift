@@ -156,7 +156,7 @@ public class ConformalGate {
         if riskScore <= 0.2 {
             return .low
         } else if riskScore <= 0.4 {
-            return .moderate
+            return .medium
         } else {
             return .high
         }
@@ -258,24 +258,4 @@ public struct GateStatistics {
     }
 }
 
-public enum RiskLevel {
-    case low
-    case moderate
-    case high
-    
-    public var description: String {
-        switch self {
-        case .low: return "Low Risk"
-        case .moderate: return "Moderate Risk"  
-        case .high: return "High Risk"
-        }
-    }
-    
-    public var color: String {
-        switch self {
-        case .low: return "green"
-        case .moderate: return "orange"
-        case .high: return "red"
-        }
-    }
-}
+// Using RiskLevel from Models/PerformanceMetrics.swift

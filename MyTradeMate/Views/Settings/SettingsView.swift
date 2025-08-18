@@ -22,22 +22,7 @@ extension Color {
     static let settingsSecondaryBackground = Color(.secondarySystemBackground)
 }
 
-// Use standardized spacing system
-private struct Spacing {
-    static let xxs: CGFloat = 2
-    static let xs: CGFloat = 4
-    static let sm: CGFloat = 8
-    static let md: CGFloat = 12
-    static let lg: CGFloat = 16
-    static let xl: CGFloat = 20
-    static let xxl: CGFloat = 24
-    static let xxxl: CGFloat = 32
-    static let sectionSpacing: CGFloat = 20
-    static let cardPadding: CGFloat = 16
-    static let elementSpacing: CGFloat = 12
-    static let formSpacing: CGFloat = 12
-    static let listItemSpacing: CGFloat = 8
-}
+// Using Spacing from DesignSystem.swift
 
 /// A reusable help icon component that displays a tooltip when tapped
 struct HelpIconView: View {
@@ -234,17 +219,83 @@ struct SettingsView: View {
                     )
                 ),
                 SettingsItem(
-                    title: "Default Symbol",
-                    description: "Default trading symbol",
+                    title: "Trading Pairs",
+                    description: "Manage available trading pairs and set defaults. Now includes DOGE, SOL, and AVAX.",
                     view: AnyView(
-                        SettingsInfoRow(title: "Default Symbol", value: settings.defaultSymbol)
+                        VStack(alignment: .leading, spacing: Spacing.sm) {
+                            HStack {
+                                Text("Available Trading Pairs")
+                                    .font(.settingsBody)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.settingsPrimary)
+                                
+                                Spacer()
+                                
+                                Text("\(TradingPair.popular.count) pairs")
+                                    .font(.settingsCaption)
+                                    .foregroundColor(.settingsSecondary)
+                            }
+                            
+                            LazyVGrid(columns: [
+                                GridItem(.flexible()),
+                                GridItem(.flexible()),
+                                GridItem(.flexible())
+                            ], spacing: Spacing.xs) {
+                                ForEach(TradingPair.popular, id: \.symbol) { pair in
+                                    HStack(spacing: Spacing.xs) {
+                                        Text(pair.baseSymbol)
+                                            .font(.system(size: 11, weight: .semibold))
+                                            .foregroundColor(.primary)
+                                        
+                                        Text("/")
+                                            .font(.system(size: 10))
+                                            .foregroundColor(.secondary)
+                                        
+                                        Text(pair.quoteSymbol)
+                                            .font(.system(size: 10))
+                                            .foregroundColor(.secondary)
+                                    }
+                                    .padding(.horizontal, Spacing.xs)
+                                    .padding(.vertical, 2)
+                                    .background(Color(.quaternarySystemFill))
+                                    .cornerRadius(4)
+                                }
+                            }
+                        }
+                        .padding(.vertical, Spacing.xs)
                     )
                 ),
                 SettingsItem(
-                    title: "Default Timeframe",
-                    description: "Default chart timeframe",
+                    title: "Timeframe Support", 
+                    description: "Now supports 1m, 5m, 15m, 1h, and 4h timeframes for comprehensive market analysis",
                     view: AnyView(
-                        SettingsInfoRow(title: "Default Timeframe", value: settings.defaultTimeframe)
+                        VStack(alignment: .leading, spacing: Spacing.sm) {
+                            HStack {
+                                Text("Available Timeframes")
+                                    .font(.settingsBody)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.settingsPrimary)
+                                
+                                Spacer()
+                                
+                                Text("\(Timeframe.allCases.count) timeframes")
+                                    .font(.settingsCaption)
+                                    .foregroundColor(.settingsSecondary)
+                            }
+                            
+                            HStack(spacing: Spacing.sm) {
+                                ForEach(Timeframe.allCases, id: \.rawValue) { timeframe in
+                                    Text(timeframe.displayName)
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundColor(.primary)
+                                        .padding(.horizontal, Spacing.sm)
+                                        .padding(.vertical, 4)
+                                        .background(Color(.quaternarySystemFill))
+                                        .cornerRadius(6)
+                                }
+                            }
+                        }
+                        .padding(.vertical, Spacing.xs)
                     )
                 ),
                 SettingsItem(

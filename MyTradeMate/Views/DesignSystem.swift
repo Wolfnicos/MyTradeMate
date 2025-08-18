@@ -56,25 +56,25 @@ public struct CornerRadius {
 
 // MARK: - Colors
 public struct Brand {
-    static let blue = Color(light: Color(hex: "007AFF"), dark: Color(hex: "0A84FF"))
+    static let blue = Color.blue
 }
 
 public struct Accent {
-    static let green = Color(light: Color(hex: "34C759"), dark: Color(hex: "30D158"))
-    static let red = Color(light: Color(hex: "FF3B30"), dark: Color(hex: "FF453A"))
-    static let yellow = Color(light: Color(hex: "FFCC00"), dark: Color(hex: "FFD60A"))
+    static let green = Color.green
+    static let red = Color.red
+    static let yellow = Color.yellow
 }
 
 public struct Bg {
-    static let primary = Color(light: Color.white, dark: Color(hex: "000000"))
-    static let card = Color(light: Color(hex: "F2F2F7"), dark: Color(hex: "1C1C1E"))
-    static let secondary = Color(light: Color(hex: "F7F7F7"), dark: Color(hex: "2C2C2E"))
+    static let primary = Color(UIColor.systemBackground)
+    static let card = Color(UIColor.secondarySystemBackground)
+    static let secondary = Color(UIColor.tertiarySystemBackground)
 }
 
 public struct TextColor {
-    static let primary = Color(light: Color.black, dark: Color.white)
-    static let secondary = Color(light: Color(hex: "8E8E93"), dark: Color(hex: "98989D"))
-    static let tertiary = Color(light: Color(hex: "C7C7CC"), dark: Color(hex: "48484A"))
+    static let primary = Color(UIColor.label)
+    static let secondary = Color(UIColor.secondaryLabel)
+    static let tertiary = Color(UIColor.tertiaryLabel)
 }
 
 // MARK: - Typography System
@@ -784,144 +784,7 @@ struct OutlineButton: View {
 }
 
 // MARK: - Trading-Specific Buttons
-
-/// Buy button with consistent styling for trading actions
-struct BuyButton: View {
-    let title: String
-    let subtitle: String?
-    let size: ButtonSize
-    let isDisabled: Bool
-    let isLoading: Bool
-    let isDemoMode: Bool
-    let action: () -> Void
-    
-    init(
-        _ title: String = "BUY",
-        subtitle: String? = nil,
-        size: ButtonSize = .large,
-        isDisabled: Bool = false,
-        isLoading: Bool = false,
-        isDemoMode: Bool = false,
-        action: @escaping () -> Void
-    ) {
-        self.title = title
-        self.subtitle = subtitle
-        self.size = size
-        self.isDisabled = isDisabled
-        self.isLoading = isLoading
-        self.isDemoMode = isDemoMode
-        self.action = action
-    }
-    
-    var body: some View {
-        Button(action: {
-            guard !isDisabled && !isLoading else { return }
-            
-            if AppSettings.shared.haptics {
-                Haptics.playImpact(.medium)
-            }
-            
-            action()
-        }) {
-            VStack(spacing: 4) {
-                Text(title)
-                    .font(.system(size: size.fontSize, weight: .bold))
-                    .foregroundColor(.white)
-                
-                if let subtitle = subtitle {
-                    Text(subtitle)
-                        .font(.system(size: size.fontSize - 4, weight: .medium))
-                        .foregroundColor(.white.opacity(0.8))
-                } else if isDemoMode {
-                    Text("DEMO")
-                        .font(.system(size: size.fontSize - 4, weight: .medium))
-                        .foregroundColor(.white.opacity(0.8))
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: size.height)
-            .background(Accent.green)
-            .cornerRadius(size.cornerRadius)
-            .overlay(
-                RoundedRectangle(cornerRadius: size.cornerRadius)
-                    .stroke(isDemoMode ? Accent.yellow.opacity(0.5) : Color.clear, lineWidth: 2)
-            )
-            .opacity(isDisabled ? 0.5 : 1.0)
-        }
-        .disabled(isDisabled || isLoading)
-        .accessibilityLabel("\(title) button")
-        .accessibilityHint(isDemoMode ? "Demo mode - no real trade will be executed" : "")
-    }
-}
-
-/// Sell button with consistent styling for trading actions
-struct SellButton: View {
-    let title: String
-    let subtitle: String?
-    let size: ButtonSize
-    let isDisabled: Bool
-    let isLoading: Bool
-    let isDemoMode: Bool
-    let action: () -> Void
-    
-    init(
-        _ title: String = "SELL",
-        subtitle: String? = nil,
-        size: ButtonSize = .large,
-        isDisabled: Bool = false,
-        isLoading: Bool = false,
-        isDemoMode: Bool = false,
-        action: @escaping () -> Void
-    ) {
-        self.title = title
-        self.subtitle = subtitle
-        self.size = size
-        self.isDisabled = isDisabled
-        self.isLoading = isLoading
-        self.isDemoMode = isDemoMode
-        self.action = action
-    }
-    
-    var body: some View {
-        Button(action: {
-            guard !isDisabled && !isLoading else { return }
-            
-            if AppSettings.shared.haptics {
-                Haptics.playImpact(.medium)
-            }
-            
-            action()
-        }) {
-            VStack(spacing: 4) {
-                Text(title)
-                    .font(.system(size: size.fontSize, weight: .bold))
-                    .foregroundColor(.white)
-                
-                if let subtitle = subtitle {
-                    Text(subtitle)
-                        .font(.system(size: size.fontSize - 4, weight: .medium))
-                        .foregroundColor(.white.opacity(0.8))
-                } else if isDemoMode {
-                    Text("DEMO")
-                        .font(.system(size: size.fontSize - 4, weight: .medium))
-                        .foregroundColor(.white.opacity(0.8))
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: size.height)
-            .background(Accent.red)
-            .cornerRadius(size.cornerRadius)
-            .overlay(
-                RoundedRectangle(cornerRadius: size.cornerRadius)
-                    .stroke(isDemoMode ? Accent.yellow.opacity(0.5) : Color.clear, lineWidth: 2)
-            )
-            .opacity(isDisabled ? 0.5 : 1.0)
-        }
-        .disabled(isDisabled || isLoading)
-        .accessibilityLabel("\(title) button")
-        .accessibilityHint(isDemoMode ? "Demo mode - no real trade will be executed" : "")
-    }
-}
+// BuyButton and SellButton are defined in Views/Components/TradingButtons.swift
 
 // MARK: - Legacy Button Support (Deprecated - use StandardButton instead)
 
@@ -1545,36 +1408,7 @@ struct StandardToggleRow: View {
     }
 }
 
-/// Help icon component for toggle rows
-private struct HelpIconView: View {
-    let helpText: String
-    @State private var showTooltip = false
-    
-    var body: some View {
-        Button(action: {
-            showTooltip.toggle()
-        }) {
-            Image(systemName: "questionmark.circle")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundColor(TextColor.secondary)
-        }
-        .buttonStyle(PlainButtonStyle())
-        .popover(isPresented: $showTooltip, arrowEdge: .top) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(helpText)
-                    .font(.body)
-                    .foregroundColor(TextColor.primary)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .padding(16)
-            .frame(maxWidth: 280)
-            .presentationCompactAdaptation(.popover)
-        }
-        .accessibilityLabel("Help")
-        .accessibilityHint("Tap to show help information")
-    }
-}
+// Using HelpIconView from Views/Components/HelpIconView.swift
 
 // MARK: - Color Extensions
 extension Color {

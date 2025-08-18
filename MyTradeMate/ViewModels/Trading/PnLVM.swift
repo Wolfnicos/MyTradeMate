@@ -1,34 +1,8 @@
 import Foundation
 import Combine
+import SwiftUI
 
-enum PnLDateFilter: String, CaseIterable, Identifiable {
-    case all = "All Time"
-    case today = "Today"
-    case week = "7 Days"
-    case month = "30 Days"
-    case quarter = "90 Days"
-    
-    var id: String { rawValue }
-    
-    var dateRange: (Date?, Date?) {
-        let calendar = Calendar.current
-        let now = Date()
-        
-        switch self {
-        case .all:
-            return (nil, nil)
-        case .today:
-            let start = calendar.startOfDay(for: now)
-            return (start, now)
-        case .week:
-            return (calendar.date(byAdding: .day, value: -7, to: now), now)
-        case .month:
-            return (calendar.date(byAdding: .day, value: -30, to: now), now)
-        case .quarter:
-            return (calendar.date(byAdding: .day, value: -90, to: now), now)
-        }
-    }
-}
+
 
 @MainActor
 final class PnLVM: ObservableObject {
@@ -39,7 +13,6 @@ final class PnLVM: ObservableObject {
     @Published var timeframe: Timeframe = .h1
     @Published var isLoading: Bool = false
     @Published var performanceMetrics: PnLMetrics?
-    @Published var dateFilter: PnLDateFilter = .all
     @Published var symbolFilter: String = "All"
     @Published var availableSymbols: [String] = ["All"]
     
@@ -111,7 +84,7 @@ final class PnLVM: ObservableObject {
     
     private func refreshDemoData() async {
         // Use current equity from TradeManager as base, not hardcoded 10k
-        let baseEquity = await TradeManager.shared.equity
+        let baseEquity = await TradeManager.shared.getCurrentEquity()
         
         // Generate synthetic PnL data with smaller, more realistic fluctuations
         let now = Date()
@@ -152,19 +125,19 @@ final class PnLVM: ObservableObject {
     }
     
     private func refreshRealData() async {
-        let pos = await TradeManager.shared.position
-        let eq = await TradeManager.shared.equity
+        let pos = await TradeManager.shared.getCurrentPosition()
+        let eq = await TradeManager.shared.getCurrentEquity()
         let lp = await MarketPriceCache.shared.lastPrice
         await PnLManager.shared.resetIfNeeded()
         let snap = await PnLManager.shared.snapshot(price: lp, position: pos, equity: eq)
         
         // Get fills and calculate performance metrics with filters applied
         let fills = await TradeManager.shared.fillsSnapshot()
-        let filteredFills = self.applyFilters(to: fills)
+        let filteredFills = applySymbolFilter(to: fills)
         let metrics = PnLMetricsAggregator.compute(from: filteredFills)
         
         // Update available symbols
-        let symbols = Set(fills.map { $0.symbol.raw }).sorted()
+        let symbols = Set(fills.map { $0.pair.symbol }).sorted()
         
         await MainActor.run {
             self.today = snap.realizedToday
@@ -174,7 +147,7 @@ final class PnLVM: ObservableObject {
             self.availableSymbols = ["All"] + symbols
             
             // Add to raw history
-            self.rawHistory.append((snap.ts, self.equity))
+            self.rawHistory.append((Date(), self.equity))
             
             // Keep raw history reasonable size
             if self.rawHistory.count > 3600 { // 1 hour at 1s intervals
@@ -195,54 +168,33 @@ final class PnLVM: ObservableObject {
     private func generateDemoMetrics() -> PnLMetrics {
         // Generate realistic demo performance metrics based on actual equity
         let initialEquity = 10000.0 // Starting amount
+        let netPnL = equity - initialEquity
         return PnLMetrics(
-            totalPnL: equity - initialEquity,
-            totalPnLPercent: ((equity - initialEquity) / initialEquity) * 100,
-            winRate: 65.5,
-            totalTrades: 24,
-            winningTrades: 16,
-            losingTrades: 8,
-            averageWin: 145.60,
-            averageLoss: -89.30,
-            largestWin: 425.80,
-            largestLoss: -185.20,
-            profitFactor: 1.85,
-            sharpeRatio: 1.24,
-            maxDrawdown: -285.50,
-            maxDrawdownPercent: -2.85
+            trades: 24,
+            wins: 16,
+            losses: 8,
+            winRate: 0.655, // 65.5% as decimal
+            avgTradePnL: netPnL / 24.0,
+            avgWin: 145.60,
+            avgLoss: -89.30,
+            grossProfit: 16 * 145.60,
+            grossLoss: 8 * -89.30,
+            netPnL: netPnL,
+            maxDrawdown: -285.50
         )
     }
     
-    private func applyFilters(to fills: [OrderFill]) -> [OrderFill] {
-        var filtered = fills
-        
-        // Apply date filter
-        let (startDate, endDate) = dateFilter.dateRange
-        if let start = startDate {
-            filtered = filtered.filter { $0.timestamp >= start }
-        }
-        if let end = endDate {
-            filtered = filtered.filter { $0.timestamp <= end }
-        }
-        
-        // Apply symbol filter
-        if symbolFilter != "All" {
-            filtered = filtered.filter { $0.symbol.raw == symbolFilter }
-        }
-        
-        return filtered
-    }
-    
-    func updateDateFilter(_ newFilter: PnLDateFilter) {
-        dateFilter = newFilter
-        isLoading = true
-        refresh()
-    }
+
     
     func updateSymbolFilter(_ newSymbol: String) {
         symbolFilter = newSymbol
         isLoading = true
         refresh()
+    }
+    
+    private func applySymbolFilter(to fills: [OrderFill]) -> [OrderFill] {
+        guard symbolFilter != "All" else { return fills }
+        return fills.filter { $0.pair.symbol == symbolFilter }
     }
     
     private func aggregateHistory() {
@@ -285,9 +237,16 @@ final class PnLVM: ObservableObject {
             let isDemoMode = AppSettings.shared.tradingMode == .demo
             let isConnected = true // This would come from connection manager
             
+            let netPnL = self.equity - 10000.0 // Assuming initial equity of 10k
+            let pnlPercentage = netPnL / 10000.0 * 100
+            
             let widgetData = WidgetDataManager.shared.createWidgetData(
-                from: self,
-                tradeManager: TradeManager.shared,
+                pnl: netPnL,
+                pnlPercentage: pnlPercentage,
+                todayPnL: self.today,
+                unrealizedPnL: self.unrealized,
+                equity: self.equity,
+                openPositions: 1, // Placeholder
                 marketPrice: marketPrice,
                 priceChange: priceChange,
                 isDemoMode: isDemoMode,

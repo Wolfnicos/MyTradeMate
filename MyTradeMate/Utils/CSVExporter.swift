@@ -9,7 +9,7 @@ public enum CSVExporter {
         let header = "timestamp,symbol,side,qty,price,notional,fee,pnl,note\n"
         let rows = fills.map { f in
             let ts = ISO8601DateFormatter().string(from: f.timestamp)
-            let sym = escapeCSV(f.symbol.raw)
+            let sym = escapeCSV(f.pair.symbol)
             let side = f.side.rawValue
             let qty = f8(f.quantity)
             let price = f8(f.price)
@@ -30,11 +30,11 @@ public enum CSVExporter {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("\(fileName)_\(Int(Date().timeIntervalSince1970)).csv")
         
-        guard let data = csv.data(using: .utf8) else {
+        guard let data = csv.data(using: String.Encoding.utf8) else {
             throw ExportError.encodingFailed
         }
         
-        try data.write(to: url, options: .atomic)
+        try data.write(to: url, options: Data.WritingOptions.atomic)
         return url
     }
     

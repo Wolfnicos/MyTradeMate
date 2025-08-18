@@ -1,8 +1,12 @@
 import SwiftUI
 
 struct TradesView: View {
-    @StateObject private var vm = TradesVM()
-    @EnvironmentObject private var settings: AppSettings
+    @StateObject private var viewModel = ViewModelFactory.shared.makeTradesViewModel()
+    @ObservedObject private var appSettings: AppSettings
+    
+    init(appSettings: AppSettings = AppSettings.shared) {
+        self.appSettings = appSettings
+    }
     
     var body: some View {
         NavigationStack {
@@ -12,14 +16,14 @@ struct TradesView: View {
                     Image(systemName: "magnifyingglass")
                         .foregroundColor(.secondary)
                     
-                    TextField("Search symbols...", text: $vm.searchText)
+                    TextField("Search symbols...", text: $viewModel.searchText)
                         .textFieldStyle(.plain)
-                        .onChange(of: vm.searchText) { _, newValue in
-                            vm.updateSearch(newValue)
+                        .onChange(of: viewModel.searchText) { _, newValue in
+                            viewModel.updateSearch(newValue)
                         }
                     
-                    if !vm.searchText.isEmpty {
-                        Button(action: { vm.updateSearch("") }) {
+                    if !viewModel.searchText.isEmpty {
+                        Button(action: { viewModel.updateSearch("") }) {
                             Image(systemName: "xmark.circle.fill")
                                 .foregroundColor(.secondary)
                         }
@@ -39,14 +43,14 @@ struct TradesView: View {
                             .font(.caption)
                             .foregroundColor(.secondary)
                         
-                        Picker("Filter", selection: $vm.filterOption) {
+                        Picker("Filter", selection: $viewModel.filterOption) {
                             ForEach(TradeFilterOption.allCases) { option in
                                 Text(option.rawValue).tag(option)
                             }
                         }
                         .pickerStyle(.menu)
-                        .onChange(of: vm.filterOption) { _, newValue in
-                            vm.updateFilter(newValue)
+                        .onChange(of: viewModel.filterOption) { _, newValue in
+                            viewModel.updateFilter(newValue)
                         }
                     }
                     
@@ -55,14 +59,14 @@ struct TradesView: View {
                             .font(.caption)
                             .foregroundColor(.secondary)
                         
-                        Picker("Sort", selection: $vm.sortOption) {
+                        Picker("Sort", selection: $viewModel.sortOption) {
                             ForEach(TradeSortOption.allCases) { option in
                                 Text(option.rawValue).tag(option)
                             }
                         }
                         .pickerStyle(.menu)
-                        .onChange(of: vm.sortOption) { _, newValue in
-                            vm.updateSort(newValue)
+                        .onChange(of: viewModel.sortOption) { _, newValue in
+                            viewModel.updateSort(newValue)
                         }
                     }
                     
@@ -73,9 +77,9 @@ struct TradesView: View {
                 
                 ScrollView {
                     LazyVStack(spacing: 16) {
-                        if vm.isLoading {
+                        if viewModel.isLoading {
                             loadingView
-                        } else if vm.filteredTrades.isEmpty {
+                        } else if viewModel.filteredTrades.isEmpty {
                             emptyStateView
                         } else {
                             tradesListView
@@ -90,18 +94,18 @@ struct TradesView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Refresh") {
                         Task {
-                            await vm.refreshTrades()
+                            await viewModel.refreshTrades()
                         }
                     }
                 }
             }
             .refreshable {
-                await vm.refreshTrades()
+                await viewModel.refreshTrades()
             }
         }
         .onAppear {
             Task {
-                await vm.loadTrades()
+                await viewModel.loadTrades()
             }
         }
     }
@@ -127,7 +131,7 @@ struct TradesView: View {
                 useIllustration: true
             )
             
-            if settings.demoMode {
+            if appSettings.demoMode {
                 Text("Currently in demo mode")
                     .font(.caption)
                     .foregroundColor(.orange)
@@ -142,7 +146,7 @@ struct TradesView: View {
     }
     
     private var tradesListView: some View {
-        ForEach(vm.filteredTrades) { trade in
+        ForEach(viewModel.filteredTrades) { trade in
             TradeRowView(trade: trade)
         }
     }
@@ -172,7 +176,7 @@ struct TradeRowView: View {
                 }
                 
                 HStack {
-                    Text("Qty: \(trade.quantity, specifier: "%.4f")")
+                    Text("Qty: \(trade.qty, specifier: "%.4f")")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                     
@@ -184,18 +188,16 @@ struct TradeRowView: View {
                 }
                 
                 HStack {
-                    Text(trade.timestamp.formatted(date: .abbreviated, time: .shortened))
+                    Text(trade.date.formatted(date: .abbreviated, time: .shortened))
                         .font(.caption)
                         .foregroundColor(.secondary)
                     
                     Spacer()
                     
-                    if let pnl = trade.pnl {
-                        Text("\(pnl >= 0 ? "+" : "")\(pnl, specifier: "%.2f")")
-                            .font(.caption)
-                            .fontWeight(.medium)
-                            .foregroundColor(pnl >= 0 ? .green : .red)
-                    }
+                    Text("\(trade.pnl >= 0 ? "+" : "")\(trade.pnl, specifier: "%.2f")")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundColor(trade.pnl >= 0 ? .green : .red)
                 }
             }
         }
@@ -203,18 +205,6 @@ struct TradeRowView: View {
         .background(Color(.secondarySystemBackground))
         .cornerRadius(12)
     }
-}
-
-// MARK: - Mock Trade Model
-
-struct Trade: Identifiable {
-    let id = UUID()
-    let symbol: String
-    let side: OrderSide
-    let quantity: Double
-    let price: Double
-    let timestamp: Date
-    let pnl: Double?
 }
 
 #Preview {

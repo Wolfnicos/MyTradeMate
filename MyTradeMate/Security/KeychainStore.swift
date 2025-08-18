@@ -1,7 +1,7 @@
 import Foundation
 import Security
 
-actor KeychainStore {
+actor KeychainStore: KeychainStoreProtocol {
     static let shared = KeychainStore()
     
     private init() {}
@@ -14,48 +14,48 @@ actor KeychainStore {
     
     // MARK: - API Key Management
     
-    func saveAPIKey(_ key: String, for exchange: Exchange) throws {
+    func saveAPIKey(_ key: String, for exchange: Exchange) async throws {
         try saveItem(key, service: "apiKey.\(exchange.rawValue)")
     }
     
-    func saveAPISecret(_ secret: String, for exchange: Exchange) throws {
+    func saveAPISecret(_ secret: String, for exchange: Exchange) async throws {
         try saveItem(secret, service: "apiSecret.\(exchange.rawValue)")
     }
     
-    func getAPIKey(for exchange: Exchange) throws -> String {
+    func getAPIKey(for exchange: Exchange) async throws -> String {
         try getString(service: "apiKey.\(exchange.rawValue)")
     }
     
-    func getAPISecret(for exchange: Exchange) throws -> String {
+    func getAPISecret(for exchange: Exchange) async throws -> String {
         try getString(service: "apiSecret.\(exchange.rawValue)")
     }
     
-    func deleteCredentials(for exchange: Exchange) throws {
+    func deleteCredentials(for exchange: Exchange) async throws {
         try delete(service: "apiKey.\(exchange.rawValue)")
         try delete(service: "apiSecret.\(exchange.rawValue)")
     }
     
     // MARK: - Convenience Methods for Exchange Namespaces
     
-    func hasCredentials(for exchange: Exchange) -> Bool {
+    func hasCredentials(for exchange: Exchange) async -> Bool {
         do {
-            _ = try getAPIKey(for: exchange)
-            _ = try getAPISecret(for: exchange)
+            _ = try await getAPIKey(for: exchange)
+            _ = try await getAPISecret(for: exchange)
             return true
         } catch {
             return false
         }
     }
     
-    func saveExchangeCredentials(apiKey: String, apiSecret: String, for exchange: Exchange) throws {
-        try saveAPIKey(apiKey, for: exchange)
-        try saveAPISecret(apiSecret, for: exchange)
+    func saveExchangeCredentials(apiKey: String, apiSecret: String, for exchange: Exchange) async throws {
+        try await saveAPIKey(apiKey, for: exchange)
+        try await saveAPISecret(apiSecret, for: exchange)
     }
     
-    func getExchangeCredentials(for exchange: Exchange) throws -> (apiKey: String, apiSecret: String) {
-        let apiKey = try getAPIKey(for: exchange)
-        let apiSecret = try getAPISecret(for: exchange)
-        return (apiKey: apiKey, apiSecret: apiSecret)
+    func getExchangeCredentials(for exchange: Exchange) async throws -> ExchangeCredentials {
+        let apiKey = try await getAPIKey(for: exchange)
+        let apiSecret = try await getAPISecret(for: exchange)
+        return ExchangeCredentials(apiKey: apiKey, apiSecret: apiSecret)
     }
     
     // MARK: - Private Methods

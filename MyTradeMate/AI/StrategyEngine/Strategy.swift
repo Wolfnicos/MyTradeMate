@@ -13,8 +13,16 @@ public protocol Strategy {
 
 // MARK: - Strategy Signal
 public struct StrategySignal {
-    public enum Direction {
+    public enum Direction: CustomStringConvertible {
         case buy, sell, hold
+
+        public var description: String {
+            switch self {
+            case .buy: return "BUY"
+            case .sell: return "SELL"
+            case .hold: return "HOLD"
+            }
+        }
     }
     
     public let direction: Direction

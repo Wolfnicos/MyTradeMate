@@ -1,5 +1,23 @@
 import Foundation
 
+public enum SignalSide: String, Sendable {
+    case buy = "BUY"
+    case sell = "SELL"
+    case hold = "HOLD"
+}
+
+public struct PerTFSignal: Sendable {
+    public let timeframe: Timeframe
+    public let side: SignalSide
+    public let pUI: Double
+    
+    public init(timeframe: Timeframe, side: SignalSide, pUI: Double) {
+        self.timeframe = timeframe
+        self.side = side
+        self.pUI = pUI
+    }
+}
+
 public struct SimpleUIDisplayResult: Sendable {
     public let headline: String   // e.g., "SELL (77%)" or "HOLD / Neutral"
     public let detail: String     // compact breakdown line
@@ -11,13 +29,13 @@ public struct SimpleUIDisplayResult: Sendable {
 }
 
 public protocol SimpleUIAdapterProtocol {
-    func render(final: TradeSide, meta: Double, frames: [PerTFSignal]) -> SimpleUIDisplayResult
+    func render(final: SignalSide, meta: Double, frames: [PerTFSignal]) -> SimpleUIDisplayResult
 }
 
 public final class SimpleUIAdapter: SimpleUIAdapterProtocol {
     public init() {}
     
-    public func render(final: TradeSide, meta: Double, frames: [PerTFSignal]) -> SimpleUIDisplayResult {
+    public func render(final: SignalSide, meta: Double, frames: [PerTFSignal]) -> SimpleUIDisplayResult {
         let headline: String
         if final == .hold { 
             headline = "HOLD / Neutral" 

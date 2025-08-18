@@ -1,5 +1,74 @@
 import SwiftUI
 
+// MARK: - Simple Order Statistics
+struct SimpleOrderStatistics {
+    let totalOrders: Int
+    let activeOrders: Int
+    let completedOrders: Int
+    let failedOrders: Int
+    
+    var successRatePercentage: String {
+        let total = completedOrders + failedOrders
+        if total == 0 { return "0%" }
+        let rate = Double(completedOrders) / Double(total) * 100
+        return String(format: "%.1f%%", rate)
+    }
+    
+    var averageExecutionTimeFormatted: String {
+        // Simple placeholder since we don't track execution time
+        return "N/A"
+    }
+}
+
+// MARK: - Order Status Update View
+struct OrderStatusUpdateView: View {
+    let update: OrderStatusUpdate
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(statusColor)
+                .frame(width: 8, height: 8)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Order \(String(update.orderId.prefix(8)))")
+                    .font(.caption)
+                    .fontWeight(.medium)
+                
+                Text(update.status.rawValue.capitalized)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            Text(timeAgo(from: update.timestamp))
+                .font(.caption2)
+                .foregroundColor(.secondary)
+        }
+        .padding(.vertical, 4)
+    }
+    
+    private var statusColor: Color {
+        switch update.status {
+        case .pending: return .blue
+        case .filled: return .green
+        case .cancelled, .rejected: return .red
+        }
+    }
+    
+    private func timeAgo(from date: Date) -> String {
+        let interval = Date().timeIntervalSince(date)
+        if interval < 60 {
+            return "\(Int(interval))s ago"
+        } else if interval < 3600 {
+            return "\(Int(interval/60))m ago"
+        } else {
+            return "\(Int(interval/3600))h ago"
+        }
+    }
+}
+
 // MARK: - Active Orders View
 struct ActiveOrdersView: View {
     @StateObject private var orderTracker = OrderStatusTracker.shared
@@ -55,8 +124,8 @@ struct ActiveOrdersView: View {
     
     private var activeOrdersList: some View {
         VStack(spacing: 8) {
-            ForEach(Array(orderTracker.activeOrders.prefix(3))) { order in
-                CompactOrderStatusView(trackedOrder: order)
+            ForEach(Array(orderTracker.activeOrders.values.prefix(3))) { order in
+                OrderStatusUpdateView(update: order)
             }
             
             // Show more indicator if there are more than 3 orders
@@ -96,7 +165,14 @@ struct ActiveOrdersView: View {
 // MARK: - Order Statistics Widget
 struct OrderStatisticsWidget: View {
     @StateObject private var orderTracker = OrderStatusTracker.shared
-    @State private var statistics: OrderStatistics?
+    @State private var statistics: SimpleOrderStatistics? = nil
+
+struct OrderStatistics {
+    let totalOrders: Int
+    let successfulOrders: Int
+    let failedOrders: Int
+    let averageExecutionTime: TimeInterval
+}
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -119,12 +195,12 @@ struct OrderStatisticsWidget: View {
         .onReceive(orderTracker.$activeOrders) { _ in
             updateStatistics()
         }
-        .onReceive(orderTracker.$completedOrders) { _ in
+        .onReceive(orderTracker.$orderHistory) { _ in
             updateStatistics()
         }
     }
     
-    private func statisticsContent(_ stats: OrderStatistics) -> some View {
+    private func statisticsContent(_ stats: SimpleOrderStatistics) -> some View {
         VStack(spacing: 8) {
             HStack {
                 StatisticItem(
@@ -172,7 +248,15 @@ struct OrderStatisticsWidget: View {
     }
     
     private func updateStatistics() {
-        statistics = orderTracker.getOrderStatistics()
+        let completed = orderTracker.orderHistory.filter { $0.status == .filled }.count
+        let failed = orderTracker.orderHistory.filter { $0.status == .cancelled || $0.status == .rejected }.count
+        
+        statistics = SimpleOrderStatistics(
+            totalOrders: orderTracker.orderHistory.count,
+            activeOrders: orderTracker.activeOrders.count,
+            completedOrders: completed,
+            failedOrders: failed
+        )
     }
 }
 
@@ -211,7 +295,7 @@ struct RecentOrderUpdatesView: View {
                 
                 Spacer()
                 
-                if !orderTracker.recentStatusUpdates.isEmpty {
+                if !Array(orderTracker.orderHistory.suffix(10)).isEmpty {
                     Button("View All") {
                         showingAllUpdates = true
                     }
@@ -221,7 +305,7 @@ struct RecentOrderUpdatesView: View {
             }
             
             // Recent updates
-            if orderTracker.recentStatusUpdates.isEmpty {
+            if Array(orderTracker.orderHistory.suffix(10)).isEmpty {
                 emptyActivityView
             } else {
                 recentUpdatesList
@@ -237,12 +321,12 @@ struct RecentOrderUpdatesView: View {
     
     private var recentUpdatesList: some View {
         VStack(spacing: 6) {
-            ForEach(Array(orderTracker.recentStatusUpdates.prefix(5))) { update in
+            ForEach(Array(Array(orderTracker.orderHistory.suffix(10)).prefix(5))) { update in
                 RecentUpdateRow(update: update)
             }
             
-            if orderTracker.recentStatusUpdates.count > 5 {
-                Button("View \(orderTracker.recentStatusUpdates.count - 5) more updates") {
+            if Array(orderTracker.orderHistory.suffix(10)).count > 5 {
+                Button("View \(Array(orderTracker.orderHistory.suffix(10)).count - 5) more updates") {
                     showingAllUpdates = true
                 }
                 .font(.caption)
@@ -324,7 +408,7 @@ struct RecentUpdatesListView: View {
         NavigationView {
             ScrollView {
                 LazyVStack(spacing: 8) {
-                    ForEach(orderTracker.recentStatusUpdates) { update in
+                    ForEach(Array(orderTracker.orderHistory.suffix(10))) { update in
                         RecentUpdateRow(update: update)
                             .padding(.horizontal)
                     }

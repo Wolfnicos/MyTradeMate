@@ -79,16 +79,16 @@ public final class TradingService: ObservableObject {
     }
     
     public func closePosition(positionId: String) async throws {
-        if let index = positions.firstIndex(where: { $0.symbol.raw == positionId }) {
+        if let index = positions.firstIndex(where: { $0.pair.symbol == positionId }) {
             let position = positions[index]
             
             // Place opposite order to close position
             let oppositeSide: OrderSide = position.quantity > 0 ? .sell : .buy
             _ = try await placeOrder(
-                symbol: position.symbol.raw,
+                symbol: position.pair.symbol,
                 side: oppositeSide,
                 amount: abs(position.quantity),
-                price: position.avgPrice
+                price: position.averagePrice
             )
             
             positions.remove(at: index)
@@ -102,7 +102,7 @@ public final class TradingService: ObservableObject {
         guard let orderPrice = order.price else { return }
         
         // Simple position tracking
-        if let existingIndex = positions.firstIndex(where: { $0.symbol.raw == order.symbol }) {
+        if let existingIndex = positions.firstIndex(where: { $0.pair.symbol == order.symbol }) {
             var position = positions[existingIndex]
             
             let orderQuantity = order.side == .buy ? order.amount : -order.amount
@@ -113,11 +113,11 @@ public final class TradingService: ObservableObject {
                 positions.remove(at: existingIndex)
             } else {
                 // Update position
-                let totalValue = (position.avgPrice * position.quantity) + (orderPrice * orderQuantity)
+                let totalValue = (position.averagePrice * position.quantity) + (orderPrice * orderQuantity)
                 let newAvgPrice = totalValue / newQuantity
                 
                 position.quantity = newQuantity
-                position.avgPrice = newAvgPrice
+                position.averagePrice = newAvgPrice
                 positions[existingIndex] = position
             }
         } else {
@@ -125,9 +125,9 @@ public final class TradingService: ObservableObject {
             let symbol = Symbol(order.symbol, exchange: .binance) // Default to binance for demo
             let quantity = order.side == .buy ? order.amount : -order.amount
             let position = Position(
-                symbol: symbol,
+                pair: TradingPair(base: "BTC", quote: "USDT"), // Convert symbol to pair later
                 quantity: quantity,
-                avgPrice: orderPrice
+                averagePrice: orderPrice
             )
             positions.append(position)
         }
@@ -141,8 +141,8 @@ public final class TradingService: ObservableObject {
         // Position price updates are handled by PnLManager and TradeManager
         // This is a simplified implementation for compatibility
         for position in positions {
-            if position.symbol.raw == symbol {
-                _ = position.unrealizedPnL(mark: currentPrice)
+            if position.pair.symbol == symbol {
+                _ = position.unrealizedPnL(at: currentPrice)
                 // PnL is calculated but not stored in Position struct
             }
         }

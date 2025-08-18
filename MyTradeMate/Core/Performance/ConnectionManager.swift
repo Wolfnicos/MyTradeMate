@@ -1,12 +1,13 @@
 import Foundation
 import Network
 import OSLog
+import UIKit
 
-private let logger = Logger(subsystem: "com.mytrademate", category: "ConnectionManager")
+private let logger = os.Logger(subsystem: Bundle.main.bundleIdentifier ?? "MyTradeMate", category: "ConnectionManager")
 
 /// Manages WebSocket connections intelligently based on app state and network conditions
 @MainActor
-final class ConnectionManager: ObservableObject {
+public final class ConnectionManager: ObservableObject {
     static let shared = ConnectionManager()
     
     @Published var networkStatus: NetworkStatus = .unknown
@@ -64,7 +65,7 @@ final class ConnectionManager: ObservableObject {
         }
     }
     
-    enum ConnectionPriority: Int, CaseIterable {
+    public enum ConnectionPriority: Int, CaseIterable {
         case critical = 0    // Always maintain (trading data)
         case high = 1        // Maintain when possible (market data)
         case medium = 2      // Maintain on good connections (news, social)
@@ -155,7 +156,7 @@ final class ConnectionManager: ObservableObject {
         }
         
         if previousStatus != networkStatus {
-            logger.info("Network status changed: \(previousStatus.description) -> \(networkStatus.description)")
+            logger.info("Network status changed: \(previousStatus.description) -> \(self.networkStatus.description)")
             handleNetworkStatusChange()
         }
     }

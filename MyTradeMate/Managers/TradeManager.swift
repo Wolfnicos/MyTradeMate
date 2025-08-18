@@ -1,5 +1,33 @@
 import Foundation
 import Combine
+import SwiftUI
+
+// MARK: - Trade Error
+enum TradeError: Error {
+    case liveTradeNotImplemented
+    case invalidAmount
+}
+
+// MARK: - Trade Result
+public struct TradeResult: Codable {
+    let orderId: String
+    let symbol: String
+    let side: TradeSide
+    let executedAmount: Double
+    let executedPrice: Double
+    let status: Order.Status
+    let timestamp: Date
+    
+    public init(orderId: String, symbol: String, side: TradeSide, executedAmount: Double, executedPrice: Double, status: Order.Status, timestamp: Date) {
+        self.orderId = orderId
+        self.symbol = symbol
+        self.side = side
+        self.executedAmount = executedAmount
+        self.executedPrice = executedPrice
+        self.status = status
+        self.timestamp = timestamp
+    }
+}
 
 @MainActor
 final class TradeManager: ObservableObject {
@@ -9,9 +37,45 @@ final class TradeManager: ObservableObject {
     @Published var currentPosition: TradingPosition?
     @Published var isExecutingTrade = false
     
-    private let settings = AppSettings.shared
+    private let settings: AppSettings
     
-    private init() {}
+    init(settings: AppSettings = AppSettings.shared) {
+        self.settings = settings
+    }
+    
+    // NEW - Enhanced executeOrder method for complete integration
+    func executeOrder(_ request: TradeRequest, tradingMode: TradingMode) async throws -> OrderFill {
+        isExecutingTrade = true
+        defer { isExecutingTrade = false }
+        
+        // Validate request
+        guard request.amount > 0 else {
+            throw TradeError.invalidAmount
+        }
+        
+        // Simulate network delay for realism
+        try await Task.sleep(nanoseconds: UInt64.random(in: 500_000_000...2_000_000_000)) // 0.5-2 seconds
+        
+        let executedPrice = calculateExecutionPrice(request: request, tradingMode: tradingMode)
+        let fee = calculateTradingFee(amount: request.amount, price: executedPrice)
+        let executedQuantity = request.amount / executedPrice // Convert notional to quantity
+        
+        let orderFill = OrderFill(
+            id: UUID(),
+            pair: request.tradingPair,
+            side: request.side.toOrderSide,
+            quantity: executedQuantity,
+            price: executedPrice,
+            fee: fee,
+            timestamp: Date(),
+            orderType: request.type
+        )
+        
+        // Update position and equity based on trading mode
+        await updatePositionAfterTrade(orderFill: orderFill, tradingMode: tradingMode)
+        
+        return orderFill
+    }
     
     func executeTrade(_ request: TradeRequest) async throws -> TradeResult {
         isExecutingTrade = true
@@ -45,7 +109,7 @@ final class TradeManager: ObservableObject {
             side: request.side,
             executedAmount: executedAmount,
             executedPrice: executedPrice,
-            status: .filled,
+            status: Order.Status.filled,
             timestamp: Date()
         )
     }
@@ -65,7 +129,7 @@ final class TradeManager: ObservableObject {
             side: request.side,
             executedAmount: executedAmount,
             executedPrice: executedPrice,
-            status: .filled,
+            status: Order.Status.filled,
             timestamp: Date()
         )
     }
@@ -121,7 +185,22 @@ final class TradeManager: ObservableObject {
     }
     
     func getCurrentPosition() async -> TradingPosition? {
+        // Return demo position when in demo mode
+        if settings.demoMode {
+            return generateDemoPosition()
+        }
         return currentPosition
+    }
+    
+    private func generateDemoPosition() -> TradingPosition {
+        return TradingPosition(
+            id: "DEMO_POSITION_001",
+            symbol: "BTC/USDT",
+            quantity: 0.15, // Long position
+            averagePrice: 45000.0,
+            currentPrice: 45500.0, // Slightly higher for profit
+            timestamp: Date()
+        )
     }
     
     func getCurrentEquity() async -> Double {
@@ -150,16 +229,93 @@ final class TradeManager: ObservableObject {
     }
     
     func fillsSnapshot() async -> [OrderFill] {
+        // Return demo fills when in demo mode
+        if settings.demoMode {
+            return generateDemoFills()
+        }
         // Return empty array for now - in production this would return actual fills
         return []
     }
     
+    private func generateDemoFills() -> [OrderFill] {
+        let now = Date()
+        return [
+            OrderFill(
+                pair: .btcUsdt,
+                side: .buy,
+                quantity: 0.1,
+                price: 45000.0,
+                fee: 0.0,
+                timestamp: now.addingTimeInterval(-2 * 3600),
+                orderType: .market,
+                originalRequest: OrderRequest(
+                    pair: .btcUsdt,
+                    side: .buy,
+                    type: .market,
+                    amountMode: .fixedNotional,
+                    amountValue: 4500.0,
+                    leverage: nil,
+                    limitPrice: nil,
+                    stopPrice: nil,
+                    timeInForce: .goodTillCanceled
+                )
+            ),
+            OrderFill(
+                pair: .btcUsdt,
+                side: .sell,
+                quantity: 0.05,
+                price: 46000.0,
+                fee: 0.0,
+                timestamp: now.addingTimeInterval(-1 * 3600),
+                orderType: .market,
+                originalRequest: OrderRequest(
+                    pair: .btcUsdt,
+                    side: .sell,
+                    type: .market,
+                    amountMode: .fixedNotional,
+                    amountValue: 2300.0,
+                    leverage: nil,
+                    limitPrice: nil,
+                    stopPrice: nil,
+                    timeInForce: .goodTillCanceled
+                )
+            ),
+            OrderFill(
+                pair: .btcUsdt,
+                side: .buy,
+                quantity: 0.2,
+                price: 44000.0,
+                fee: 0.0,
+                timestamp: now.addingTimeInterval(-30 * 60),
+                orderType: .market,
+                originalRequest: OrderRequest(
+                    pair: .btcUsdt,
+                    side: .buy,
+                    type: .market,
+                    amountMode: .fixedNotional,
+                    amountValue: 8800.0,
+                    leverage: nil,
+                    limitPrice: nil,
+                    stopPrice: nil,
+                    timeInForce: .goodTillCanceled
+                )
+            )
+        ]
+    }
+    
     func manualOrder(_ orderRequest: OrderRequest) async throws -> OrderFill {
         // Convert OrderRequest to TradeRequest for internal processing
+        // Calculate quantity from the order request
+        let quantity = orderRequest.calculateQuantity(
+            currentPrice: 50000.0, // Default price for calculation
+            equity: 10000.0, // Default equity
+            stopDistance: nil
+        )
+        
         let tradeRequest = TradeRequest(
-            symbol: orderRequest.symbol.raw,
+            symbol: orderRequest.pair.symbol,
             side: orderRequest.side == .buy ? .buy : .sell,
-            amount: orderRequest.quantity,
+            amount: quantity,
             price: orderRequest.limitPrice ?? 0.0, // Use limit price or 0 for market
             type: orderRequest.limitPrice != nil ? .limit : .market,
             timeInForce: .goodTillCanceled
@@ -170,37 +326,17 @@ final class TradeManager: ObservableObject {
         
         // Convert result to OrderFill
         return OrderFill(
-            id: UUID(),
-            symbol: orderRequest.symbol,
+            pair: orderRequest.pair,
             side: orderRequest.side,
-            quantity: orderRequest.quantity,
+            quantity: quantity,
             price: result.executedPrice,
-            timestamp: result.timestamp
+            orderType: orderRequest.type,
+            originalRequest: orderRequest
         )
     }
 }
 
 // MARK: - Supporting Types
-
-public struct TradeResult: Codable {
-    let orderId: String
-    let symbol: String
-    let side: TradeSide
-    let executedAmount: Double
-    let executedPrice: Double
-    let status: OrderStatus
-    let timestamp: Date
-}
-
-public enum OrderStatus: String, Codable {
-    case pending = "PENDING"
-    case partiallyFilled = "PARTIALLY_FILLED"
-    case filled = "FILLED"
-    case canceled = "CANCELED"
-    case rejected = "REJECTED"
-}
-
-
 
 public struct TradingPosition: Codable, Identifiable {
     public let id: String
@@ -245,25 +381,85 @@ public enum CloseReason: String, Codable {
     case liquidation = "liquidation"
 }
 
-public enum TradeError: LocalizedError {
-    case liveTradeNotImplemented
-    case insufficientBalance
-    case invalidAmount
-    case marketClosed
-    case apiError(String)
+// MARK: - Helper Methods for Enhanced Integration
+extension TradeManager {
     
-    public var errorDescription: String? {
-        switch self {
-        case .liveTradeNotImplemented:
-            return "Live trading is not yet implemented"
-        case .insufficientBalance:
-            return "Insufficient balance for this trade"
-        case .invalidAmount:
-            return "Invalid trade amount"
-        case .marketClosed:
-            return "Market is currently closed"
-        case .apiError(let message):
-            return "API Error: \(message)"
+    // Calculate execution price with realistic spread simulation
+    private func calculateExecutionPrice(request: TradeRequest, tradingMode: TradingMode) -> Double {
+        let basePrice = request.price
+        
+        switch tradingMode {
+        case .demo:
+            // Demo mode: Add some random variation for realism
+            return basePrice + Double.random(in: -basePrice * 0.001...basePrice * 0.001) // ±0.1% variation
+        case .paper:
+            // Paper trading: Use market price with minimal spread
+            let spread = basePrice * 0.0005 // 0.05% spread
+            return request.side == .buy ? basePrice + spread : basePrice - spread
+        case .live:
+            // Live trading: Would use actual exchange prices
+            let spread = basePrice * 0.001 // 0.1% spread
+            return request.side == .buy ? basePrice + spread : basePrice - spread
+        }
+    }
+    
+    // Calculate trading fee based on trading mode
+    private func calculateTradingFee(amount: Double, price: Double) -> Double {
+        let notionalValue = amount * price
+        
+        switch settings.demoMode {
+        case true:
+            return notionalValue * 0.001 // 0.1% demo fee
+        case false:
+            if settings.paperTrading {
+                return notionalValue * 0.001 // 0.1% paper trading fee
+            } else {
+                return notionalValue * 0.002 // 0.2% live trading fee
+            }
+        }
+    }
+    
+    // Update position after trade execution
+    private func updatePositionAfterTrade(orderFill: OrderFill, tradingMode: TradingMode) async {
+        let positionChange = orderFill.side == .buy ? orderFill.quantity : -orderFill.quantity
+        
+        if let existingPosition = currentPosition {
+            let newQuantity = existingPosition.quantity + positionChange
+            
+            if abs(newQuantity) < 0.000001 { // Close to zero - position closed
+                currentPosition = nil
+            } else {
+                // Update average price calculation
+                let totalValue = existingPosition.quantity * existingPosition.averagePrice + positionChange * orderFill.price
+                let averagePrice = newQuantity != 0 ? totalValue / newQuantity : orderFill.price
+                
+                currentPosition = TradingPosition(
+                    id: existingPosition.id,
+                    symbol: orderFill.pair.symbol,
+                    quantity: newQuantity,
+                    averagePrice: averagePrice,
+                    currentPrice: orderFill.price,
+                    timestamp: Date()
+                )
+            }
+        } else if positionChange != 0 {
+            // Create new position
+            currentPosition = TradingPosition(
+                id: UUID().uuidString,
+                symbol: orderFill.pair.symbol,
+                quantity: positionChange,
+                averagePrice: orderFill.price,
+                currentPrice: orderFill.price,
+                timestamp: Date()
+            )
+        }
+        
+        // Update equity by subtracting fees
+        equity -= orderFill.fee
+        
+        // Ensure equity doesn't go negative in demo mode
+        if tradingMode == .demo && equity < 0 {
+            equity = 100.0 // Reset to minimum demo balance
         }
     }
 }

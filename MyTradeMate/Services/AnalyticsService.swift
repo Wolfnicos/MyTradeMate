@@ -9,7 +9,7 @@ public final class AnalyticsService: ObservableObject {
     public static let shared = AnalyticsService()
     
     @Published public var tradingStats: TradingStats = TradingStats()
-    @Published public var performanceMetrics: PerformanceMetrics = PerformanceMetrics()
+    @Published public var signalPerformanceMetrics: SignalPerformanceMetrics = SignalPerformanceMetrics()
     
     private let logger = os.Logger(subsystem: "com.mytrademate", category: "Analytics")
     private var cancellables = Set<AnyCancellable>()
@@ -47,17 +47,17 @@ public final class AnalyticsService: ObservableObject {
     public func recordSignalAccuracy(predicted: String, actual: String, confidence: Double) {
         let isCorrect = predicted == actual
         
-        performanceMetrics.totalSignals += 1
+        signalPerformanceMetrics.totalSignals += 1
         if isCorrect {
-            performanceMetrics.correctSignals += 1
+            signalPerformanceMetrics.correctSignals += 1
         }
         
-        performanceMetrics.accuracy = Double(performanceMetrics.correctSignals) / Double(performanceMetrics.totalSignals)
-        performanceMetrics.averageConfidence = (performanceMetrics.averageConfidence + confidence) / 2.0
+        signalPerformanceMetrics.accuracy = Double(signalPerformanceMetrics.correctSignals) / Double(signalPerformanceMetrics.totalSignals)
+        signalPerformanceMetrics.averageConfidence = (signalPerformanceMetrics.averageConfidence + confidence) / 2.0
         
         logger
             .info(
-                "Signal accuracy updated: \(String(format: "%.1f", self.performanceMetrics.accuracy * 100))%"
+                "Signal accuracy updated: \(String(format: "%.1f", self.signalPerformanceMetrics.accuracy * 100))%"
             )
     }
     
@@ -247,7 +247,7 @@ public struct TradingStats: Codable {
     public init() {}
 }
 
-public struct PerformanceMetrics: Codable {
+public struct SignalPerformanceMetrics: Codable {
     public var totalSignals: Int = 0
     public var correctSignals: Int = 0
     public var accuracy: Double = 0

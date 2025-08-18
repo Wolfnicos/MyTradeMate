@@ -35,79 +35,10 @@ enum AppTab: String, CaseIterable {
     }
 }
 
-@MainActor
-final class NavigationCoordinator: ObservableObject {
-    @Published var dashboardPath = NavigationPath()
-    @Published var tradesPath = NavigationPath()
-    @Published var pnlPath = NavigationPath()
-    @Published var strategiesPath = NavigationPath()
-    @Published var settingsPath = NavigationPath()
-    
-    func navigate(to destination: NavigationDestination, in tab: AppTab) {
-        switch tab {
-        case .dashboard:
-            dashboardPath.append(destination)
-        case .trades:
-            tradesPath.append(destination)
-        case .pnl:
-            pnlPath.append(destination)
-        case .strategies:
-            strategiesPath.append(destination)
-        case .settings:
-            settingsPath.append(destination)
-        }
-        
-        Log.userAction("Navigated to \(destination) in \(tab) tab")
-    }
-    
-    func popToRoot(in tab: AppTab) {
-        switch tab {
-        case .dashboard:
-            dashboardPath.removeLast(dashboardPath.count)
-        case .trades:
-            tradesPath.removeLast(tradesPath.count)
-        case .pnl:
-            pnlPath.removeLast(pnlPath.count)
-        case .strategies:
-            strategiesPath.removeLast(strategiesPath.count)
-        case .settings:
-            settingsPath.removeLast(settingsPath.count)
-        }
-    }
-    
-    @ViewBuilder
-    func destination(for destination: NavigationDestination) -> some View {
-        switch destination {
-        case .dashboard:
-            DashboardView()
-        case .trades:
-            TradesView()
-        case .tradeDetail(let tradeId):
-            Text("Trade Detail: \(tradeId)")
-                .navigationTitle("Trade Details")
-        case .pnl:
-            PnLDetailView()
-        case .strategies:
-            StrategiesView()
-        case .strategyDetail(let strategyId):
-            Text("Strategy Detail: \(strategyId)")
-                .navigationTitle("Strategy Details")
-        case .settings:
-            Text("Settings")
-        case .exchangeKeys:
-            Text("Exchange Keys")
-        case .exchangeKeyEdit(let exchange):
-            Text("Edit \(exchange.displayName) Keys")
-                .navigationTitle("Edit Keys")
-        case .about:
-            Text("About MyTradeMate")
-                .navigationTitle("About")
-        }
-    }
-}
+// NavigationCoordinator moved to Core/NavigationCoordinator.swift
 
 struct RootTabs: View {
-    @StateObject private var settings = AppSettings.shared
+    @StateObject private var appSettings = AppSettings.shared
     @StateObject private var themeManager = ThemeManager.shared
     @StateObject private var errorManager = ErrorManager.shared
     @StateObject private var navigationCoordinator = NavigationCoordinator()
@@ -155,7 +86,8 @@ struct RootTabs: View {
             }
             
             NavigationStack(path: $navigationCoordinator.settingsPath) {
-                SettingsView()
+                Text("Settings")
+                    .navigationTitle("Settings")
                     .navigationDestination(for: NavigationDestination.self) { destination in
                         navigationCoordinator.destination(for: destination)
                     }
@@ -164,16 +96,13 @@ struct RootTabs: View {
                 Label("Settings", systemImage: "gearshape")
             }
         }
-        .environmentObject(settings)
+        .environmentObject(appSettings)
         .environmentObject(themeManager)
         .environmentObject(errorManager)
         .environmentObject(navigationCoordinator)
         .preferredColorScheme(themeManager.colorScheme)
         .withErrorHandling()
         .onAppear {
-            // Validate settings on app launch
-            SettingsValidator.autoCorrectSettings()
-            
             // Log app launch
             Log.userAction("App launched")
         }

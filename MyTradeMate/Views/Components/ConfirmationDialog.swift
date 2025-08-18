@@ -27,7 +27,7 @@ struct ConfirmationDialog: View {
         isExecuting: Bool = false,
         onConfirm: @escaping () -> Void,
         onCancel: @escaping () -> Void,
-        @ViewBuilder content: (() -> AnyView)? = nil
+        content: (() -> AnyView)? = nil
     ) {
         self.title = title
         self.message = message
@@ -245,5 +245,3 @@ extension ConfirmationDialog {
     .padding()
     .background(Color.black.opacity(0.3))
 }
-</content>
-</invoke>

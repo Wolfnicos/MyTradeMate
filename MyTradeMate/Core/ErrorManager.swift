@@ -3,7 +3,7 @@ import SwiftUI
 
 /// Centralized error management for the MyTradeMate app
 @MainActor
-final class ErrorManager: ObservableObject {
+final class ErrorManager: ObservableObject, ErrorManagerProtocol {
     static let shared = ErrorManager()
     
     @Published var currentError: AppError?
@@ -18,12 +18,22 @@ final class ErrorManager: ObservableObject {
     
     // MARK: - Error Handling
     
-    func handle(_ error: Error, context: String = "") {
-        let appError = AppError.from(error, context: context)
-        handle(appError, context: context)
+    // MARK: - Protocol Conformance (required methods)
+    nonisolated func handle(_ error: Error, context: String) {
+        Task { @MainActor in
+            let appError = AppError.from(error, context: context)
+            self.handleAppError(appError, context: context)
+        }
     }
     
-    func handle(_ error: AppError, context: String = "") {
+    nonisolated func handle(_ error: AppError, context: String) {
+        Task { @MainActor in
+            self.handleAppError(error, context: context)
+        }
+    }
+    
+    // Internal method that does the actual work
+    private func handleAppError(_ error: AppError, context: String) {
         currentError = error
         showErrorAlert = true
         
@@ -50,9 +60,15 @@ final class ErrorManager: ObservableObject {
         }
     }
     
-    func clearCurrentError() {
+    // MARK: - Protocol Required Methods
+    func clearError() {
         currentError = nil
         showErrorAlert = false
+    }
+    
+    // MARK: - Convenience Methods
+    func clearCurrentError() {
+        clearError()
     }
     
     func clearHistory() {

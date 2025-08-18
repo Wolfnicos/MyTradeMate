@@ -5,10 +5,9 @@ import SwiftUI
 // MARK: - Market Data Manager
 @MainActor
 final class MarketDataManager: ObservableObject {
-    // MARK: - Injected Dependencies
-    @Injected private var marketDataService: MarketDataServiceProtocol
-    @Injected private var settings: AppSettingsProtocol
-    @Injected private var errorManager: ErrorManagerProtocol
+    // MARK: - Dependencies
+    private let marketDataService = MarketDataService.shared
+    private let errorManager = ErrorManager.shared
     
     // MARK: - Published Properties
     @Published var price: Double = 0.0
@@ -107,13 +106,13 @@ final class MarketDataManager: ObservableObject {
     // MARK: - Data Loading
     func loadMarketData() async {
         do {
-            if settings.demoMode {
+            if AppSettings.shared.demoMode {
                 generateMockData()
                 Log.app.info("Loaded demo market data")
-            } else if settings.liveMarketData {
+            } else if AppSettings.shared.liveMarketData {
                 // Load real market data
                 let marketData = try await marketDataService.fetchCandles(
-                    symbol: settings.defaultSymbol,
+                    symbol: AppSettings.shared.defaultSymbol,
                     timeframe: timeframe
                 )
                 

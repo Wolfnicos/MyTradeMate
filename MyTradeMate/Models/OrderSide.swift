@@ -1,6 +1,1 @@
-import Foundation
-
-public enum OrderSide: String, Codable, Sendable {
-    case buy
-    case sell
-}
+// Using OrderSide from Models/Trading/OrderModels.swift

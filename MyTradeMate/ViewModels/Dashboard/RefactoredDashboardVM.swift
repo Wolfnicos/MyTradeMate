@@ -51,7 +51,7 @@ final class RefactoredDashboardVM: ObservableObject {
     var lastUpdatedString: String { marketDataManager.lastUpdatedString }
     
     // MARK: - Legacy Compatibility Properties
-    var precisionMode: Bool = false
+    @Published var precisionMode: Bool = false
     var isPrecisionMode: Bool {
         get { precisionMode }
         set { precisionMode = newValue }

@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - Trade Request
 public struct TradeRequest: Codable, Identifiable {
-    public let id = UUID()
+    public let id: UUID
     public let symbol: String
     public let side: TradeSide
     public let amount: Double
@@ -11,7 +11,14 @@ public struct TradeRequest: Codable, Identifiable {
     public let timeInForce: TimeInForce
     public let timestamp: Date
     
-    public init(symbol: String, side: TradeSide, amount: Double, price: Double, type: OrderType, timeInForce: TimeInForce) {
+    // NEW - Enhanced properties for complete integration
+    public let tradingPair: TradingPair
+    public let amountMode: AmountMode
+    public let quoteCurrency: QuoteCurrency
+    
+    // Legacy initializer for compatibility
+    public init(symbol: String, side: TradeSide, amount: Double, price: Double, type: OrderType, timeInForce: TimeInForce, id: UUID = UUID()) {
+        self.id = id
         self.symbol = symbol
         self.side = side
         self.amount = amount
@@ -19,6 +26,27 @@ public struct TradeRequest: Codable, Identifiable {
         self.type = type
         self.timeInForce = timeInForce
         self.timestamp = Date()
+        
+        // Default values for new properties
+        self.tradingPair = TradingPair.btcUsdt
+        self.amountMode = .fixedNotional
+        self.quoteCurrency = .USD
+    }
+    
+    // NEW - Enhanced initializer for complete integration
+    public init(side: OrderSide, tradingPair: TradingPair, amountMode: AmountMode, amount: Double, price: Double, quoteCurrency: QuoteCurrency, type: OrderType = .market, timeInForce: TimeInForce = .goodTillCanceled, id: UUID = UUID()) {
+        self.id = id
+        self.symbol = tradingPair.symbol
+        self.side = TradeSide(from: side)
+        self.amount = amount
+        self.price = price
+        self.type = type
+        self.timeInForce = timeInForce
+        self.timestamp = Date()
+        
+        self.tradingPair = tradingPair
+        self.amountMode = amountMode
+        self.quoteCurrency = quoteCurrency
     }
     
     public var displayAmount: String {
@@ -42,6 +70,16 @@ public struct TradeRequest: Codable, Identifiable {
 public enum TradeSide: String, Codable, CaseIterable {
     case buy = "BUY"
     case sell = "SELL"
+    
+    // NEW - Initialize from OrderSide
+    public init(from orderSide: OrderSide) {
+        switch orderSide {
+        case .buy:
+            self = .buy
+        case .sell:
+            self = .sell
+        }
+    }
     
     public var displayName: String {
         switch self {

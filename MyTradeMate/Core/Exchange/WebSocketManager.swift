@@ -26,18 +26,18 @@ public final class WebSocketManager {
     
     // MARK: - Configuration
     public struct Configuration {
-        let url: URL
-        let subscribeMessage: String?
-        let name: String
-        let verboseLogging: Bool
-        let priority: ConnectionManager.ConnectionPriority
+        public let url: URL
+        public let subscribeMessage: String?
+        public let name: String
+        public let verboseLogging: Bool
+        public let priority: ConnectionManager.ConnectionPriority
         
-        public init(url: URL, subscribeMessage: String? = nil, name: String, verboseLogging: Bool = false, priority: ConnectionManager.ConnectionPriority = .high) {
+        public init(url: URL, subscribeMessage: String? = nil, name: String, verboseLogging: Bool = false, priority: ConnectionManager.ConnectionPriority? = nil) {
             self.url = url
             self.subscribeMessage = subscribeMessage
             self.name = name
             self.verboseLogging = verboseLogging
-            self.priority = priority
+            self.priority = priority ?? .high
         }
     }
     

@@ -2,38 +2,10 @@ import SwiftUI
 import Charts
 import UIKit
 
-// Temporary Spacing and CornerRadius structs for this file until DesignSystem is properly imported
-private struct Spacing {
-    static let xs: CGFloat = 4
-    static let sm: CGFloat = 8
-    static let md: CGFloat = 12
-    static let lg: CGFloat = 16
-    static let xl: CGFloat = 20
-    static let xxl: CGFloat = 24
-    static let xxxl: CGFloat = 32
-    static let sectionSpacing: CGFloat = 20
-    static let cardPadding: CGFloat = 16
-}
-
-private struct CornerRadius {
-    static let xs: CGFloat = 4
-    static let sm: CGFloat = 6
-    static let md: CGFloat = 8
-    static let lg: CGFloat = 12
-    static let xl: CGFloat = 16
-    static let xxl: CGFloat = 20
-}
+// Using Spacing and CornerRadius from DesignSystem.swift
 
 // MARK: - Chart Data Models
-struct CandleData: Identifiable {
-    let id = UUID()
-    let timestamp: Date
-    let open: Double
-    let high: Double
-    let low: Double
-    let close: Double
-    let volume: Double
-}
+// CandleData is defined in MarketDataManager.swift
 
 // MARK: - Simple Line Chart (simplified for now)
 struct CandleChartView: View {
@@ -259,14 +231,38 @@ struct DashboardView: View {
     private var headerSection: some View {
         HStack {
             VStack(alignment: .leading, spacing: Spacing.xs) {
-                Text("BTC/USDT")
+                Text(vm.selectedTradingPair.displayName)
                     .headlineStyle()
                 
-                Text("Binance")
+                Text(vm.selectedExchange.displayName)
                     .footnoteStyle()
             }
             
             Spacer()
+            
+            // Currency selector - NEW
+            Menu {
+                Button("USD ($)") {
+                    vm.selectedQuoteCurrency = .USD
+                }
+                
+                Button("EUR (€)") {
+                    vm.selectedQuoteCurrency = .EUR
+                }
+            } label: {
+                HStack(spacing: Spacing.xs) {
+                    Text(vm.selectedQuoteCurrency.symbol)
+                        .caption1MediumStyle()
+                    
+                    Image(systemName: "chevron.down")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.horizontal, Spacing.sm)
+                .padding(.vertical, Spacing.xs)
+                .background(Color(.tertiarySystemBackground))
+                .cornerRadius(CornerRadius.sm)
+            }
             
             // Trading Mode Indicator
             tradingModeIndicator
@@ -381,17 +377,23 @@ struct DashboardView: View {
                 currentPrice: vm.price
             )
             
-            // Timeframe selector
-            HStack {
-                Text("Timeframe")
-                    .footnoteMediumStyle()
-                
-                Spacer()
+            // Timeframe selector - ENHANCED
+            VStack(alignment: .leading, spacing: Spacing.sm) {
+                HStack {
+                    Text("Timeframe")
+                        .footnoteMediumStyle()
+                    
+                    Spacer()
+                    
+                    Text("Each timeframe analyzes different market patterns")
+                        .caption2Style()
+                        .foregroundColor(.secondary)
+                }
                 
                 Picker("Timeframe", selection: $vm.timeframe) {
-                    Text("5m").tag(Timeframe.m5)
-                    Text("1h").tag(Timeframe.h1)
-                    Text("4h").tag(Timeframe.h4)
+                    ForEach(Timeframe.allCases, id: \.rawValue) { tf in
+                        Text(tf.displayName).tag(tf)
+                    }
                 }
                 .pickerStyle(.segmented)
             }
@@ -425,6 +427,9 @@ struct DashboardView: View {
             }
         }
         .onChange(of: vm.timeframe) { _ in
+            if AppSettings.shared.haptics {
+                Haptics.playImpact(.light)
+            }
             vm.refreshData()
         }
         .onChange(of: vm.tradingMode) { _ in
@@ -639,54 +644,121 @@ struct DashboardView: View {
             }
             
             if strategyManager.strategies.isEmpty {
-                VStack(spacing: Spacing.sm) {
-                    Image(systemName: "brain.head.profile")
-                        .font(.title2)
-                        .foregroundColor(.secondary)
-                    
-                    Text("No strategies loaded")
-                        .caption1Style()
-                        .foregroundColor(.secondary)
-                }
+                EmptyStateView.strategies(
+                    title: "No Strategies Loaded", 
+                    description: "Configure strategies in Settings to enable AI trading signals",
+                    useIllustration: true
+                )
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, Spacing.xl)
             } else {
+                // Strategy Grid - ENHANCED
                 LazyVGrid(columns: [
                     GridItem(.flexible()),
                     GridItem(.flexible())
                 ], spacing: Spacing.sm) {
-                    ForEach(Array(strategyManager.enabledStrategies.prefix(4).enumerated()), id: \.offset) { _, strategy in
+                    ForEach(Array(strategyManager.enabledStrategies.prefix(6).enumerated()), id: \.offset) { _, strategy in
                         StrategyMiniCard(
                             strategy: strategy,
-                            lastSignal: strategyManager.lastSignals[strategy.name]
+                            lastSignal: strategyManager.lastSignals[strategy.name],
+                            timeframe: vm.timeframe
                         )
                     }
                 }
                 
+                // Show "View All" if more strategies exist
+                if strategyManager.enabledStrategies.count > 6 {
+                    HStack {
+                        Text("+ \(strategyManager.enabledStrategies.count - 6) more strategies")
+                            .caption1Style()
+                            .foregroundColor(.secondary)
+                        
+                        Spacer()
+                        
+                        NavigationLink(destination: StrategiesView()) {
+                            Text("View All")
+                                .footnoteMediumStyle()
+                                .foregroundColor(.blue)
+                        }
+                    }
+                    .padding(.horizontal, Spacing.sm)
+                }
+                
+                // Ensemble Signal Display - ENHANCED
                 if let ensembleSignal = strategyManager.ensembleSignal {
                     VStack(alignment: .leading, spacing: Spacing.sm) {
-                        Text("Ensemble Signal")
-                            .caption1MediumStyle()
+                        HStack {
+                            Text("Ensemble Decision")
+                                .caption1MediumStyle()
+                            
+                            Spacer()
+                            
+                            Text("Updated: \(Date(), style: .time)")
+                                .caption2Style()
+                                .foregroundColor(.secondary)
+                        }
                         
                         HStack {
-                            Text(ensembleSignal.direction.description.uppercased())
-                                .footnoteMediumStyle()
-                                .foregroundColor(signalColor(for: ensembleSignal.direction))
+                            // Signal strength indicator
+                            HStack(spacing: Spacing.xs) {
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(signalColor(for: ensembleSignal.direction))
+                                    .frame(width: 4, height: 16)
+                                
+                                Text(ensembleSignal.direction.description.uppercased())
+                                    .footnoteMediumStyle()
+                                    .foregroundColor(signalColor(for: ensembleSignal.direction))
+                            }
                             
-                            Text("\(Int(ensembleSignal.confidence * 100))%")
+                            Text("\(Int(ensembleSignal.confidence * 100))% confidence")
                                 .caption2Style()
                                 .foregroundColor(.secondary)
                             
                             Spacer()
                             
-                            Text("\(ensembleSignal.contributingStrategies.count) strategies")
-                                .caption2Style()
-                                .foregroundColor(.secondary)
+                            HStack(spacing: Spacing.xs) {
+                                Image(systemName: "brain.head.profile")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                
+                                Text("\(ensembleSignal.contributingStrategies.count) strategies")
+                                    .caption2Style()
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        
+                        // Strategy agreement indicator
+                        if ensembleSignal.contributingStrategies.count >= 3 {
+                            HStack(spacing: Spacing.xs) {
+                                ForEach(0..<min(5, ensembleSignal.contributingStrategies.count), id: \.self) { _ in
+                                    Circle()
+                                        .fill(signalColor(for: ensembleSignal.direction))
+                                        .frame(width: 6, height: 6)
+                                }
+                                
+                                if ensembleSignal.contributingStrategies.count > 5 {
+                                    Text("+\(ensembleSignal.contributingStrategies.count - 5)")
+                                        .caption2Style()
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                Spacer()
+                                
+                                Text("Strong consensus")
+                                    .caption2Style()
+                                    .foregroundColor(signalColor(for: ensembleSignal.direction))
+                            }
                         }
                     }
                     .padding(Spacing.sm)
-                    .background(Color(.tertiarySystemBackground))
-                    .cornerRadius(CornerRadius.sm)
+                    .background(
+                        RoundedRectangle(cornerRadius: CornerRadius.sm)
+                            .fill(signalColor(for: ensembleSignal.direction).opacity(0.05))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: CornerRadius.sm)
+                                    .stroke(signalColor(for: ensembleSignal.direction).opacity(0.2), lineWidth: 1)
+                            )
+                    )
                 }
             }
         }
@@ -949,19 +1021,14 @@ extension TradingMode {
         }
     }
     
-    var description: String {
-        switch self {
-        case .demo: return "Simulated trading with virtual money"
-        case .paper: return "Real market data, simulated orders"
-        case .live: return "Real trading with actual funds"
-        }
-    }
+    // Using description from TradingMode.swift
 }
 
 // MARK: - Strategy Mini Card
 struct StrategyMiniCard: View {
     let strategy: any Strategy
     let lastSignal: StrategySignal?
+    let timeframe: Timeframe
     
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.xs) {
@@ -972,16 +1039,33 @@ struct StrategyMiniCard: View {
                 
                 Spacer()
                 
-                Circle()
-                    .fill(strategy.isEnabled ? .green : .gray)
-                    .frame(width: 6, height: 6)
+                HStack(spacing: Spacing.xs) {
+                    // Timeframe badge
+                    Text(timeframe.displayName)
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 2)
+                        .background(Color(.quaternarySystemFill))
+                        .cornerRadius(3)
+                    
+                    Circle()
+                        .fill(strategy.isEnabled ? .green : .gray)
+                        .frame(width: 6, height: 6)
+                }
             }
             
             if let signal = lastSignal {
                 HStack {
-                    Text(signal.direction.description)
-                        .caption2Style()
-                        .foregroundColor(signalColor(for: signal.direction))
+                    HStack(spacing: Spacing.xs) {
+                        Circle()
+                            .fill(signalColor(for: signal.direction))
+                            .frame(width: 4, height: 4)
+                        
+                        Text(signal.direction.description)
+                            .caption2Style()
+                            .foregroundColor(signalColor(for: signal.direction))
+                    }
                     
                     Spacer()
                     
@@ -989,8 +1073,25 @@ struct StrategyMiniCard: View {
                         .caption2Style()
                         .foregroundColor(.secondary)
                 }
+                
+                // Signal strength bar
+                GeometryReader { geometry in
+                    RoundedRectangle(cornerRadius: 1)
+                        .fill(Color(.quaternarySystemFill))
+                        .frame(height: 2)
+                        .overlay(
+                            HStack {
+                                RoundedRectangle(cornerRadius: 1)
+                                    .fill(signalColor(for: signal.direction))
+                                    .frame(width: geometry.size.width * signal.confidence, height: 2)
+                                
+                                Spacer(minLength: 0)
+                            }
+                        )
+                }
+                .frame(height: 2)
             } else {
-                Text("No signal")
+                Text("Analyzing...")
                     .caption2Style()
                     .foregroundColor(.secondary)
             }
@@ -1076,15 +1177,7 @@ struct PortfolioMetricCard: View {
 }
 
 // MARK: - Extensions
-extension StrategySignal.Direction {
-    var description: String {
-        switch self {
-        case .buy: return "Buy"
-        case .sell: return "Sell"
-        case .hold: return "Hold"
-        }
-    }
-}
+// Using description from StrategySignal.Direction in Strategy.swift
 
 // MARK: - Preview
 struct DashboardView_Previews: PreviewProvider {

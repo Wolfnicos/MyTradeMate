@@ -1,23 +1,6 @@
 import SwiftUI
 
-// Temporary Spacing and CornerRadius structs for this file until DesignSystem is properly imported
-private struct Spacing {
-    static let xs: CGFloat = 4
-    static let sm: CGFloat = 8
-    static let md: CGFloat = 12
-    static let lg: CGFloat = 16
-    static let xl: CGFloat = 20
-    static let xxl: CGFloat = 24
-}
-
-private struct CornerRadius {
-    static let xs: CGFloat = 4
-    static let sm: CGFloat = 6
-    static let md: CGFloat = 8
-    static let lg: CGFloat = 12
-    static let xl: CGFloat = 16
-    static let xxl: CGFloat = 20
-}
+// Using DesignSystem for spacing and corner radius
 
 /// Toast notification types
 enum ToastType {
@@ -86,12 +69,12 @@ struct ToastView: View {
     }
     
     var body: some View {
-        HStack(spacing: Spacing.md) {
+        HStack(spacing: 12) {
             Image(systemName: type.icon)
                 .font(.system(size: 20, weight: .medium))
                 .foregroundColor(type.color)
             
-            VStack(alignment: .leading, spacing: Spacing.xs) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .footnoteMediumStyle()
                 
@@ -113,14 +96,14 @@ struct ToastView: View {
                 .buttonStyle(PlainButtonStyle())
             }
         }
-        .padding(.horizontal, Spacing.lg)
-        .padding(.vertical, Spacing.md)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
         .background(type.backgroundColor)
         .overlay(
-            RoundedRectangle(cornerRadius: CornerRadius.md)
+            RoundedRectangle(cornerRadius: 8)
                 .stroke(type.color.opacity(0.3), lineWidth: 1)
         )
-        .cornerRadius(CornerRadius.md)
+        .cornerRadius(8)
         .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)

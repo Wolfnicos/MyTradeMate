@@ -6,7 +6,7 @@ import CoreML
     /// - compat: `predictSafely(timeframe:candles:)` (+ overload cu `mode`)
     /// - IMPORTANT: AI este folosit DOAR pe H4; pentru m5/h1 returnează `nil` ca să decidă strategiile în VM.
 @MainActor
-final class AIModelManager {
+final class AIModelManager: AIModelManagerProtocol {
 
         // MARK: - 4H feature schema (trebuie să corespundă modelului antrenat)
     private static let H4_FEATURES: [String] = [
@@ -40,8 +40,8 @@ final class AIModelManager {
         // MARK: - Stocare modele
     private(set) var modelsByKey: [ModelKey: MLModel] = [:]
 
-        /// Map public (read-only): `ModelKind` → `MLModel`
-    public var models: [ModelKind: MLModel] {
+        /// Map public (read-only): `AnyHashable` → `MLModel` (protocol conformance)
+    public var models: [AnyHashable: MLModel] {
         modelsByKey.reduce(into: [:]) { dict, pair in
             dict[pair.key.asPublicKind] = pair.value
         }
@@ -133,8 +133,8 @@ final class AIModelManager {
         switch timeframe {
         case .h4:
             return predict4HSafely(candles: candles)
-        case .m5, .h1:
-                // Lăsăm strategiile să decidă pentru m5/h1
+        case .m1, .m5, .m15, .h1:
+                // Lăsăm strategiile să decidă pentru timeframe-urile scurte
             return nil
         }
     }

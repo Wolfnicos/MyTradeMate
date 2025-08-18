@@ -155,8 +155,8 @@ struct ToastContainer: View {
 }
 
 /// Environment key for toast manager
-private struct ToastManagerKey: EnvironmentKey {
-    static let defaultValue = ToastManager()
+private struct ToastManagerKey: @preconcurrency EnvironmentKey {
+    @MainActor static let defaultValue = ToastManager()
 }
 
 extension EnvironmentValues {

@@ -3,6 +3,12 @@ import SwiftUI
 import CryptoKit
 import CommonCrypto
 
+// MARK: - Supporting Types
+struct ExchangeCredentials {
+    let apiKey: String
+    let apiSecret: String
+}
+
 @MainActor
 final class ExchangeKeysViewModel: ObservableObject {
     // MARK: - Dependencies
@@ -34,7 +40,7 @@ final class ExchangeKeysViewModel: ObservableObject {
     
     func saveKeys(for exchange: Exchange, apiKey: String, secretKey: String) {
         guard !apiKey.isEmpty && !secretKey.isEmpty else {
-            errorManager.handle(AppError.validation("API key and secret cannot be empty"), context: "Save Keys")
+            errorManager.handle(AppError.invalidOrderParameters(reason: "API key and secret cannot be empty"), context: "Save Keys")
             return
         }
         
@@ -104,7 +110,7 @@ final class ExchangeKeysViewModel: ObservableObject {
         Task {
             do {
                 let credentials = try await KeychainStore.shared.getExchangeCredentials(for: exchange)
-                let result = try await performConnectionTest(exchange: exchange, credentials: credentials)
+                let result = try await performConnectionTest(exchange: exchange, credentials: ExchangeCredentials(apiKey: credentials.apiKey, apiSecret: credentials.apiSecret))
                 
                 await MainActor.run {
                     self.connectionTestResults[exchange] = result
@@ -377,15 +383,4 @@ private extension Data {
 }
 
 // MARK: - Testing Support
-extension ExchangeKeysViewModel {
-    convenience init(
-        keychainStore: KeychainStoreProtocol,
-        errorManager: ErrorManagerProtocol
-    ) {
-        // Register mocks for testing
-        DIContainer.shared.registerMock(KeychainStoreProtocol.self, mock: keychainStore)
-        DIContainer.shared.registerMock(ErrorManagerProtocol.self, mock: errorManager)
-        
-        self.init()
-    }
-}
+// Testing support would be added here when needed

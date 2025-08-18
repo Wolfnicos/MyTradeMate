@@ -151,7 +151,7 @@ public class CalibrationUtils {
 
 // MARK: - Calibration Evaluator
 
-public class CalibrationEvaluator {
+public class AICalibrationEvaluator {
     private let temperatureScaler: (Double) -> Double
     private let isotonicCalibrator: (Double) -> Double
     

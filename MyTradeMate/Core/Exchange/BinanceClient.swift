@@ -9,7 +9,7 @@ actor BinanceClient: BinanceClientProtocol {
     private var continuation: AsyncStream<Ticker>.Continuation?
     private let session = URLSession(configuration: .default)
     
-    private(set) var tickerStream: AsyncStream<Ticker>
+    nonisolated let tickerStream: AsyncStream<Ticker>
     
     init() {
         var cont: AsyncStream<Ticker>.Continuation?
@@ -30,7 +30,7 @@ actor BinanceClient: BinanceClientProtocol {
         receive(ws)
     }
     
-    func disconnectTickers() async {
+    func disconnectTickers() async throws {
         task?.cancel(with: .goingAway, reason: nil)
         task = nil
     }
@@ -95,5 +95,40 @@ actor BinanceClient: BinanceClientProtocol {
             price: price,
             timestamp: Date()
         )
+    }
+    
+    // MARK: - ExchangeClientProtocol Required Methods
+    
+    func placeOrder(symbol: String, side: OrderSide, quantity: Double, price: Double?) async throws -> Order {
+        // Mock implementation for demo/paper trading
+        let orderPrice = price ?? (try await bestPrice(for: Symbol(raw: symbol)))
+        return Order(
+            id: UUID().uuidString,
+            symbol: symbol,
+            side: side,
+            quantity: quantity,
+            price: orderPrice,
+            status: .filled,
+            timestamp: Date()
+        )
+    }
+    
+    func getAccountInfo() async throws -> Account {
+        // Mock account for demo trading
+        return Account(
+            balance: 10000.0,
+            equity: 10000.0,
+            margin: 0.0,
+            timestamp: Date()
+        )
+    }
+    
+    func getOpenOrders(symbol: String?) async throws -> [Order] {
+        // Return empty array for demo trading
+        return []
+    }
+    
+    func cancelOrder(orderId: String, symbol: String) async throws {
+        // No-op for demo trading
     }
 }

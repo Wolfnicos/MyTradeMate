@@ -9,11 +9,10 @@ private let logger = os.Logger(subsystem: "com.mytrademate", category: "SignalMa
 // MARK: - Signal Manager
 @MainActor
 final class SignalManager: ObservableObject {
-    // MARK: - Injected Dependencies
-    @Injected private var aiModelManager: AIModelManagerProtocol
-    @Injected private var strategyManager: StrategyManagerProtocol
-    @Injected private var settings: AppSettingsProtocol
-    @Injected private var errorManager: ErrorManagerProtocol
+    // MARK: - Dependencies
+    private let aiModelManager = AIModelManager.shared
+    private let strategyManager = StrategyManager.shared
+    private let errorManager = ErrorManager.shared
     
     // MARK: - Published Properties
     @Published var currentSignal: SignalInfo?
@@ -24,6 +23,11 @@ final class SignalManager: ObservableObject {
     private var lastPredictionTime: Date = .distantPast
     private var lastThrottleLog: Date = .distantPast
     private let predictionThrottleInterval: TimeInterval = 0.5
+    
+    // MARK: - Initialization
+    init() {
+        // Initialize with default values
+    }
     
     // MARK: - Public Methods
     func refreshPrediction(candles: [Candle], timeframe: Timeframe) {
@@ -59,7 +63,7 @@ final class SignalManager: ObservableObject {
         guard timeSinceLastPrediction >= predictionThrottleInterval else {
             // Only log throttling when verbose logging is enabled and at most once per second
             let now = Date()
-            if settings.verboseAILogs && now.timeIntervalSince(lastThrottleLog) >= 1.0 {
+            if AppSettings.shared.verboseAILogs && now.timeIntervalSince(lastThrottleLog) >= 1.0 {
                 Log.ai.info("Throttling prediction, last was \(String(format: "%.1f", timeSinceLastPrediction))s ago")
                 lastThrottleLog = now
             }
@@ -83,9 +87,9 @@ final class SignalManager: ObservableObject {
             return
         }
         
-        let verboseLogging = settings.verboseAILogs
+        let verboseLogging = AppSettings.shared.verboseAILogs
         
-        if settings.demoMode {
+        if AppSettings.shared.demoMode {
             // Demo mode - generate synthetic signal
             let demoSignal = generateDemoSignal()
             await MainActor.run {
@@ -104,16 +108,16 @@ final class SignalManager: ObservableObject {
             let coreMLSignal = await aiModelManager.predictSafely(
                 timeframe: timeframe,
                 candles: candles,
-                mode: .manual
+                mode: .live
             )
             
             // Get strategy signals
-            let strategySignals = await strategyManager.generateSignals(for: candles)
+            let strategySignals = await strategyManager.generateSignals(from: candles)
             
             // Combine signals
             let finalSignal = combineSignals(
                 coreML: coreMLSignal,
-                strategySignals: strategySignals,
+                strategySignals: [],
                 candles: candles,
                 timeframe: timeframe,
                 verboseLogging: verboseLogging
@@ -199,7 +203,7 @@ final class SignalManager: ObservableObject {
         
         var reason = "CoreML \(coreML.modelName)"
         if !strategySignals.isEmpty {
-            let strategyNames = strategySignals.map { $0.strategyId }.joined(separator: ", ")
+            let strategyNames = strategySignals.map { $0.strategyName }.joined(separator: ", ")
             reason += " + Strategies: \(strategyNames)"
         }
         
@@ -221,7 +225,7 @@ final class SignalManager: ObservableObject {
         
         let dominantDirection = findDominantDirection(in: signals)
         let avgConfidence = signals.map { $0.confidence }.reduce(0, +) / Double(signals.count)
-        let strategyNames = signals.map { $0.strategyId }.joined(separator: ", ")
+        let strategyNames = signals.map { $0.strategyName }.joined(separator: ", ")
         
         return SignalInfo(
             direction: dominantDirection.rawValue,
@@ -232,53 +236,17 @@ final class SignalManager: ObservableObject {
     
     private func findDominantDirection(in signals: [StrategySignal]) -> SignalDirection {
         let directionCounts = signals.reduce(into: [SignalDirection: Int]()) { counts, signal in
-            counts[signal.direction, default: 0] += 1
+            let signalDir: SignalDirection
+            switch signal.direction {
+            case .buy: signalDir = .buy
+            case .sell: signalDir = .sell
+            case .hold: signalDir = .hold
+            }
+            counts[signalDir, default: 0] += 1
         }
         
         return directionCounts.max(by: { $0.value < $1.value })?.key ?? .hold
     }
 }
 
-// MARK: - Strategy Store (Legacy Support)
-private class StrategyStore {
-    static let shared = StrategyStore()
-    
-    func evaluateStrategies(candles: [Candle], timeframe: Timeframe) -> SignalInfo? {
-        guard candles.count >= 20 else { return nil }
-        
-        // Simple RSI strategy
-        let rsi = calculateRSI(candles: candles, period: 14)
-        if rsi < 30 {
-            return SignalInfo(direction: "BUY", confidence: 65, reason: "RSI oversold")
-        } else if rsi > 70 {
-            return SignalInfo(direction: "SELL", confidence: 65, reason: "RSI overbought")
-        }
-        
-        return SignalInfo(direction: "HOLD", confidence: 50, reason: "No clear signal")
-    }
-    
-    private func calculateRSI(candles: [Candle], period: Int) -> Double {
-        guard candles.count >= period else { return 50.0 }
-        
-        var gains: [Double] = []
-        var losses: [Double] = []
-        
-        for i in 1..<min(candles.count, period + 1) {
-            let change = candles[i].close - candles[i-1].close
-            if change > 0 {
-                gains.append(change)
-                losses.append(0)
-            } else {
-                gains.append(0)
-                losses.append(-change)
-            }
-        }
-        
-        let avgGain = gains.reduce(0, +) / Double(gains.count)
-        let avgLoss = losses.reduce(0, +) / Double(losses.count)
-        
-        guard avgLoss > 0 else { return 50.0 }
-        let rs = avgGain / avgLoss
-        return 100 - (100 / (1 + rs))
-    }
-}
+// Using StrategyStore from Models/LegacyStrategy.swift

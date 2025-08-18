@@ -2,7 +2,7 @@ import Foundation
 import UIKit
 import OSLog
 
-private let logger = Logger(subsystem: "com.mytrademate", category: "MemoryPressure")
+private let logger = os.Logger(subsystem: Bundle.main.bundleIdentifier ?? "MyTradeMate", category: "MemoryPressureManager")
 
 /// Manages memory pressure events and provides memory optimization strategies
 @MainActor
@@ -278,43 +278,20 @@ extension Notification.Name {
 
 // MARK: - Extensions for Memory Management
 
-extension MarketDataService {
-    func clearOldData() async {
-        await MainActor.run {
-            // Keep only recent data for current symbols
-            let cutoffTime = Date().addingTimeInterval(-3600) // 1 hour ago
-            
-            for (key, candleArray) in candles {
-                let recentCandles = candleArray.filter { $0.openTime > cutoffTime }
-                if recentCandles.count < candleArray.count {
-                    candles[key] = Array(recentCandles.suffix(200)) // Keep last 200 candles
-                    Log.performance("Cleared old candles for \(key): \(candleArray.count) -> \(recentCandles.count)")
-                }
-            }
-        }
-    }
-}
+// MarketDataService.clearOldData() is implemented in the service itself
 
 extension AIModelManager {
     func reduceModelCache() async {
         await MainActor.run {
-            // Keep only the most recently used model
-            if models.count > 1 {
-                let modelsToRemove = models.count - 1
-                // Remove least recently used models (simplified - keep m5 model)
-                models.removeValue(forKey: .h1)
-                models.removeValue(forKey: .h4)
-                Log.performance("Reduced AI model cache, removed \(modelsToRemove) models")
-            }
+            // TODO: Implement model cache reduction when AIModelManager supports it
+            Log.performance("AI model cache reduction requested")
         }
     }
     
     func unloadInactiveModels() async {
         await MainActor.run {
-            // Unload all models except the currently active one
-            let activeModels = models.count
-            models.removeAll()
-            Log.performance("Unloaded \(activeModels) inactive AI models")
+            // TODO: Implement model unloading when AIModelManager supports it
+            Log.performance("AI model unloading requested")
         }
     }
 }

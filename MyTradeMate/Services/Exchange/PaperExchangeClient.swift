@@ -29,7 +29,8 @@ public actor PaperExchangeClient: ExchangeClient {
     
     public func placeMarketOrder(_ req: OrderRequest) async throws -> OrderFill {
         // Validate order parameters
-        guard req.quantity > 0 else {
+        let quantity = req.calculateQuantity(currentPrice: 50000.0, equity: 10000.0)
+        guard quantity > 0 else {
             throw ExchangeError.invalidConfiguration
         }
         
@@ -44,7 +45,8 @@ public actor PaperExchangeClient: ExchangeClient {
         }
         
         do {
-            let price = try await bestPrice(for: req.symbol)
+            let symbol = Symbol(req.pair.exchangeSymbol, exchange: exchange)
+            let price = try await bestPrice(for: symbol)
             
             // Simulate server errors (1% chance)
             if Double.random(in: 0...1) < 0.01 {
@@ -53,9 +55,9 @@ public actor PaperExchangeClient: ExchangeClient {
             
             return OrderFill(
                 id: UUID(),
-                symbol: req.symbol,
+                pair: req.pair,
                 side: req.side,
-                quantity: req.quantity,
+                quantity: quantity,
                 price: price,
                 timestamp: Date()
             )

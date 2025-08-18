@@ -2,9 +2,15 @@ import SwiftUI
 
 // MARK: - Trading Mode Indicator Component
 struct TradingModeIndicator: View {
-    let isDemo: Bool
+    @ObservedObject private var appSettings = AppSettings.shared
+    
+    let isDemo: Bool?
     let style: Style
     let size: Size
+    
+    private var effectiveIsDemo: Bool {
+        isDemo ?? appSettings.demoMode
+    }
     
     enum Style {
         case badge
@@ -43,7 +49,7 @@ struct TradingModeIndicator: View {
         }
     }
     
-    init(isDemo: Bool = AppSettings.shared.demoMode, style: Style = .badge, size: Size = .medium) {
+    init(isDemo: Bool? = nil, style: Style = .badge, size: Size = .medium) {
         self.isDemo = isDemo
         self.style = style
         self.size = size
@@ -67,40 +73,40 @@ struct TradingModeIndicator: View {
     private var badgeStyle: some View {
         HStack(spacing: 4) {
             Circle()
-                .fill(isDemo ? .orange : .green)
+                .fill(effectiveIsDemo ? .orange : .green)
                 .frame(width: size.iconSize, height: size.iconSize)
             
-            Text(isDemo ? "DEMO" : "LIVE")
+            Text(effectiveIsDemo ? "DEMO" : "LIVE")
                 .font(.system(size: size.fontSize, weight: .bold))
-                .foregroundColor(isDemo ? .orange : .green)
+                .foregroundColor(effectiveIsDemo ? .orange : .green)
         }
         .padding(size.padding)
         .background(
             Capsule()
-                .fill((isDemo ? Color.orange : Color.green).opacity(0.15))
+                .fill((effectiveIsDemo ? Color.orange : Color.green).opacity(0.15))
         )
     }
     
     private var pillStyle: some View {
-        Text(isDemo ? "DEMO" : "LIVE")
+        Text(effectiveIsDemo ? "DEMO" : "LIVE")
             .font(.system(size: size.fontSize, weight: .bold))
             .foregroundColor(.white)
             .padding(size.padding)
             .background(
                 Capsule()
-                    .fill(isDemo ? .orange : .green)
+                    .fill(effectiveIsDemo ? .orange : .green)
             )
     }
     
     private var minimalStyle: some View {
         HStack(spacing: 4) {
             Circle()
-                .fill(isDemo ? .orange : .green)
+                .fill(effectiveIsDemo ? .orange : .green)
                 .frame(width: size.iconSize, height: size.iconSize)
             
-            Text(isDemo ? "Demo" : "Live")
+            Text(effectiveIsDemo ? "Demo" : "Live")
                 .font(.system(size: size.fontSize, weight: .medium))
-                .foregroundColor(isDemo ? .orange : .green)
+                .foregroundColor(effectiveIsDemo ? .orange : .green)
         }
     }
     
@@ -108,25 +114,25 @@ struct TradingModeIndicator: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 6) {
                 Circle()
-                    .fill(isDemo ? .orange : .green)
+                    .fill(effectiveIsDemo ? .orange : .green)
                     .frame(width: size.iconSize, height: size.iconSize)
                 
-                Text(isDemo ? "Demo Mode" : "Live Trading")
+                Text(effectiveIsDemo ? "Demo Mode" : "Live Trading")
                     .font(.system(size: size.fontSize, weight: .semibold))
-                    .foregroundColor(isDemo ? .orange : .green)
+                    .foregroundColor(effectiveIsDemo ? .orange : .green)
             }
             
-            Text(isDemo ? "Simulated trades only" : "Real trades with actual funds")
+            Text(effectiveIsDemo ? "Simulated trades only" : "Real trades with actual funds")
                 .font(.system(size: size.fontSize - 2, weight: .regular))
                 .foregroundColor(.secondary)
         }
         .padding(size.padding)
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill((isDemo ? Color.orange : Color.green).opacity(0.1))
+                .fill((effectiveIsDemo ? Color.orange : Color.green).opacity(0.1))
                 .overlay(
                     RoundedRectangle(cornerRadius: 8)
-                        .stroke(isDemo ? .orange : .green, lineWidth: 1)
+                        .stroke(effectiveIsDemo ? .orange : .green, lineWidth: 1)
                 )
         )
     }
@@ -134,16 +140,22 @@ struct TradingModeIndicator: View {
 
 // MARK: - Trading Mode Warning
 struct TradingModeWarning: View {
-    let isDemo: Bool
+    @ObservedObject private var appSettings = AppSettings.shared
+    
+    let isDemo: Bool?
     let message: String?
     
-    init(isDemo: Bool = AppSettings.shared.demoMode, message: String? = nil) {
+    private var effectiveIsDemo: Bool {
+        isDemo ?? appSettings.demoMode
+    }
+    
+    init(isDemo: Bool? = nil, message: String? = nil) {
         self.isDemo = isDemo
         self.message = message
     }
     
     var body: some View {
-        if isDemo {
+        if effectiveIsDemo {
             HStack(spacing: 8) {
                 Image(systemName: "info.circle.fill")
                     .foregroundColor(.orange)

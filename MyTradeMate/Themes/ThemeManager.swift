@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 import Combine
 
@@ -10,9 +11,10 @@ final class ThemeManager: ObservableObject {
     @Published var isDarkMode: Bool = false
     
     private var cancellables = Set<AnyCancellable>()
-    private let settings = AppSettings.shared
+    private let settings: AppSettings
     
-    private init() {
+    init(settings: AppSettings = AppSettings.shared) {
+        self.settings = settings
         setupThemeBinding()
         updateTheme()
     }

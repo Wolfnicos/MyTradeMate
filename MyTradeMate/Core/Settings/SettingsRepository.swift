@@ -154,6 +154,29 @@ public final class SettingsRepository: ObservableObject {
         didSet { save(verboseLogging, forKey: .verboseLogging) }
     }
     
+    // MetaSignal Settings
+    @Published public var metaAiWeight: Double {
+        didSet { save(metaAiWeight, forKey: .metaAiWeight) }
+    }
+    @Published public var metaStrategyWeight: Double {
+        didSet { save(metaStrategyWeight, forKey: .metaStrategyWeight) }
+    }
+    @Published public var metaMinConfidenceM1: Double {
+        didSet { save(metaMinConfidenceM1, forKey: .metaMinConfidenceM1) }
+    }
+    @Published public var metaMinConfidenceM5: Double {
+        didSet { save(metaMinConfidenceM5, forKey: .metaMinConfidenceM5) }
+    }
+    @Published public var metaMinConfidenceM15: Double {
+        didSet { save(metaMinConfidenceM15, forKey: .metaMinConfidenceM15) }
+    }
+    @Published public var metaMinConfidenceH1: Double {
+        didSet { save(metaMinConfidenceH1, forKey: .metaMinConfidenceH1) }
+    }
+    @Published public var metaMinConfidenceH4: Double {
+        didSet { save(metaMinConfidenceH4, forKey: .metaMinConfidenceH4) }
+    }
+    
     // MARK: - Live Engine Binding
     
     /// Single @Published state for live engine subscription
@@ -185,6 +208,13 @@ public final class SettingsRepository: ObservableObject {
         case defaultAmountValue = "settings.defaultAmountValue"
         case autoTradingEnabled = "settings.autoTradingEnabled"
         case verboseLogging = "settings.verboseLogging"
+        case metaAiWeight = "settings.metaAiWeight"
+        case metaStrategyWeight = "settings.metaStrategyWeight"
+        case metaMinConfidenceM1 = "settings.metaMinConfidenceM1"
+        case metaMinConfidenceM5 = "settings.metaMinConfidenceM5"
+        case metaMinConfidenceM15 = "settings.metaMinConfidenceM15"
+        case metaMinConfidenceH1 = "settings.metaMinConfidenceH1"
+        case metaMinConfidenceH4 = "settings.metaMinConfidenceH4"
         case schemaVersion = "settings.schemaVersion"
     }
     
@@ -215,6 +245,15 @@ public final class SettingsRepository: ObservableObject {
         self.autoTradingEnabled = load(forKey: .autoTradingEnabled, defaultValue: false)
         
         self.verboseLogging = load(forKey: .verboseLogging, defaultValue: false)
+        
+        // MetaSignal Settings
+        self.metaAiWeight = load(forKey: .metaAiWeight, defaultValue: 0.6)
+        self.metaStrategyWeight = load(forKey: .metaStrategyWeight, defaultValue: 0.4)
+        self.metaMinConfidenceM1 = load(forKey: .metaMinConfidenceM1, defaultValue: 0.70)
+        self.metaMinConfidenceM5 = load(forKey: .metaMinConfidenceM5, defaultValue: 0.65)
+        self.metaMinConfidenceM15 = load(forKey: .metaMinConfidenceM15, defaultValue: 0.62)
+        self.metaMinConfidenceH1 = load(forKey: .metaMinConfidenceH1, defaultValue: 0.60)
+        self.metaMinConfidenceH4 = load(forKey: .metaMinConfidenceH4, defaultValue: 0.58)
         
         // Load strategy settings
         self.strategyEnabled = loadStrategyEnabled()
@@ -248,6 +287,24 @@ public final class SettingsRepository: ObservableObject {
     
     public func getStrategyWeight(_ strategyName: String) -> Double {
         return strategyWeights[strategyName] ?? 1.0 // Default weight
+    }
+    
+    // MARK: - MetaSignal Settings
+    
+    public func getMetaSignalSettings() -> MetaSignalEngine.MetaSignalSettings {
+        let thresholds: [Timeframe: Double] = [
+            .m1: metaMinConfidenceM1,
+            .m5: metaMinConfidenceM5,
+            .m15: metaMinConfidenceM15,
+            .h1: metaMinConfidenceH1,
+            .h4: metaMinConfidenceH4
+        ]
+        
+        return MetaSignalEngine.MetaSignalSettings(
+            aiWeight: metaAiWeight,
+            strategyWeight: metaStrategyWeight,
+            minConfidenceThresholds: thresholds
+        )
     }
     
     // MARK: - Validation
@@ -471,11 +528,4 @@ public final class SettingsRepository: ObservableObject {
 }
 
 // MARK: - Logging Extension
-
-extension Log {
-    static let settings = Log.Category.settings
-}
-
-extension Log.Category {
-    static let settings = Log.Category(name: "SETTINGS")
-}
+// Using Log.settings from main Log enum

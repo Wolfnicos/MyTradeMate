@@ -5,7 +5,7 @@ import OSLog
 private let logger = os.Logger(subsystem: "com.mytrademate", category: "MarketData")
 
 @MainActor
-final class MarketDataService: ObservableObject {
+final class MarketDataService: ObservableObject, MarketDataServiceProtocol {
     static let shared = MarketDataService()
     
     @Published var latestPrice: Double = 0
@@ -270,7 +270,9 @@ final class MarketDataService: ObservableObject {
     
     private func mapTimeframeToBinanceInterval(_ timeframe: Timeframe) -> String {
         switch timeframe {
+        case .m1: return "1m"
         case .m5: return "5m"
+        case .m15: return "15m"
         case .h1: return "1h"
         case .h4: return "4h"
         }
@@ -278,7 +280,9 @@ final class MarketDataService: ObservableObject {
     
     private func mapTimeframeToKrakenInterval(_ timeframe: Timeframe) -> Int {
         switch timeframe {
+        case .m1: return 1
         case .m5: return 5
+        case .m15: return 15
         case .h1: return 60
         case .h4: return 240
         }
@@ -322,7 +326,9 @@ final class MarketDataService: ObservableObject {
     
     private func getCacheTimeout(for timeframe: Timeframe) -> TimeInterval {
         switch timeframe {
+        case .m1: return 60 // 1 minute
         case .m5: return 300 // 5 minutes
+        case .m15: return 900 // 15 minutes
         case .h1: return 3600 // 1 hour
         case .h4: return 14400 // 4 hours
         }
@@ -335,7 +341,9 @@ final class MarketDataService: ObservableObject {
         
         let intervalSeconds: Double
         switch timeframe {
+        case .m1: intervalSeconds = 60
         case .m5: intervalSeconds = 300
+        case .m15: intervalSeconds = 900
         case .h1: intervalSeconds = 3600
         case .h4: intervalSeconds = 14400
         }
@@ -394,6 +402,39 @@ final class MarketDataService: ObservableObject {
             cachedSymbols: candles.keys.count,
             totalCandles: candles.values.reduce(0) { $0 + $1.count }
         )
+    }
+    
+    // MARK: - MarketDataServiceProtocol Methods
+    
+    func fetchTicker(symbol: String) async throws -> Ticker {
+        // Use the latest price from candles or fetch from API
+        let candles = try await fetchCandles(symbol: symbol, timeframe: .m1)
+        guard let latestCandle = candles.last else {
+            throw MarketDataError.invalidSymbol
+        }
+        
+        return Ticker(
+            symbol: symbol,
+            price: latestCandle.close,
+            ts: latestCandle.openTime
+        )
+    }
+    
+    func subscribeToTickers(symbols: [String]) -> AsyncStream<Ticker> {
+        // Return a simple stream that emits mock data periodically
+        return AsyncStream<Ticker> { continuation in
+            Task {
+                for symbol in symbols {
+                    do {
+                        let ticker = try await fetchTicker(symbol: symbol)
+                        continuation.yield(ticker)
+                    } catch {
+                        Log.error(error, context: "Failed to fetch ticker for \(symbol)", category: .network)
+                    }
+                }
+                continuation.finish()
+            }
+        }
     }
     
     enum MarketDataError: LocalizedError {

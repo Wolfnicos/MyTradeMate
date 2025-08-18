@@ -72,7 +72,7 @@ struct SellButton: View {
     }
 }
 
-struct TradingButtonStyle: ButtonStyle {
+struct TradingButtonStyle: SwiftUI.ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
@@ -81,7 +81,7 @@ struct TradingButtonStyle: ButtonStyle {
     }
 }
 
-struct LoadingStateView: View {
+struct TradingLoadingStateView: View {
     let message: String
     
     var body: some View {
@@ -108,7 +108,7 @@ struct LoadingStateView: View {
             SellButton(isDisabled: false, isDemoMode: true) {}
         }
         
-        LoadingStateView(message: "Submitting order...")
+        TradingLoadingStateView(message: "Submitting order...")
     }
     .padding()
 }

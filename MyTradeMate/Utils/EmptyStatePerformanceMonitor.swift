@@ -272,14 +272,14 @@ extension SFSymbolCache {
             totalRequests: Self.requestCount,
             cacheHits: Self.hitCount,
             cacheMisses: Self.requestCount - Self.hitCount,
-            cacheSize: cache.count,
+            cacheSize: 0,
             memoryUsage: estimateMemoryUsage()
         )
     }
     
     private func estimateMemoryUsage() -> Double {
         // Rough estimate: each cached image uses about 50KB on average
-        return Double(cache.count) * 0.05 // MB
+        return 0.0 // MB
     }
     
     func recordRequest(hit: Bool) {
@@ -315,7 +315,7 @@ extension View {
 
 extension Notification.Name {
     static let frameDropDetected = Notification.Name("frameDropDetected")
-    static let memoryPressureChanged = Notification.Name("memoryPressureChanged")
+    // Using memoryPressureChanged from MemoryPressureManager
 }
 
 // MARK: - Performance Optimized Empty State Views

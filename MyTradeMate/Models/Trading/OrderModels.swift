@@ -17,22 +17,7 @@ public enum OrderSide: String, CaseIterable, Codable {
     }
 }
 
-/// Order type enumeration
-public enum OrderType: String, CaseIterable, Codable {
-    case market = "market"
-    case limit = "limit"
-    case stop = "stop"
-    case stopLimit = "stop_limit"
-    
-    public var displayName: String {
-        switch self {
-        case .market: return "Market"
-        case .limit: return "Limit"
-        case .stop: return "Stop"
-        case .stopLimit: return "Stop Limit"
-        }
-    }
-}
+// Using OrderType from Models/TradeRequest.swift
 
 /// Amount mode for trade sizing
 public enum AmountMode: String, CaseIterable, Codable {
@@ -66,21 +51,7 @@ public enum AmountMode: String, CaseIterable, Codable {
 }
 
 /// Time in force for orders
-public enum TimeInForce: String, CaseIterable, Codable {
-    case gtc = "GTC"    // Good Till Canceled
-    case ioc = "IOC"    // Immediate Or Cancel
-    case fok = "FOK"    // Fill Or Kill
-    case day = "DAY"    // Day order
-    
-    public var displayName: String {
-        switch self {
-        case .gtc: return "Good Till Canceled"
-        case .ioc: return "Immediate Or Cancel"
-        case .fok: return "Fill Or Kill"
-        case .day: return "Day Order"
-        }
-    }
-}
+// Using TimeInForce from Models/TradeRequest.swift
 
 /// Comprehensive order request with multi-asset support
 public struct OrderRequest: Codable {
@@ -104,7 +75,7 @@ public struct OrderRequest: Codable {
         leverage: Double? = nil,
         limitPrice: Double? = nil,
         stopPrice: Double? = nil,
-        timeInForce: TimeInForce = .gtc
+        timeInForce: TimeInForce = .goodTillCanceled
     ) {
         self.pair = pair
         self.side = side
@@ -189,14 +160,14 @@ public struct OrderRequest: Codable {
         }
         
         // Validate prices for limit/stop orders
-        if type == .limit || type == .stopLimit {
+        if type == .limit || type == .stopLossLimit {
             guard let limitPrice = limitPrice, limitPrice > 0 else {
                 errors.append("Limit price required for limit orders")
                 return .invalid(errors)
             }
         }
         
-        if type == .stop || type == .stopLimit {
+        if type == .stopLoss || type == .stopLossLimit {
             guard let stopPrice = stopPrice, stopPrice > 0 else {
                 errors.append("Stop price required for stop orders")
                 return .invalid(errors)

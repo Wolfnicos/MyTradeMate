@@ -351,7 +351,7 @@ struct ValidationIndicatorView: View {
     }
 }
 
-struct LoadingStateView: View {
+struct ExchangeLoadingStateView: View {
     let message: String
     
     var body: some View {

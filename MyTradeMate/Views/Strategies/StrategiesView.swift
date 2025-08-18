@@ -1,16 +1,18 @@
 import SwiftUI
 
 struct StrategiesView: View {
-    @StateObject private var strategyManager = StrategyManager.shared
-    @EnvironmentObject private var settings: AppSettings
-    @State private var selectedStrategy: (any Strategy)?
-    @State private var showingParameterSheet = false
+    @StateObject private var viewModel = ViewModelFactory.shared.makeStrategiesViewModel()
+    @ObservedObject private var appSettings: AppSettings
+    
+    init(appSettings: AppSettings = AppSettings.shared) {
+        self.appSettings = appSettings
+    }
     
     var body: some View {
         NavigationStack {
             ScrollView {
                 LazyVStack(spacing: 16) {
-                    if strategyManager.strategies.isEmpty {
+                    if viewModel.strategies.isEmpty {
                         emptyStateView
                     } else {
                         strategiesListView
@@ -31,8 +33,8 @@ struct StrategiesView: View {
             }
         }
         .sheet(item: Binding<StrategyWrapper?>(
-            get: { selectedStrategy.map(StrategyWrapper.init) },
-            set: { selectedStrategy = $0?.strategy }
+            get: { viewModel.selectedStrategy.map(StrategyWrapper.init) },
+            set: { viewModel.selectedStrategy = $0?.strategy }
         )) { wrapper in
             StrategyParametersView(strategy: wrapper.strategy)
         }
@@ -52,19 +54,19 @@ struct StrategiesView: View {
     
     private var strategiesListView: some View {
         VStack(spacing: 12) {
-            ForEach(Array(strategyManager.strategies.enumerated()), id: \.offset) { index, strategy in
+            ForEach(Array(viewModel.strategies.enumerated()), id: \.offset) { index, strategy in
                 StrategyRowView(
                     strategy: strategy,
-                    lastSignal: strategyManager.lastSignals[strategy.name],
+                    lastSignal: viewModel.lastSignals[strategy.name],
                     onToggle: {
                         if strategy.isEnabled {
-                            strategyManager.disableStrategy(named: strategy.name)
+                            viewModel.disableStrategy(named: strategy.name)
                         } else {
-                            strategyManager.enableStrategy(named: strategy.name)
+                            viewModel.enableStrategy(named: strategy.name)
                         }
                     },
                     onConfigure: {
-                        selectedStrategy = strategy
+                        viewModel.selectedStrategy = strategy
                     }
                 )
             }
@@ -77,11 +79,11 @@ struct StrategiesView: View {
                 .font(.headline)
                 .fontWeight(.semibold)
             
-            if strategyManager.isGeneratingSignals {
+            if viewModel.isGeneratingSignals {
                 LoadingStateView(message: "Generating strategy signals...")
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
-            } else if let ensembleSignal = strategyManager.ensembleSignal {
+            } else if let ensembleSignal = viewModel.ensembleSignal {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(ensembleSignal.direction.description.uppercased())
@@ -257,15 +259,7 @@ private struct StrategyWrapper: Identifiable {
     let strategy: any Strategy
 }
 
-extension StrategySignal.Direction {
-    var description: String {
-        switch self {
-        case .buy: return "Buy"
-        case .sell: return "Sell"
-        case .hold: return "Hold"
-        }
-    }
-}
+// Using description from StrategySignal.Direction in Strategy.swift
 
 #Preview {
     NavigationStack {

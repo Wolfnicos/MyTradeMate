@@ -1,7 +1,7 @@
 import SwiftUI
 
 // Temporary Spacing struct for this file until DesignSystem is properly imported
-private struct Spacing {
+private struct LoadingSpacing {
     static let xs: CGFloat = 4
     static let sm: CGFloat = 8
     static let md: CGFloat = 12
@@ -14,14 +14,14 @@ struct LoadingStateView: View {
     let message: String
     
     var body: some View {
-        HStack(spacing: Spacing.md) {
+        HStack(spacing: LoadingSpacing.md) {
             ProgressView()
                 .scaleEffect(0.8)
             
             Text(message)
                 .bodyStyle()
         }
-        .padding(Spacing.lg)
+        .padding(LoadingSpacing.lg)
     }
 }
 

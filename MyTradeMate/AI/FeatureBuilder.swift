@@ -1,6 +1,7 @@
 import Foundation
 import CoreML
 import os.log
+import TabularData
 
 // MARK: - Feature Error Types
 enum FeatureError: Error {
@@ -33,7 +34,7 @@ final class FeatureBuilder {
     
     private let settings: AppSettings
     
-    init(settings: AppSettings = .shared) {
+    init(settings: AppSettings = AppSettings.shared) {
         self.settings = settings
     }
     

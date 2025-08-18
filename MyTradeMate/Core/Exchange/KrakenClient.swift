@@ -1,6 +1,6 @@
 import Foundation
 
-actor KrakenClient: ExchangeClient {
+actor KrakenClient: KrakenClientProtocol {
     let name = "Kraken"
     let supportsWebSocket = true
     let exchange: Exchange = .kraken
@@ -9,7 +9,7 @@ actor KrakenClient: ExchangeClient {
     private var continuation: AsyncStream<Ticker>.Continuation?
     private let session = URLSession(configuration: .default)
     
-    private(set) var tickerStream: AsyncStream<Ticker>
+    nonisolated let tickerStream: AsyncStream<Ticker>
     
     init() {
         var cont: AsyncStream<Ticker>.Continuation?
@@ -115,16 +115,49 @@ actor KrakenClient: ExchangeClient {
         return price
     }
     
-    func placeMarketOrder(_ req: OrderRequest) async throws -> OrderFill {
-        // Mock implementation for paper trading
-        let price = try await bestPrice(for: req.symbol)
-        return OrderFill(
-            id: UUID(),
-            symbol: req.symbol,
-            side: req.side,
-            quantity: req.quantity,
-            price: price,
-            timestamp: Date()
+    // placeMarketOrder method removed - using placeOrder instead for ExchangeClientProtocol compliance
+    
+    // MARK: - ExchangeClientProtocol Required Methods
+    
+    func placeOrder(symbol: String, side: OrderSide, quantity: Double, price: Double?) async throws -> Order {
+        // Mock implementation for demo/paper trading
+        let symbolObj = Symbol(symbol, exchange: exchange)
+        let orderPrice: Double
+        if let price = price {
+            orderPrice = price
+        } else {
+            orderPrice = try await bestPrice(for: symbolObj)
+        }
+        
+        return Order(
+            id: UUID().uuidString,
+            symbol: symbol,
+            side: side,
+            amount: quantity,
+            price: orderPrice,
+            status: .filled,
+            orderType: .market,
+            createdAt: Date(),
+            filledAt: Date()
         )
+    }
+    
+    func getAccountInfo() async throws -> Account {
+        // Mock account for demo trading
+        return Account(
+            equity: 10000.0,
+            cash: 10000.0,
+            positions: [],
+            balances: []
+        )
+    }
+    
+    func getOpenOrders(symbol: String?) async throws -> [Order] {
+        // Return empty array for demo trading
+        return []
+    }
+    
+    func cancelOrder(orderId: String, symbol: String) async throws {
+        // No-op for demo trading
     }
 }

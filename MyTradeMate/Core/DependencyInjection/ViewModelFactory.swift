@@ -2,60 +2,42 @@ import Foundation
 import SwiftUI
 
 // MARK: - ViewModel Factory
+@MainActor
 final class ViewModelFactory {
-    private let container: ServiceContainer
-    
-    init(container: ServiceContainer = DIContainer.shared) {
-        self.container = container
-    }
-    
-    // MARK: - ViewModel Creation Methods
-    
+    nonisolated static let shared = ViewModelFactory()
+
+    nonisolated private init() {}
+
     func makeDashboardViewModel() -> DashboardVM {
         return DashboardVM()
     }
-    
+
+    func makeStrategiesViewModel() -> StrategiesVM {
+        return StrategiesVM()
+    }
+
+    func makeTradesViewModel() -> TradesVM {
+        return TradesVM()
+    }
+
+    func makeTradeHistoryViewModel() -> TradeHistoryVM {
+        return TradeHistoryVM()
+    }
+
+    func makeSettingsViewModel() -> SettingsVM {
+        return SettingsVM()
+    }
+
     func makeExchangeKeysViewModel() -> ExchangeKeysViewModel {
         return ExchangeKeysViewModel()
     }
-    
-    func makeStrategiesViewModel() -> StrategiesViewModel {
-        return StrategiesViewModel()
-    }
-    
-    // MARK: - Testing Support
-    
-    func makeDashboardViewModel(
-        marketDataService: MarketDataServiceProtocol,
-        aiModelManager: AIModelManagerProtocol,
-        errorManager: ErrorManagerProtocol,
-        settings: AppSettingsProtocol,
-        strategyManager: StrategyManagerProtocol
-    ) -> DashboardVM {
-        // Register test dependencies
-        container.register(MarketDataServiceProtocol.self, instance: marketDataService)
-        container.register(AIModelManagerProtocol.self, instance: aiModelManager)
-        container.register(ErrorManagerProtocol.self, instance: errorManager)
-        container.register(AppSettingsProtocol.self, instance: settings)
-        container.register(StrategyManagerProtocol.self, instance: strategyManager)
-        
-        return DashboardVM()
-    }
-    
-    func makeExchangeKeysViewModel(
-        keychainStore: KeychainStoreProtocol,
-        errorManager: ErrorManagerProtocol
-    ) -> ExchangeKeysViewModel {
-        return ExchangeKeysViewModel(
-            keychainStore: keychainStore,
-            errorManager: errorManager
-        )
-    }
+
+    // You can add more factory methods here as needed
 }
 
 // MARK: - Environment Key for ViewModelFactory
 struct ViewModelFactoryKey: EnvironmentKey {
-    static let defaultValue = ViewModelFactory()
+    static let defaultValue = ViewModelFactory.shared
 }
 
 extension EnvironmentValues {
@@ -82,7 +64,7 @@ struct ViewModelInjected<T> {
         creator(factory)
     }
     
-    init(_ creator: @escaping (ViewModelFactory) -> T, factory: ViewModelFactory = ViewModelFactory()) {
+    init(_ creator: @escaping (ViewModelFactory) -> T, factory: ViewModelFactory = ViewModelFactory.shared) {
         self.creator = creator
         self.factory = factory
     }

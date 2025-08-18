@@ -90,8 +90,5 @@ struct TradingPairPickerSheet: View {
 }
 
 #Preview {
-    let btcAsset = Asset(symbol: "BTC", name: "Bitcoin", basePrecision: 8, pricePrecision: 2, minNotional: 10.0, icon: "bitcoinsign.circle")
-    let tradingPair = TradingPair(base: btcAsset, quote: .USD)
-    
-    return TradingPairPicker(selectedPair: .constant(tradingPair))
+    TradingPairPicker(selectedPair: .constant(.btcUsd))
 }

@@ -123,7 +123,7 @@ struct SignalContentView: View {
                             
                             Text(lastUpdatedString)
                                 .font(.system(size: 14))
-                                .foregroundColor(.tertiary)
+                                .foregroundColor(Color(.tertiaryLabel))
                         }
                     }
                 }
@@ -162,11 +162,11 @@ struct SignalContentView: View {
         switch timeframe {
         case .h4:
             source = "4h Model"
-        case .m5, .h1:
+        case .m1, .m5, .m15, .h1:
             source = "Strategies"
         }
         
-        return "confidence: \(confidence)% • \(source) • \(timeframe.rawValue) • \(tradingPair.symbol)"
+        return "confidence: \(confidence)% • \(source) • \(timeframe.rawValue) • BTC/USDT"
     }
     
     private var signalColor: Color {
@@ -438,7 +438,7 @@ struct SignalVisualizationView_Previews: PreviewProvider {
                 ),
                 isRefreshing: false,
                 timeframe: .h4,
-                tradingPair: .btcUsd,
+                tradingPair: TradingPair.btcUsd,
                 lastUpdated: Date().addingTimeInterval(-120),
                 onRefresh: {}
             )
@@ -453,7 +453,7 @@ struct SignalVisualizationView_Previews: PreviewProvider {
                 ),
                 isRefreshing: false,
                 timeframe: .m5,
-                tradingPair: .ethEur,
+                tradingPair: TradingPair.ethUsd,
                 lastUpdated: Date().addingTimeInterval(-30),
                 onRefresh: {}
             )
@@ -463,7 +463,7 @@ struct SignalVisualizationView_Previews: PreviewProvider {
                 signal: nil,
                 isRefreshing: true,
                 timeframe: .h4,
-                tradingPair: .btcUsd,
+                tradingPair: TradingPair.btcUsd,
                 lastUpdated: Date(),
                 onRefresh: {}
             )
@@ -473,7 +473,7 @@ struct SignalVisualizationView_Previews: PreviewProvider {
                 signal: nil,
                 isRefreshing: false,
                 timeframe: .h1,
-                tradingPair: .dogeUsd,
+                tradingPair: TradingPair.btcUsd,
                 lastUpdated: Date(),
                 onRefresh: {}
             )

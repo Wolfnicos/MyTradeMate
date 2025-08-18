@@ -7,12 +7,11 @@ private let logger = os.Logger(subsystem: "com.mytrademate", category: "TradingM
 // MARK: - Trading Manager
 @MainActor
 final class TradingManager: ObservableObject {
-    // MARK: - Injected Dependencies
-    @Injected private var settings: AppSettingsProtocol
-    @Injected private var errorManager: ErrorManagerProtocol
+    // MARK: - Dependencies
+    private let errorManager = ErrorManager.shared
     
     // MARK: - Published Properties
-    @Published var tradingMode: TradingMode = .manual
+    @Published var tradingMode: TradingMode = .demo
     @Published var openPositions: [Position] = []
     @Published var isConnected: Bool = false
     @Published var connectionStatus: String = "Connecting..."
@@ -51,14 +50,14 @@ final class TradingManager: ObservableObject {
     
     // MARK: - Trading Actions
     func executeBuy() {
-        guard !settings.autoTrading else { 
+        guard !AppSettings.shared.autoTrading else { 
             Log.trade.warning("Manual buy blocked - auto trading is enabled")
             return 
         }
         
         // Haptics.impact(.medium)
         
-        if settings.confirmTrades {
+        if AppSettings.shared.confirmTrades {
             // Show confirmation dialog
             logger.info("Buy order confirmation required")
         } else {
@@ -71,14 +70,14 @@ final class TradingManager: ObservableObject {
     }
     
     func executeSell() {
-        guard !settings.autoTrading else { 
+        guard !AppSettings.shared.autoTrading else { 
             Log.trade.warning("Manual sell blocked - auto trading is enabled")
             return 
         }
         
         // Haptics.impact(.medium)
         
-        if settings.confirmTrades {
+        if AppSettings.shared.confirmTrades {
             // Show confirmation dialog
             logger.info("Sell order confirmation required")
         } else {
@@ -95,9 +94,10 @@ final class TradingManager: ObservableObject {
         do {
             // Convert TradeRequest to OrderRequest
             let orderRequest = OrderRequest(
-                symbol: Symbol(raw: request.symbol),
-                side: request.side,
-                quantity: request.amount
+                pair: TradingPair(base: "BTC", quote: "USDT"), // Convert from symbol later
+                side: request.side == .buy ? .buy : .sell,
+                amountMode: .fixedNotional,
+                amountValue: request.amount
             )
             
             // Execute the order through TradeManager
@@ -150,8 +150,8 @@ final class TradingManager: ObservableObject {
     }
     
     func handleAutoTrading(signal: SignalInfo, currentPrice: Double) {
-        guard settings.autoTrading else { return }
-        // Auto trading is already gated by settings.autoTrading check above
+        guard AppSettings.shared.autoTrading else { return }
+        // Auto trading is already gated by AppSettings.shared.autoTrading check above
         
         // Cooldown check
         let timeSinceLastTrade = Date().timeIntervalSince(lastAutoTradeTime)
@@ -167,7 +167,7 @@ final class TradingManager: ObservableObject {
         }
         
         // Paper trading simulation
-        if settings.confirmTrades { // Using confirmTrades as paper trading toggle
+        if AppSettings.shared.confirmTrades { // Using confirmTrades as paper trading toggle
             simulatePaperTrade(signal: signal, price: currentPrice)
         } else {
             Log.ai.info("❌ Live trading disabled for safety")
@@ -177,15 +177,15 @@ final class TradingManager: ObservableObject {
     // MARK: - Private Methods
     private func performBuyOrder() async {
         let tradeRequest = TradeRequest(
-            symbol: settings.defaultSymbol,
+            symbol: AppSettings.shared.defaultSymbol,
             side: .buy,
             amount: 0.01, // Default amount - should be configurable
             price: 0.0, // Market order
-            mode: tradingMode,
-            isDemo: settings.demoMode
+            type: .market,
+            timeInForce: .goodTillCanceled
         )
         
-        if settings.demoMode {
+        if AppSettings.shared.demoMode {
             simulateDemoTrade(direction: "BUY")
         } else {
             await executeTradeOrder(tradeRequest)
@@ -194,15 +194,15 @@ final class TradingManager: ObservableObject {
     
     private func performSellOrder() async {
         let tradeRequest = TradeRequest(
-            symbol: settings.defaultSymbol,
+            symbol: AppSettings.shared.defaultSymbol,
             side: .sell,
             amount: 0.01, // Default amount - should be configurable
             price: 0.0, // Market order
-            mode: tradingMode,
-            isDemo: settings.demoMode
+            type: .market,
+            timeInForce: .goodTillCanceled
         )
         
-        if settings.demoMode {
+        if AppSettings.shared.demoMode {
             simulateDemoTrade(direction: "SELL")
         } else {
             await executeTradeOrder(tradeRequest)
@@ -214,15 +214,9 @@ final class TradingManager: ObservableObject {
         
         // Generate mock position
         let mockPosition = Position(
-            id: UUID().uuidString,
-            symbol: settings.defaultSymbol,
-            side: direction == "BUY" ? .buy : .sell,
+            pair: TradingPair(base: "BTC", quote: "USDT"),
             quantity: 0.01,
-            entryPrice: 45000.0 + Double.random(in: -100...100),
-            currentPrice: 45000.0,
-            pnl: Double.random(in: -50...50),
-            pnlPercent: Double.random(in: -1...1),
-            timestamp: Date()
+            averagePrice: 45000.0 + Double.random(in: -100...100)
         )
         
         openPositions.append(mockPosition)
@@ -239,15 +233,9 @@ final class TradingManager: ObservableObject {
         
         // Generate mock position for paper trading
         let mockPosition = Position(
-            id: UUID().uuidString,
-            symbol: settings.defaultSymbol,
-            side: orderType == "BUY" ? .buy : .sell,
-            quantity: 0.01,
-            entryPrice: price,
-            currentPrice: price,
-            pnl: 0.0,
-            pnlPercent: 0.0,
-            timestamp: Date()
+            pair: TradingPair(base: "BTC", quote: "USDT"),
+            quantity: orderType == "BUY" ? 0.01 : -0.01,
+            averagePrice: price
         )
         
         openPositions.append(mockPosition)
@@ -255,8 +243,8 @@ final class TradingManager: ObservableObject {
     
     // MARK: - Position Management
     func closePosition(_ position: Position) {
-        openPositions.removeAll { $0.id == position.id }
-        Log.trade.info("Closed position: \(position.symbol) \(position.side.rawValue)")
+        openPositions.removeAll { $0.pair.symbol == position.pair.symbol }
+        Log.trade.info("Closed position: \(position.pair.symbol)")
     }
     
     func closeAllPositions() {
@@ -268,38 +256,17 @@ final class TradingManager: ObservableObject {
     func updatePositionPnL(currentPrice: Double) {
         for i in openPositions.indices {
             let position = openPositions[i]
-            let priceDiff = currentPrice - position.entryPrice
-            let pnl = position.side == .buy ? priceDiff : -priceDiff
-            let pnlPercent = (pnl / position.entryPrice) * 100
+            let priceDiff = currentPrice - position.averagePrice
+            let pnl = priceDiff * position.quantity
             
+            // Update position with new price
             openPositions[i] = Position(
-                id: position.id,
-                symbol: position.symbol,
-                side: position.side,
+                pair: position.pair,
                 quantity: position.quantity,
-                entryPrice: position.entryPrice,
-                currentPrice: currentPrice,
-                pnl: pnl * position.quantity,
-                pnlPercent: pnlPercent,
-                timestamp: position.timestamp
+                averagePrice: position.averagePrice
             )
         }
     }
 }
 
-// MARK: - Position Model Extension
-extension Position {
-    init(id: String, symbol: String, side: OrderSide, quantity: Double, entryPrice: Double, currentPrice: Double, pnl: Double, pnlPercent: Double, timestamp: Date) {
-        self.init(
-            id: id,
-            symbol: symbol,
-            side: side,
-            quantity: quantity,
-            entryPrice: entryPrice,
-            currentPrice: currentPrice,
-            pnl: pnl,
-            pnlPercent: pnlPercent,
-            timestamp: timestamp
-        )
-    }
-}
+// Position extension removed - using Position from Models/Trading/OrderModels.swift

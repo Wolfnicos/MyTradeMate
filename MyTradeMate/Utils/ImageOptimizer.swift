@@ -185,15 +185,15 @@ extension Image {
         
         if let cachedImage = SFSymbolCache.shared.cachedImage(
             for: name,
-            size: config.pointSize ?? baseSize,
-            weight: config.weight ?? .medium
+            size: baseSize,
+            weight: .medium
         ) {
-            return Image(uiImage: cachedImage)
-                .symbolRenderingMode(.hierarchical)
+            return AnyView(Image(uiImage: cachedImage)
+                .symbolRenderingMode(.hierarchical))
         } else {
-            return Image(systemName: name)
-                .font(.system(size: config.pointSize ?? baseSize, weight: Font.Weight(config.weight ?? .medium)))
-                .symbolRenderingMode(.hierarchical)
+            return AnyView(Image(systemName: name)
+                .font(.system(size: baseSize, weight: .medium))
+                .symbolRenderingMode(.hierarchical))
         }
     }
 }

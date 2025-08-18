@@ -443,7 +443,9 @@ struct CandlestickChart: View {
 extension Timeframe {
     var timeFormat: String {
         switch self {
+        case .m1: return "HH:mm:ss"      // More precision for 1-minute
         case .m5: return "HH:mm"
+        case .m15: return "HH:mm"        // 15-minute timeframe
         case .h1: return "HH:mm"
         case .h4: return "MMM dd HH:mm"
         }

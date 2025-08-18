@@ -9,11 +9,20 @@ final class PnLManager: ObservableObject {
     @Published var totalPnL: Double = 0.0
     
     private var startOfDayEquity: Double = 10000.0
-    private let settings = AppSettings.shared
+    private let settings: AppSettings
     
-    private init() {
-        // Initialize start of day equity
-        resetDailyTracking()
+    init(settings: AppSettings = AppSettings.shared) {
+        self.settings = settings
+    }
+    
+    // NEW - Enhanced getCurrentSnapshot method for complete integration
+    func getCurrentSnapshot() async throws -> PnLSnapshot {
+        let tradeManager = TradeManager.shared
+        let currentEquity = await tradeManager.getCurrentEquity()
+        let position = await tradeManager.getCurrentPosition()
+        let currentPrice = 45500.0 // Would get from market data service in production
+        
+        return await snapshot(price: currentPrice, position: position, equity: currentEquity)
     }
     
     func snapshot(price: Double, position: TradingPosition?, equity: Double) async -> PnLSnapshot {

@@ -3,7 +3,7 @@ import Combine
 import SwiftUI
 import OSLog
 
-private let logger = Logger(subsystem: "com.mytrademate", category: "Strategies")
+private let logger = Logger.shared
 
 // MARK: - Refactored Strategies ViewModel
 @MainActor
@@ -130,21 +130,18 @@ final class RefactoredStrategiesVM: ObservableObject {
         }
     }
     
-    func getRegimeAnalysis() -> RegimeAnalysis? {
-        Task {
-            do {
-                let candles = try await marketDataService.fetchCandles(
-                    symbol: settings.defaultSymbol,
-                    timeframe: .m5
-                )
-                
-                return regimeDetectionManager.getRegimeAnalysis(for: candles)
-            } catch {
-                Log.error(error, context: "Get regime analysis")
-                return nil
-            }
+    func getRegimeAnalysis() async -> RegimeAnalysis? {
+        do {
+            let candles = try await marketDataService.fetchCandles(
+                symbol: settings.defaultSymbol,
+                timeframe: .m5
+            )
+            
+            return regimeDetectionManager.getRegimeAnalysis(for: candles)
+        } catch {
+            Log.error(error, context: "Get regime analysis")
+            return nil
         }
-        return nil
     }
     
     // MARK: - Utility Methods
@@ -200,56 +197,8 @@ struct StrategyConfiguration: Codable {
     let timestamp: Date
 }
 
-// MARK: - StrategyInfo Codable Extension
-extension StrategyInfo: Codable {
-    enum CodingKeys: String, CodingKey {
-        case id, name, description, isEnabled, weight, parameters
-    }
-}
-
-// MARK: - StrategyParameter Codable Extension
-extension StrategyParameter: Codable {
-    enum CodingKeys: String, CodingKey {
-        case id, name, type, value, min, max, step
-    }
-    
-    enum ParameterTypeCodable: String, Codable {
-        case slider, stepper, textField
-    }
-    
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        id = try container.decode(String.self, forKey: .id)
-        name = try container.decode(String.self, forKey: .name)
-        let typeString = try container.decode(ParameterTypeCodable.self, forKey: .type)
-        switch typeString {
-        case .slider: type = .slider
-        case .stepper: type = .stepper
-        case .textField: type = .textField
-        }
-        value = try container.decode(Double.self, forKey: .value)
-        min = try container.decode(Double.self, forKey: .min)
-        max = try container.decode(Double.self, forKey: .max)
-        step = try container.decode(Double.self, forKey: .step)
-    }
-    
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(id, forKey: .id)
-        try container.encode(name, forKey: .name)
-        let typeString: ParameterTypeCodable
-        switch type {
-        case .slider: typeString = .slider
-        case .stepper: typeString = .stepper
-        case .textField: typeString = .textField
-        }
-        try container.encode(typeString, forKey: .type)
-        try container.encode(value, forKey: .value)
-        try container.encode(min, forKey: .min)
-        try container.encode(max, forKey: .max)
-        try container.encode(step, forKey: .step)
-    }
-}
+// MARK: - Codable Extensions
+// Note: StrategyInfo and StrategyParameter are already Codable in StrategyModels.swift
 
 // MARK: - MarketRegime Codable Extension
 extension MarketRegime: Codable {}

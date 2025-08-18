@@ -1,7 +1,7 @@
 import Foundation
 import OSLog
 
-private let logger = Logger(subsystem: "com.mytrademate", category: "InferenceThrottler")
+private let logger = os.Logger(subsystem: Bundle.main.bundleIdentifier ?? "MyTradeMate", category: "InferenceThrottler")
 
 /// Manages CoreML inference frequency to optimize performance and battery life
 @MainActor
@@ -122,7 +122,7 @@ final class InferenceThrottler: ObservableObject {
             inferenceHistory.removeFirst(inferenceHistory.count - maxHistorySize)
         }
         
-        logger.debug("Inference recorded (total: \(inferenceCount))")
+        logger.debug("Inference recorded (total: \(self.inferenceCount))")
     }
     
     func getInferenceRate() -> Double {
@@ -151,7 +151,7 @@ final class InferenceThrottler: ObservableObject {
         )
         
         if newLevel != currentThrottleLevel {
-            logger.info("Adaptive throttling: \(currentThrottleLevel.description) -> \(newLevel.description)")
+            logger.info("Adaptive throttling: \(self.currentThrottleLevel.description) -> \(newLevel.description)")
             currentThrottleLevel = newLevel
         }
     }

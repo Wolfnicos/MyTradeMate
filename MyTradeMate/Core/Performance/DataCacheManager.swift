@@ -1,7 +1,7 @@
 import Foundation
 import OSLog
 
-private let logger = Logger(subsystem: "com.mytrademate", category: "DataCache")
+private let logger = os.Logger(subsystem: Bundle.main.bundleIdentifier ?? "MyTradeMate", category: "DataCacheManager")
 
 /// Manages efficient data caching with memory pressure awareness and intelligent eviction
 @MainActor

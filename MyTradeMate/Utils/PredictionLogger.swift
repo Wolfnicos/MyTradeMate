@@ -84,7 +84,7 @@ public class PredictionLogger {
         }
         
         let timestamp = ISO8601DateFormatter().string(from: fill.timestamp)
-        let symbol = fill.symbol.raw
+        let symbol = fill.pair.symbol
         let side = fill.side.rawValue
         let qty = String(format: "%.8f", fill.quantity)
         let price = String(format: "%.8f", fill.price)

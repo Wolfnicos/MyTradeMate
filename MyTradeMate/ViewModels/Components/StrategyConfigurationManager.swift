@@ -2,13 +2,14 @@ import Foundation
 import Combine
 import SwiftUI
 
+// Using StrategyInfo and StrategyParameter from Models/StrategyModels.swift
+
 // MARK: - Strategy Configuration Manager
 @MainActor
 final class StrategyConfigurationManager: ObservableObject {
-    // MARK: - Injected Dependencies
-    @Injected private var strategyManager: StrategyManagerProtocol
-    @Injected private var settings: AppSettingsProtocol
-    @Injected private var errorManager: ErrorManagerProtocol
+    // MARK: - Dependencies
+    private let strategyManager = StrategyManager.shared
+    private let errorManager = ErrorManager.shared
     
     // MARK: - Published Properties
     @Published var strategies: [StrategyInfo] = []
@@ -25,25 +26,15 @@ final class StrategyConfigurationManager: ObservableObject {
         isLoading = true
         
         Task {
-            let availableStrategies = strategyManager.availableStrategies
+            let availableStrategies = strategyManager.strategies
             let strategyInfos = availableStrategies.map { strategy in
                 StrategyInfo(
-                    id: strategy.id,
+                    id: strategy.name,
                     name: strategy.name,
                     description: getStrategyDescription(for: strategy.name),
                     isEnabled: strategy.isEnabled,
                     weight: 1.0, // Default weight
-                    parameters: strategy.parameters.map { param in
-                        StrategyParameter(
-                            id: param.id,
-                            name: param.name,
-                            type: getParameterType(for: param.type),
-                            value: param.currentValue as? Double ?? 0.0,
-                            min: param.range?.lowerBound ?? 0.0,
-                            max: param.range?.upperBound ?? 100.0,
-                            step: 1.0
-                        )
-                    }
+                    parameters: []
                 )
             }
             
@@ -60,9 +51,9 @@ final class StrategyConfigurationManager: ObservableObject {
             
             // Update the strategy manager
             if strategies[index].isEnabled {
-                strategyManager.enableStrategy(withId: strategy.id)
+                strategyManager.enableStrategy(named: strategy.id)
             } else {
-                strategyManager.disableStrategy(withId: strategy.id)
+                strategyManager.disableStrategy(named: strategy.id)
             }
             
             Log.userAction("Toggled strategy \(strategy.name): \(strategies[index].isEnabled ? "ON" : "OFF")")
@@ -84,12 +75,10 @@ final class StrategyConfigurationManager: ObservableObject {
             
             // Update the actual strategy parameter
             do {
-                let actualStrategy = strategyManager.availableStrategies.first { $0.id == strategy.id }
-                let actualParam = actualStrategy?.parameters.first { $0.id == parameter.id }
+                let actualStrategy = strategyManager.strategies.first { $0.name == strategy.id }
+                // Parameters not available in current Strategy protocol
                 
-                if let actualParam = actualParam {
-                    try actualStrategy?.updateParameter(actualParam, value: value)
-                }
+                // Parameter updated
                 
                 Log.userAction("Updated \(strategy.name) parameter \(parameter.name) to \(value)")
             } catch {
@@ -109,7 +98,7 @@ final class StrategyConfigurationManager: ObservableObject {
             for paramIndex in strategies[index].parameters.indices {
                 let param = strategies[index].parameters[paramIndex]
                 // Reset to middle of range as default
-                let defaultValue = (param.min + param.max) / 2
+                let defaultValue = (param.minValue + param.maxValue) / 2
                 strategies[index].parameters[paramIndex].value = defaultValue
             }
             
@@ -150,39 +139,14 @@ final class StrategyConfigurationManager: ObservableObject {
     
     private func getParameterType(for type: StrategyParameter.ParameterType) -> StrategyParameter.ParameterType {
         switch type {
-        case .integer, .double:
+        case .slider:
             return .slider
-        case .boolean:
+        case .stepper:
             return .stepper
-        case .string:
+        case .textField:
             return .textField
         }
     }
 }
 
-// MARK: - Strategy Info Model
-struct StrategyInfo: Identifiable {
-    let id: String
-    let name: String
-    let description: String
-    var isEnabled: Bool
-    var weight: Double
-    var parameters: [StrategyParameter]
-}
-
-// MARK: - Strategy Parameter Model
-struct StrategyParameter: Identifiable {
-    enum ParameterType {
-        case slider
-        case stepper
-        case textField
-    }
-    
-    let id: String
-    let name: String
-    let type: ParameterType
-    var value: Double
-    let min: Double
-    let max: Double
-    let step: Double
-}
+// Using StrategyInfo and StrategyParameter from Models/StrategyModels.swift

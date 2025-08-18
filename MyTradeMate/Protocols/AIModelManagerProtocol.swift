@@ -3,5 +3,5 @@ import CoreML
 
 protocol AIModelManagerProtocol {
     var models: [AnyHashable: MLModel] { get }
-    func validateModels() -> Bool
+    func validateModels() async throws -> Bool
 }

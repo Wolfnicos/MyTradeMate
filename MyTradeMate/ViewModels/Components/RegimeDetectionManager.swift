@@ -44,8 +44,8 @@ enum MarketRegime: String, CaseIterable {
 // MARK: - Regime Detection Manager
 @MainActor
 final class RegimeDetectionManager: ObservableObject {
-    // MARK: - Injected Dependencies
-    @Injected private var settings: AppSettingsProtocol
+    // MARK: - Dependencies
+    // Settings would be injected here if needed
     
     // MARK: - Published Properties
     @Published var currentRegime: MarketRegime = .ranging
@@ -55,6 +55,11 @@ final class RegimeDetectionManager: ObservableObject {
     
     // MARK: - Private Properties
     private let maxHistoryCount = 100
+    
+    // MARK: - Initialization
+    init() {
+        // Initialize with default values
+    }
     
     // MARK: - Public Methods
     func detectRegime(from candles: [Candle]) {

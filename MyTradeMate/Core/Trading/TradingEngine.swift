@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Combine
 
 /// Main trading engine facade that provides a clean interface for all trading operations
 @MainActor
@@ -13,7 +14,7 @@ public final class TradingEngine: ObservableObject {
     
     // MARK: - Dependencies
     private let tradeManager = TradeManager.shared
-    private let settings = AppSettings.shared
+    private let settings: AppSettings
     private let orderTracker = OrderStatusTracker.shared
     
     // MARK: - Configuration
@@ -45,6 +46,7 @@ public final class TradingEngine: ObservableObject {
     }
     
     private init() {
+        self.settings = AppSettings.shared
         self.currentMode = settings.tradingMode
         
         // Observe trading mode changes
@@ -312,11 +314,4 @@ extension AppError {
 }
 
 // MARK: - Logging
-
-extension Log {
-    static let trading = Log.Category.trading
-}
-
-extension Log.Category {
-    static let trading = Log.Category(name: "TRADING")
-}
+// Using Log.trading from main Log enum

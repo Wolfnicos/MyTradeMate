@@ -2,7 +2,7 @@ import Foundation
 import UIKit
 import OSLog
 
-private let logger = Logger(subsystem: "com.mytrademate", category: "PerformanceOptimizer")
+private let logger = os.Logger(subsystem: Bundle.main.bundleIdentifier ?? "MyTradeMate", category: "PerformanceOptimizer")
 
 /// Central performance optimization coordinator that manages all performance-related systems
 @MainActor
@@ -11,7 +11,7 @@ final class PerformanceOptimizer: ObservableObject {
     
     @Published var isOptimizationEnabled = true
     @Published var currentOptimizationLevel: OptimizationLevel = .balanced
-    @Published var performanceMetrics = PerformanceMetrics()
+    @Published var performanceMetrics = SystemPerformanceMetrics()
     
     private var metricsUpdateTimer: Timer?
     private var optimizationTimer: Timer?
@@ -94,7 +94,7 @@ final class PerformanceOptimizer: ObservableObject {
         )
         
         if recommendedLevel != currentOptimizationLevel {
-            logger.info("Optimization level changed: \(currentOptimizationLevel.description) -> \(recommendedLevel.description)")
+            logger.info("Optimization level changed: \(self.currentOptimizationLevel.description) -> \(recommendedLevel.description)")
             applyOptimizationLevel(recommendedLevel)
         }
     }
@@ -197,7 +197,7 @@ final class PerformanceOptimizer: ObservableObject {
         let connectionStatus = ConnectionManager.shared.getConnectionStatus()
         let cacheStats = DataCacheManager.shared.cacheStats
         
-        performanceMetrics = PerformanceMetrics(
+        performanceMetrics = SystemPerformanceMetrics(
             memoryUsageMB: memoryUsage.usedMemoryMB,
             memoryUsagePercent: memoryUsage.usagePercentage,
             inferenceRate: throttleStatus.inferenceRate,
@@ -266,7 +266,7 @@ final class PerformanceOptimizer: ObservableObject {
 
 // MARK: - Supporting Types
 
-struct PerformanceMetrics {
+struct SystemPerformanceMetrics {
     let memoryUsageMB: Double
     let memoryUsagePercent: Double
     let inferenceRate: Double

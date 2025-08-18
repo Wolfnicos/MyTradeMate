@@ -1,19 +1,19 @@
 import Foundation
-import Combine
 
 // MARK: - Core Service Protocols
 
 protocol KeychainStoreProtocol {
-    func saveAPIKey(_ key: String, for exchange: Exchange) throws
-    func saveAPISecret(_ secret: String, for exchange: Exchange) throws
-    func getAPIKey(for exchange: Exchange) throws -> String
-    func getAPISecret(for exchange: Exchange) throws -> String
-    func deleteCredentials(for exchange: Exchange) throws
+    func saveAPIKey(_ key: String, for exchange: Exchange) async throws
+    func saveAPISecret(_ secret: String, for exchange: Exchange) async throws
+    func getAPIKey(for exchange: Exchange) async throws -> String
+    func getAPISecret(for exchange: Exchange) async throws -> String
+    func deleteCredentials(for exchange: Exchange) async throws
     func hasCredentials(for exchange: Exchange) async -> Bool
     func getExchangeCredentials(for exchange: Exchange) async throws -> ExchangeCredentials
     func saveExchangeCredentials(apiKey: String, apiSecret: String, for exchange: Exchange) async throws
 }
 
+@MainActor
 protocol ErrorManagerProtocol: ObservableObject {
     var currentError: AppError? { get set }
     var errorHistory: [ErrorRecord] { get set }
@@ -25,6 +25,7 @@ protocol ErrorManagerProtocol: ObservableObject {
     func clearHistory()
 }
 
+@MainActor
 protocol AppSettingsProtocol: ObservableObject {
     var demoMode: Bool { get set }
     var liveMarketData: Bool { get set }
@@ -68,17 +69,17 @@ protocol KrakenClientProtocol: ExchangeClientProtocol {}
 // MARK: - Strategy Service Protocols
 
 protocol StrategyManagerProtocol {
-    var availableStrategies: [TradingStrategy] { get }
-    var activeStrategies: [TradingStrategy] { get }
+    var availableStrategies: [any TradingStrategy] { get async }
+    var activeStrategies: [any TradingStrategy] { get async }
     
-    func addStrategy(_ strategy: TradingStrategy)
-    func removeStrategy(withId id: String)
-    func enableStrategy(withId id: String)
-    func disableStrategy(withId id: String)
+    func addStrategy(_ strategy: any TradingStrategy) async
+    func removeStrategy(withId id: String) async
+    func enableStrategy(withId id: String) async
+    func disableStrategy(withId id: String) async
     func generateSignals(for candles: [Candle]) async -> [StrategySignal]
 }
 
-protocol TradingStrategyProtocol {
+protocol TradingStrategy {
     var id: String { get }
     var name: String { get }
     var isEnabled: Bool { get set }
@@ -112,67 +113,51 @@ protocol TradeStoreProtocol {
 
 // MARK: - Supporting Types
 
-struct ExchangeCredentials {
-    let apiKey: String
-    let apiSecret: String
-}
+// struct ExchangeCredentials {
+//     let apiKey: String
+//     let apiSecret: String
+// }
 
-struct StrategySignal {
-    let strategyId: String
-    let direction: SignalDirection
-    let confidence: Double
-    let reason: String
-    let timestamp: Date
-}
+// MARK: - StrategySignal (Ambiguous)
 
-enum SignalDirection: String, CaseIterable {
-    case buy = "BUY"
-    case sell = "SELL"
-    case hold = "HOLD"
-}
+// Ambiguous type, definition moved to AI/StrategyEngine/Strategy.swift
+//
+// struct StrategySignal {
+//     enum Direction {
+//         case buy, sell, hold
+//     }
+//     
+//     let direction: Direction
+//     let confidence: Double // 0.0 to 1.0
+//     let reason: String
+//     let timestamp: Date
+// }
 
-struct StrategyParameter {
-    let id: String
-    let name: String
-    let type: ParameterType
-    let currentValue: Any
-    let defaultValue: Any
-    let range: ClosedRange<Double>?
-    
-    enum ParameterType {
-        case integer
-        case double
-        case boolean
-        case string
-    }
-}
+// struct StrategyParameter {
+//     let id: String
+//     let name: String
+//     let type: ParameterType
+//     let currentValue: Any
+//     let defaultValue: Any
+//     let range: ClosedRange<Double>?
+//     
+//     enum ParameterType {
+//         case integer
+//         case double
+//         case boolean
+//         case string
+//     }
+// }
 
 
-struct Trade {
-    let id: String
-    let symbol: String
-    let side: OrderSide
-    let quantity: Double
-    let price: Double
-    let timestamp: Date
-    let status: TradeStatus
-}
-
-enum TradeStatus: String, CaseIterable {
-    case pending = "PENDING"
-    case filled = "FILLED"
-    case cancelled = "CANCELLED"
-    case rejected = "REJECTED"
-}
-
-struct ErrorRecord {
-    let error: AppError
-    let context: String?
-    let timestamp: Date
-    
-    init(error: AppError, context: String? = nil) {
-        self.error = error
-        self.context = context
-        self.timestamp = Date()
-    }
-}
+// struct ErrorRecord {
+//     let error: AppError
+//     let context: String?
+//     let timestamp: Date
+//     
+//     init(error: AppError, context: String? = nil) {
+//         self.error = error
+//         self.context = context
+//         self.timestamp = Date()
+//     }
+// }

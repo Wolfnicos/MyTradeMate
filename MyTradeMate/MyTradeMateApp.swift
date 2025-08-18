@@ -10,7 +10,7 @@ private let logger = os.Logger(subsystem: "com.mytrademate", category: "App")
 
 @main
 struct MyTradeMateApp: App {
-    @StateObject private var settings = AppSettings.shared
+    @StateObject private var appSettings = AppSettings.shared
     
     init() {
         setupDependencyInjection()
@@ -24,8 +24,8 @@ struct MyTradeMateApp: App {
     var body: some Scene {
         WindowGroup {
             RootTabs()
-                .environmentObject(settings)
-                .preferredColorScheme(settings.darkMode ? .dark : .light)
+                .environmentObject(appSettings)
+                .preferredColorScheme(appSettings.darkMode ? .dark : .light)
                 .task {
                     await runStartupDiagnostics()
                 }
@@ -133,8 +133,8 @@ struct MyTradeMateApp: App {
         }
         
         // Check demo/live isolation
-        Log.verbose("Demo mode: \(settings.demoMode ? "ENABLED" : "DISABLED")", category: .app)
-        Log.verbose("PnL demo mode: \(settings.isDemoPnL ? "ENABLED" : "DISABLED")", category: .pnl)
+        Log.verbose("Demo mode: \(appSettings.demoMode ? "ENABLED" : "DISABLED")", category: .app)
+        Log.verbose("PnL demo mode: \(appSettings.isDemoPnL ? "ENABLED" : "DISABLED")", category: .pnl)
         
         Log.app.info("Startup diagnostics complete")
         

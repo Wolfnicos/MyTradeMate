@@ -1,24 +1,5 @@
 import Foundation
 
-enum TradeSortOption: String, CaseIterable, Identifiable {
-    case dateNewest = "Date (Newest)"
-    case dateOldest = "Date (Oldest)"
-    case priceHighest = "Price (Highest)"
-    case priceLowest = "Price (Lowest)"
-    case quantityLargest = "Quantity (Largest)"
-    case quantitySmallest = "Quantity (Smallest)"
-    
-    var id: String { rawValue }
-}
-
-enum TradeFilterOption: String, CaseIterable, Identifiable {
-    case all = "All Trades"
-    case buyOnly = "Buy Only"
-    case sellOnly = "Sell Only"
-    
-    var id: String { rawValue }
-}
-
 @MainActor
 final class TradeHistoryVM: ObservableObject {
     @Published var fills: [OrderFill] = []

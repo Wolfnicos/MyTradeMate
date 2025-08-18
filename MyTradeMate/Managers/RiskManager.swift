@@ -409,9 +409,7 @@ struct TradeRiskAssessment {
     let recommendedAction: String
 }
 
-enum RiskLevel {
-    case low, medium, high
-}
+// Using RiskLevel from Models/PerformanceMetrics.swift
 
 struct RiskPosition: Identifiable {
     let id = UUID()

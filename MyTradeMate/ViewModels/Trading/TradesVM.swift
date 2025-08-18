@@ -3,7 +3,7 @@ import Combine
 import SwiftUI
 import OSLog
 
-private let logger = Logger(subsystem: "com.mytrademate", category: "Trades")
+private let logger = Logger.shared
 
 enum TradeSortOption: String, CaseIterable, Identifiable {
     case dateNewest = "Date (Newest)"
@@ -27,7 +27,7 @@ enum TradeFilterOption: String, CaseIterable, Identifiable {
 @MainActor
 final class TradesVM: ObservableObject {
     // MARK: - Published Properties
-    @Published var openPositions: [Trade] = []
+    @Published var openPositions: [TradeViewModel] = []
     @Published var recentFills: [Fill] = []
     @Published var totalPnL: Double = 0.0
     @Published var totalPnLPercent: Double = 0.0
@@ -55,11 +55,11 @@ final class TradesVM: ObservableObject {
         !openPositions.isEmpty
     }
     
-    var trades: [Trade] {
+    var trades: [TradeViewModel] {
         openPositions
     }
     
-    var filteredTrades: [Trade] {
+    var filteredTrades: [TradeViewModel] {
         var filtered = trades
         
         // Apply search filter
@@ -157,7 +157,7 @@ final class TradesVM: ObservableObject {
     private func loadDemoData() async {
         // Generate demo positions
         let demoPositions = [
-            Trade(
+            TradeViewModel(
                 id: UUID().uuidString,
                 symbol: "BTCUSDT",
                 side: .long,
@@ -167,7 +167,7 @@ final class TradesVM: ObservableObject {
                 leverage: 1,
                 timestamp: Date().addingTimeInterval(-3600)
             ),
-            Trade(
+            TradeViewModel(
                 id: UUID().uuidString,
                 symbol: "ETHUSD",
                 side: .short,
@@ -230,7 +230,7 @@ final class TradesVM: ObservableObject {
     }
     
     // MARK: - Trading Actions
-    func closePosition(_ trade: Trade) {
+    func closePosition(_ trade: TradeViewModel) {
         logger.info("Closing position: \(trade.id)")
         
         Haptics.impact(.medium)
@@ -244,7 +244,7 @@ final class TradesVM: ObservableObject {
         }
     }
     
-    private func executeClose(_ trade: Trade) {
+    private func executeClose(_ trade: TradeViewModel) {
         // Remove from open positions
         openPositions.removeAll { $0.id == trade.id }
         
@@ -299,8 +299,8 @@ final class TradesVM: ObservableObject {
     }
 }
 
-// MARK: - Trade Model
-struct Trade: Identifiable {
+// MARK: - Trade ViewModel
+struct TradeViewModel: Identifiable {
     enum Side {
         case long, short
         

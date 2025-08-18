@@ -1,28 +1,5 @@
 import SwiftUI
 
-// Import spacing constants from DesignSystem
-extension CGFloat {
-    static let spacingXXS: CGFloat = 2
-    static let spacingXS: CGFloat = 4
-    static let spacingSM: CGFloat = 8
-    static let spacingMD: CGFloat = 12
-    static let spacingLG: CGFloat = 16
-    static let spacingXL: CGFloat = 20
-    static let spacingXXL: CGFloat = 24
-    static let spacingXXXL: CGFloat = 32
-    static let spacingHuge: CGFloat = 48
-}
-
-// Temporary Spacing struct for this file until DesignSystem is properly imported
-private struct Spacing {
-    static let xs: CGFloat = .spacingXS
-    static let sm: CGFloat = .spacingSM
-    static let md: CGFloat = .spacingMD
-    static let lg: CGFloat = .spacingLG
-    static let xl: CGFloat = .spacingXL
-    static let xxl: CGFloat = .spacingXXL
-}
-
 /// A reusable empty state view component for charts and other content
 struct EmptyStateView: View {
     let icon: String

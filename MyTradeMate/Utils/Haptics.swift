@@ -48,6 +48,22 @@ final class Haptics {
         play(.error)
     }
     
+    // Enhanced methods for complete integration
+    @MainActor
+    static func playSuccess() {
+        play(.success)
+    }
+    
+    @MainActor
+    static func playError() {
+        play(.error)
+    }
+    
+    @MainActor
+    static func playWarning() {
+        play(.warning)
+    }
+    
     // Legacy methods (keeping for backward compatibility)
     @MainActor
     static func buyFeedback() {

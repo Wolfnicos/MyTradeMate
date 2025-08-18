@@ -3,34 +3,9 @@ import Combine
 import SwiftUI
 import OSLog
 
-private let logger = Logger(subsystem: "com.mytrademate", category: "Strategies")
+private let logger = Logger.shared
 
-// MARK: - Strategy Info
-struct StrategyInfo: Identifiable {
-    let id: String
-    let name: String
-    let description: String
-    var isEnabled: Bool
-    var weight: Double
-    var parameters: [StrategyParameter]
-}
-
-// MARK: - Strategy Parameter
-struct StrategyParameter: Identifiable {
-    enum ParameterType {
-        case slider
-        case stepper
-        case textField
-    }
-    
-    let id: String
-    let name: String
-    let type: ParameterType
-    var value: Double
-    let min: Double
-    let max: Double
-    let step: Double
-}
+// Using StrategyInfo and StrategyParameter from Models/StrategyModels.swift
 
 @MainActor
 final class StrategiesVM: ObservableObject {
@@ -75,8 +50,8 @@ final class StrategiesVM: ObservableObject {
                         name: "Fast Period",
                         type: .slider,
                         value: 9,
-                        min: 5,
-                        max: 20,
+                        minValue: 5,
+                        maxValue: 20,
                         step: 1
                     ),
                     StrategyParameter(
@@ -84,8 +59,8 @@ final class StrategiesVM: ObservableObject {
                         name: "Slow Period",
                         type: .slider,
                         value: 21,
-                        min: 10,
-                        max: 50,
+                        minValue: 10,
+                        maxValue: 50,
                         step: 1
                     )
                 ]
