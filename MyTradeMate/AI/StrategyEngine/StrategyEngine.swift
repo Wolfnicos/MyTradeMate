@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import SwiftUI
 
 /// Strategy outcome with signal and confidence from vote aggregation
 public struct StrategyOutcome {
@@ -11,8 +12,18 @@ public struct StrategyOutcome {
     public let voteBreakdown: [String: Int]
     public let timestamp: Date
     
+    // Modern 2025 enhanced properties
+    public let strategyPerformance: [String: Double] // Individual strategy performance
+    public let marketRegime: MarketRegime // Current market regime
+    public let riskScore: Double // 0-1 risk assessment
+    public let volatility: Double // Market volatility indicator
+    
     public init(signal: String, confidence: Double, reason: String, source: String, 
-                activeStrategies: [String], voteBreakdown: [String: Int]) {
+                activeStrategies: [String], voteBreakdown: [String: Int],
+                strategyPerformance: [String: Double] = [:],
+                marketRegime: MarketRegime = .ranging,
+                riskScore: Double = 0.5,
+                volatility: Double = 0.5) {
         self.signal = signal
         self.confidence = max(0.55, min(0.90, confidence)) // Clamp to strategy range
         self.reason = reason
@@ -20,6 +31,10 @@ public struct StrategyOutcome {
         self.activeStrategies = activeStrategies
         self.voteBreakdown = voteBreakdown
         self.timestamp = Date()
+        self.strategyPerformance = strategyPerformance
+        self.marketRegime = marketRegime
+        self.riskScore = riskScore
+        self.volatility = volatility
     }
 }
 
@@ -264,4 +279,6 @@ private extension StrategySignal.Direction {
         }
     }
 }
+
+
 

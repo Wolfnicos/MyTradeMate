@@ -1,6 +1,7 @@
 import SwiftUI
+import UIKit
 
-// MARK: - Signal Visualization View
+// MARK: - Modern 2025 Signal Visualization View with Neumorphic Design
 struct SignalVisualizationView: View {
     let signal: SignalInfo?
     let isRefreshing: Bool
@@ -9,59 +10,370 @@ struct SignalVisualizationView: View {
     let lastUpdated: Date
     let onRefresh: () -> Void
     
+    @EnvironmentObject var themeManager: ThemeManager
+    
     var body: some View {
-        VStack(spacing: 16) {
-            // Header with title and refresh button
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Trading Signal")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(.primary)
+        VStack(spacing: 20) {
+            // Modern Header with Glass Morphism
+            ZStack {
+                themeManager.glassMorphismBackground()
+                
+                HStack {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("AI Trading Signal")
+                            .font(Typography.title2)
+                            .foregroundColor(TextColor.primary)
+                        
+                        Text("Real-time market analysis")
+                            .font(Typography.caption1)
+                            .foregroundColor(TextColor.secondary)
+                    }
                     
-                    Text("Real-time market analysis")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    Spacer()
+                    
+                    // Modern Refresh Button with Haptic Feedback
+                    Button(action: {
+                        let impact = UIImpactFeedbackGenerator(style: .light)
+                        impact.impactOccurred()
+                        onRefresh()
+                    }) {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(TextColor.primary)
+                            .padding(12)
+                            .background(
+                                Circle()
+                                    .fill(.ultraThinMaterial)
+                            )
+                            .overlay(
+                                Circle()
+                                    .strokeBorder(
+                                        LinearGradient(
+                                            colors: [
+                                                Color.white.opacity(themeManager.isDarkMode ? 0.2 : 0.6),
+                                                Color.white.opacity(themeManager.isDarkMode ? 0.1 : 0.3)
+                                            ],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        ),
+                                        lineWidth: 1
+                                    )
+                            )
+                    }
+                    .modifier(themeManager.modernButtonStyle())
+                    .disabled(isRefreshing)
                 }
-                
-                Spacer()
-                
-                Button(action: onRefresh) {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.blue)
-                        .padding(8)
-                        .background(.blue.opacity(0.1))
-                        .cornerRadius(8)
-                }
-                .disabled(isRefreshing)
+                .padding(20)
             }
+            .padding(.horizontal, 20)
             
             if isRefreshing {
-                LoadingStateView(message: "Analyzing market...")
+                ModernLoadingStateView(message: "Analyzing market...")
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
+                    .padding(.vertical, 16)
             } else if let signal = signal {
-                SignalContentView(
+                ModernSignalContentView(
                     signal: signal,
                     timeframe: timeframe,
                     lastUpdated: lastUpdated
                 )
             } else {
-                emptySignalView
+                ModernEmptySignalView()
             }
         }
-        .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(12)
+        .padding(.vertical, 20)
     }
     
-    // MARK: - Empty Signal View
-    private var emptySignalView: EmptyStateView {
-        EmptyStateView(
-            icon: "antenna.radiowaves.left.and.right",
-            title: "No Signal Available",
-            description: "No clear trading signal right now. The AI is monitoring market conditions.",
-            useIllustration: true
+}
+
+// MARK: - Modern 2025 Signal Components
+
+struct ModernLoadingStateView: View {
+    let message: String
+    @EnvironmentObject var themeManager: ThemeManager
+    @State private var isAnimating = false
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .stroke(
+                        LinearGradient(
+                            colors: [.blue, .clear],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 3
+                    )
+                    .frame(width: 40, height: 40)
+                    .rotationEffect(.degrees(isAnimating ? 360 : 0))
+                    .animation(
+                        .linear(duration: 1.0).repeatForever(autoreverses: false),
+                        value: isAnimating
+                    )
+                
+                Circle()
+                    .fill(themeManager.primaryGradient)
+                    .frame(width: 8, height: 8)
+                    .offset(y: -16)
+            }
+            
+            Text(message)
+                .font(Typography.body)
+                .foregroundColor(TextColor.secondary)
+        }
+        .padding(24)
+        .background(
+            themeManager.neumorphicCardBackground()
+        )
+        .onAppear {
+            isAnimating = true
+        }
+    }
+}
+
+struct ModernEmptySignalView: View {
+    @EnvironmentObject var themeManager: ThemeManager
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            // Animated Icon
+            ZStack {
+                Circle()
+                    .fill(themeManager.primaryGradient)
+                    .frame(width: 80, height: 80)
+                    .scaleEffect(1.0)
+                    .animation(
+                        .easeInOut(duration: 2.0).repeatForever(autoreverses: true),
+                        value: themeManager.isDarkMode
+                    )
+                
+                Image(systemName: "antenna.radiowaves.left.and.right")
+                    .font(.system(size: 40, weight: .medium))
+                    .foregroundColor(.white)
+            }
+            
+            VStack(spacing: 8) {
+                Text("No Signal Available")
+                    .font(Typography.title2)
+                    .foregroundColor(TextColor.primary)
+                
+                Text("No clear trading signal right now. The AI is monitoring market conditions.")
+                    .font(Typography.body)
+                    .foregroundColor(TextColor.secondary)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .padding(32)
+        .background(
+            themeManager.neumorphicCardBackground()
+        )
+        .padding(.horizontal, 20)
+    }
+}
+
+struct ModernSignalContentView: View {
+    let signal: SignalInfo
+    let timeframe: Timeframe
+    let lastUpdated: Date
+    @EnvironmentObject var themeManager: ThemeManager
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            // Main signal display with Neumorphic Design
+            ZStack {
+                themeManager.neumorphicCardBackground()
+                
+                VStack(spacing: 20) {
+                    // Signal direction with modern visual indicator
+                    HStack(spacing: 16) {
+                        ModernSignalDirectionIndicator(direction: SignalDirection(rawValue: signal.direction) ?? .hold)
+                        
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(signalDisplayText)
+                                .font(Typography.largeTitle)
+                                .foregroundColor(signalColor)
+                            
+                            Text(signalSubtitle)
+                                .font(Typography.body)
+                                .foregroundColor(TextColor.secondary)
+                        }
+                    }
+                    
+                    // Confidence and metadata with modern styling
+                    HStack(spacing: 16) {
+                        ModernConfidenceIndicator(confidence: signal.confidence)
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Confidence Level")
+                                .font(Typography.caption1)
+                                .foregroundColor(TextColor.secondary)
+                            
+                            Text("\(Int(signal.confidence * 100))%")
+                                .font(Typography.title3)
+                                .foregroundColor(TextColor.primary)
+                        }
+                    }
+                    
+                    // Timeframe and last updated info
+                    HStack {
+                        ModernTimeframeBadge(timeframe: timeframe)
+                        
+                        Spacer()
+                        
+                        VStack(alignment: .trailing, spacing: 4) {
+                            Text("Last Updated")
+                                .font(Typography.caption2)
+                                .foregroundColor(TextColor.secondary)
+                            
+                            Text(lastUpdated, style: .relative)
+                                .font(Typography.caption1)
+                                .foregroundColor(TextColor.primary)
+                        }
+                    }
+                }
+                .padding(24)
+            }
+            .padding(.horizontal, 20)
+        }
+    }
+    
+    // MARK: - Computed Properties
+    
+    private var signalDisplayText: String {
+        let direction = SignalDirection(rawValue: signal.direction) ?? .hold
+        switch direction {
+        case .buy: return "BUY"
+        case .sell: return "SELL"
+        case .hold: return "HOLD"
+        }
+    }
+    
+    private var signalSubtitle: String {
+        let direction = SignalDirection(rawValue: signal.direction) ?? .hold
+        switch direction {
+        case .buy: return "Strong bullish signal detected"
+        case .sell: return "Bearish momentum identified"
+        case .hold: return "Market conditions unclear"
+        }
+    }
+    
+    private var signalColor: Color {
+        let direction = SignalDirection(rawValue: signal.direction) ?? .hold
+        switch direction {
+        case .buy: return .green
+        case .sell: return .red
+        case .hold: return .orange
+        }
+    }
+}
+
+struct ModernSignalDirectionIndicator: View {
+    let direction: SignalDirection
+    @EnvironmentObject var themeManager: ThemeManager
+    
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(directionColor)
+                .frame(width: 60, height: 60)
+                .shadow(color: directionColor.opacity(0.3), radius: 10, x: 0, y: 5)
+            
+            Image(systemName: directionIcon)
+                .font(.system(size: 28, weight: .semibold))
+                .foregroundColor(.white)
+        }
+        .scaleEffect(1.0)
+        .animation(
+            .easeInOut(duration: 1.5).repeatForever(autoreverses: true),
+            value: themeManager.isDarkMode
+        )
+    }
+    
+    private var directionColor: Color {
+        switch direction {
+        case .buy: return .green
+        case .sell: return .red
+        case .hold: return .orange
+        }
+    }
+    
+    private var directionIcon: String {
+        switch direction {
+        case .buy: return "arrow.up.circle.fill"
+        case .sell: return "arrow.down.circle.fill"
+        case .hold: return "pause.circle.fill"
+        }
+    }
+}
+
+struct ModernConfidenceIndicator: View {
+    let confidence: Double
+    @EnvironmentObject var themeManager: ThemeManager
+    
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(
+                    LinearGradient(
+                        colors: [.gray.opacity(0.3), .clear],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 6
+                )
+                .frame(width: 60, height: 60)
+            
+            Circle()
+                .trim(from: 0, to: confidence)
+                .stroke(
+                    themeManager.primaryGradient,
+                    style: StrokeStyle(lineWidth: 6, lineCap: .round)
+                )
+                .frame(width: 60, height: 60)
+                .rotationEffect(.degrees(-90))
+                .animation(themeManager.slowAnimation, value: confidence)
+            
+            Text("\(Int(confidence * 100))%")
+                .font(Typography.caption1)
+                .foregroundColor(TextColor.primary)
+        }
+    }
+}
+
+struct ModernTimeframeBadge: View {
+    let timeframe: Timeframe
+    @EnvironmentObject var themeManager: ThemeManager
+    
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "clock")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(TextColor.secondary)
+            
+            Text(timeframe.rawValue)
+                .font(Typography.caption1)
+                .foregroundColor(TextColor.primary)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(
+            Capsule()
+                .fill(.ultraThinMaterial)
+        )
+        .overlay(
+            Capsule()
+                .strokeBorder(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(themeManager.isDarkMode ? 0.2 : 0.6),
+                            Color.white.opacity(themeManager.isDarkMode ? 0.1 : 0.3)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1
+                )
         )
     }
 }

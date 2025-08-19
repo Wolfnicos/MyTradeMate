@@ -9,8 +9,8 @@ private let logger = Logger.shared
 @MainActor
 final class RefactoredStrategiesVM: ObservableObject {
     // MARK: - Component Managers
-    @StateObject private var configurationManager = StrategyConfigurationManager()
-    @StateObject private var regimeDetectionManager = RegimeDetectionManager()
+    private let configurationManager = StrategyConfigurationManager()
+    private let regimeDetectionManager = RegimeDetectionManager()
     
     // MARK: - Injected Dependencies
     @Injected private var settings: any AppSettingsProtocol

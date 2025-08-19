@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // MARK: - Simple Order Statistics
 struct SimpleOrderStatistics {
@@ -20,40 +21,107 @@ struct SimpleOrderStatistics {
     }
 }
 
-// MARK: - Order Status Update View
+// MARK: - Order Status Update View (Modernized)
 struct OrderStatusUpdateView: View {
+    @EnvironmentObject var themeManager: ThemeManager
+    
     let update: OrderStatusUpdate
     
+    // Modern 2025 UI State
+    @State private var isVisible = false
+    @State private var showDetails = false
+    
     var body: some View {
-        HStack(spacing: 8) {
-            Circle()
-                .fill(statusColor)
-                .frame(width: 8, height: 8)
+        Button(action: {
+            // Haptic feedback
+            let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+            impactFeedback.impactOccurred()
             
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Order \(String(update.orderId.prefix(8)))")
-                    .font(.caption)
-                    .fontWeight(.medium)
-                
-                Text(update.status.rawValue.capitalized)
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+            withAnimation(themeManager.defaultAnimation) {
+                showDetails.toggle()
             }
-            
-            Spacer()
-            
-            Text(timeAgo(from: update.timestamp))
-                .font(.caption2)
-                .foregroundColor(.secondary)
+        }) {
+            HStack(spacing: 12) {
+                // Modern status indicator with glow
+                ZStack {
+                    Circle()
+                        .fill(statusColor.opacity(0.2))
+                        .frame(width: 24, height: 24)
+                    
+                    Circle()
+                        .fill(statusColor)
+                        .frame(width: 12, height: 12)
+                        .shadow(color: statusColor.opacity(0.5), radius: 4, x: 0, y: 2)
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Order \(String(update.orderId.prefix(8)))")
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundColor(TextColor.primary)
+                    
+                    HStack(spacing: 8) {
+                        Text(update.status.rawValue.capitalized)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(statusColor)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 2)
+                            .background(
+                                Capsule()
+                                    .fill(statusColor.opacity(0.1))
+                            )
+                        
+                        if showDetails {
+                            Text(update.message ?? "No message")
+                                .font(.system(size: 11, weight: .regular))
+                                .foregroundColor(TextColor.secondary)
+                                .lineLimit(2)
+                                .transition(.opacity.combined(with: .move(edge: .top)))
+                        }
+                    }
+                }
+                
+                Spacer()
+                
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text(timeAgo(from: update.timestamp))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(TextColor.secondary)
+                    
+                    // Animated chevron
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(TextColor.secondary)
+                        .rotationEffect(.degrees(showDetails ? 90 : 0))
+                        .animation(themeManager.defaultAnimation, value: showDetails)
+                }
+            }
+            .padding(.vertical, 12)
+            .padding(.horizontal, 16)
+            .background(
+                themeManager.neumorphicCardBackground()
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(statusColor.opacity(0.2), lineWidth: 1)
+            )
         }
-        .padding(.vertical, 4)
+        .buttonStyle(PlainButtonStyle())
+        .opacity(isVisible ? 1 : 0)
+        .offset(y: isVisible ? 0 : 10)
+        .animation(themeManager.defaultAnimation.delay(0.1), value: isVisible)
+        .onAppear {
+            withAnimation(themeManager.defaultAnimation.delay(0.1)) {
+                isVisible = true
+            }
+        }
     }
     
     private var statusColor: Color {
         switch update.status {
-        case .pending: return .blue
-        case .filled: return .green
-        case .cancelled, .rejected: return .red
+        case .pending: return themeManager.primaryColor
+        case .filled: return themeManager.successColor
+        case .cancelled, .rejected: return themeManager.errorColor
         }
     }
     
@@ -69,103 +137,173 @@ struct OrderStatusUpdateView: View {
     }
 }
 
-// MARK: - Active Orders View
+// MARK: - Active Orders View (Modernized)
 struct ActiveOrdersView: View {
+    @EnvironmentObject var themeManager: ThemeManager
     @StateObject private var orderTracker = OrderStatusTracker.shared
     @State private var showingAllOrders = false
     
+    // Modern 2025 UI State
+    @State private var isRefreshing = false
+    
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Header
-            headerView
+        VStack(alignment: .leading, spacing: 16) {
+            // Modern header
+            modernHeaderView
             
             // Active orders list
             if orderTracker.activeOrders.isEmpty {
-                emptyStateView
+                modernEmptyStateView
             } else {
-                activeOrdersList
+                modernActiveOrdersList
             }
         }
-        .padding(16)
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(12)
+        .padding(20)
+        .background(
+            themeManager.neumorphicCardBackground()
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 20))
         .sheet(isPresented: $showingAllOrders) {
             OrderStatusListView()
         }
+        .refreshable {
+            await refreshWithHaptics()
+        }
     }
     
-    // MARK: - Header
+    // MARK: - Modern Header
     
-    private var headerView: some View {
+    private var modernHeaderView: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Active Orders")
-                    .font(.headline)
-                    .fontWeight(.semibold)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
+                    Image(systemName: "clock.badge.checkmark")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(themeManager.primaryColor)
+                    
+                    Text("Active Orders")
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                        .foregroundColor(TextColor.primary)
+                }
                 
-                Text("\(orderTracker.activeOrders.count) pending")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                Text("\(orderTracker.activeOrders.count) pending orders")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(TextColor.secondary)
             }
             
             Spacer()
             
             if !orderTracker.activeOrders.isEmpty {
-                Button("View All") {
+                Button(action: {
+                    let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                    impactFeedback.impactOccurred()
                     showingAllOrders = true
+                }) {
+                    HStack(spacing: 6) {
+                        Text("View All")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(themeManager.primaryColor)
+                        
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(themeManager.primaryColor)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(
+                        themeManager.primaryColor.opacity(0.1)
+                    )
+                    .clipShape(Capsule())
                 }
-                .font(.caption)
-                .buttonStyle(.bordered)
             }
         }
     }
     
-    // MARK: - Active Orders List
+    // MARK: - Modern Active Orders List
     
-    private var activeOrdersList: some View {
-        VStack(spacing: 8) {
+    private var modernActiveOrdersList: some View {
+        VStack(spacing: 12) {
             ForEach(Array(orderTracker.activeOrders.values.prefix(3))) { order in
                 OrderStatusUpdateView(update: order)
             }
             
             // Show more indicator if there are more than 3 orders
             if orderTracker.activeOrders.count > 3 {
-                Button("View \(orderTracker.activeOrders.count - 3) more orders") {
+                Button(action: {
+                    let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                    impactFeedback.impactOccurred()
                     showingAllOrders = true
+                }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "ellipsis.circle")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(themeManager.accentColor)
+                        
+                        Text("View \(orderTracker.activeOrders.count - 3) more orders")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(themeManager.accentColor)
+                    }
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 16)
+                    .background(
+                        themeManager.accentColor.opacity(0.1)
+                    )
+                    .clipShape(Capsule())
                 }
-                .font(.caption)
-                .foregroundColor(.blue)
-                .padding(.top, 4)
             }
         }
     }
     
-    // MARK: - Empty State
+    // MARK: - Modern Empty State
     
-    private var emptyStateView: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "clock.badge.checkmark")
-                .font(.system(size: 24))
-                .foregroundColor(.secondary)
+    private var modernEmptyStateView: some View {
+        VStack(spacing: 16) {
+            // Modern icon with gradient
+            ZStack {
+                Circle()
+                    .fill(themeManager.primaryColor.opacity(0.1))
+                    .frame(width: 64, height: 64)
+                
+                Image(systemName: "clock.badge.checkmark")
+                    .font(.system(size: 28, weight: .semibold))
+                    .foregroundColor(themeManager.primaryColor)
+            }
             
-            Text("No active orders")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-            
-            Text("Orders will appear here when you place them")
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
+            VStack(spacing: 8) {
+                Text("No active orders")
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .foregroundColor(TextColor.primary)
+                
+                Text("Orders will appear here when you place them")
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundColor(TextColor.secondary)
+                    .multilineTextAlignment(.center)
+            }
         }
-        .padding(.vertical, 16)
+        .padding(.vertical, 32)
         .frame(maxWidth: .infinity)
+    }
+    
+    // MARK: - Helper Methods
+    
+    private func refreshWithHaptics() async {
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.impactOccurred()
+        
+        // Simulate refresh delay
+        try? await Task.sleep(nanoseconds: 1_000_000_000)
     }
 }
 
-// MARK: - Order Statistics Widget
+// MARK: - Order Statistics Widget (Modernized)
 struct OrderStatisticsWidget: View {
+    @EnvironmentObject var themeManager: ThemeManager
     @StateObject private var orderTracker = OrderStatusTracker.shared
     @State private var statistics: SimpleOrderStatistics? = nil
+    
+    // Modern 2025 UI State
+    @State private var isVisible = false
+    @State private var animateValues = false
 
 struct OrderStatistics {
     let totalOrders: Int
@@ -175,21 +313,36 @@ struct OrderStatistics {
 }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Order Statistics")
-                .font(.headline)
-                .fontWeight(.semibold)
+        VStack(alignment: .leading, spacing: 16) {
+            // Modern header
+            HStack(spacing: 8) {
+                Image(systemName: "chart.bar.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(themeManager.accentColor)
+                
+                Text("Order Statistics")
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundColor(TextColor.primary)
+            }
             
             if let stats = statistics {
-                statisticsContent(stats)
+                modernStatisticsContent(stats)
             } else {
-                loadingView
+                modernLoadingView
             }
         }
-        .padding(16)
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(12)
+        .padding(20)
+        .background(
+            themeManager.neumorphicCardBackground()
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .opacity(isVisible ? 1 : 0)
+        .offset(y: isVisible ? 0 : 20)
+        .animation(themeManager.defaultAnimation.delay(0.2), value: isVisible)
         .onAppear {
+            withAnimation(themeManager.defaultAnimation.delay(0.2)) {
+                isVisible = true
+            }
             updateStatistics()
         }
         .onReceive(orderTracker.$activeOrders) { _ in
@@ -200,50 +353,85 @@ struct OrderStatistics {
         }
     }
     
-    private func statisticsContent(_ stats: SimpleOrderStatistics) -> some View {
-        VStack(spacing: 8) {
-            HStack {
-                StatisticItem(
+    private func modernStatisticsContent(_ stats: SimpleOrderStatistics) -> some View {
+        VStack(spacing: 16) {
+            HStack(spacing: 16) {
+                ModernStatisticItem(
                     title: "Total Orders",
                     value: "\(stats.totalOrders)",
-                    color: .primary
+                    color: themeManager.primaryColor,
+                    icon: "number.circle.fill"
                 )
                 
                 Spacer()
                 
-                StatisticItem(
+                ModernStatisticItem(
                     title: "Success Rate",
                     value: stats.successRatePercentage,
-                    color: .green
+                    color: themeManager.successColor,
+                    icon: "checkmark.circle.fill"
                 )
             }
             
-            HStack {
-                StatisticItem(
+            HStack(spacing: 16) {
+                ModernStatisticItem(
                     title: "Active",
                     value: "\(stats.activeOrders)",
-                    color: .blue
+                    color: themeManager.primaryColor,
+                    icon: "clock.fill"
                 )
                 
                 Spacer()
                 
-                StatisticItem(
+                ModernStatisticItem(
                     title: "Avg. Time",
                     value: stats.averageExecutionTimeFormatted,
-                    color: .orange
+                    color: themeManager.warningColor,
+                    icon: "timer"
                 )
+            }
+        }
+        .opacity(animateValues ? 1 : 0)
+        .animation(themeManager.defaultAnimation.delay(0.3), value: animateValues)
+        .onAppear {
+            withAnimation(themeManager.defaultAnimation.delay(0.3)) {
+                animateValues = true
             }
         }
     }
     
-    private var loadingView: some View {
-        HStack {
-            ProgressView()
-                .scaleEffect(0.8)
+    private var modernLoadingView: some View {
+        HStack(spacing: 16) {
+            // Modern animated progress indicator
+            ZStack {
+                Circle()
+                    .stroke(themeManager.primaryColor.opacity(0.2), lineWidth: 3)
+                    .frame(width: 32, height: 32)
+                
+                Circle()
+                    .trim(from: 0, to: 0.7)
+                    .stroke(
+                        LinearGradient(
+                            colors: [themeManager.primaryColor, themeManager.accentColor],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        style: StrokeStyle(lineWidth: 3, lineCap: .round)
+                    )
+                    .frame(width: 32, height: 32)
+                    .rotationEffect(.degrees(animateValues ? 360 : 0))
+                    .animation(
+                        themeManager.slowAnimation.repeatForever(autoreverses: false),
+                        value: animateValues
+                    )
+            }
             
             Text("Loading statistics...")
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(TextColor.secondary)
+        }
+        .onAppear {
+            animateValues = true
         }
     }
     
@@ -260,8 +448,59 @@ struct OrderStatistics {
     }
 }
 
-// MARK: - Statistic Item
+// MARK: - Modern Statistic Item
+struct ModernStatisticItem: View {
+    @EnvironmentObject var themeManager: ThemeManager
+    
+    let title: String
+    let value: String
+    let color: Color
+    let icon: String
+    
+    // Modern 2025 UI State
+    @State private var isVisible = false
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(color)
+                
+                Text(title)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(TextColor.secondary)
+            }
+            
+            Text(value)
+                .font(.system(size: 20, weight: .bold, design: .rounded))
+                .foregroundColor(color)
+        }
+        .padding(.vertical, 12)
+        .padding(.horizontal, 16)
+        .background(
+            color.opacity(0.05)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(color.opacity(0.2), lineWidth: 1)
+        )
+        .opacity(isVisible ? 1 : 0)
+        .offset(y: isVisible ? 0 : 10)
+        .animation(themeManager.defaultAnimation.delay(0.1), value: isVisible)
+        .onAppear {
+            withAnimation(themeManager.defaultAnimation.delay(0.1)) {
+                isVisible = true
+            }
+        }
+    }
+}
+
+// MARK: - Legacy Statistic Item (Enhanced)
 struct StatisticItem: View {
+    @EnvironmentObject var themeManager: ThemeManager
+    
     let title: String
     let value: String
     let color: Color
@@ -270,7 +509,7 @@ struct StatisticItem: View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundColor(TextColor.secondary)
             
             Text(value)
                 .font(.subheadline)
@@ -280,114 +519,183 @@ struct StatisticItem: View {
     }
 }
 
-// MARK: - Recent Order Updates View
+// MARK: - Recent Order Updates View (Modernized)
 struct RecentOrderUpdatesView: View {
+    @EnvironmentObject var themeManager: ThemeManager
     @StateObject private var orderTracker = OrderStatusTracker.shared
     @State private var showingAllUpdates = false
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Header
-            HStack {
+        VStack(alignment: .leading, spacing: 16) {
+            // Modern header
+            HStack(spacing: 8) {
+                Image(systemName: "clock.arrow.circlepath")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(themeManager.accentColor)
+                
                 Text("Recent Activity")
-                    .font(.headline)
-                    .fontWeight(.semibold)
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundColor(TextColor.primary)
                 
                 Spacer()
                 
                 if !Array(orderTracker.orderHistory.suffix(10)).isEmpty {
-                    Button("View All") {
+                    Button(action: {
+                        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                        impactFeedback.impactOccurred()
                         showingAllUpdates = true
+                    }) {
+                        HStack(spacing: 6) {
+                            Text("View All")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(themeManager.accentColor)
+                            
+                            Image(systemName: "arrow.right")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(themeManager.accentColor)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(
+                            themeManager.accentColor.opacity(0.1)
+                        )
+                        .clipShape(Capsule())
                     }
-                    .font(.caption)
-                    .buttonStyle(.bordered)
                 }
             }
             
             // Recent updates
             if Array(orderTracker.orderHistory.suffix(10)).isEmpty {
-                emptyActivityView
+                modernEmptyActivityView
             } else {
-                recentUpdatesList
+                modernRecentUpdatesList
             }
         }
-        .padding(16)
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(12)
+        .padding(20)
+        .background(
+            themeManager.neumorphicCardBackground()
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 20))
         .sheet(isPresented: $showingAllUpdates) {
             RecentUpdatesListView()
         }
     }
     
-    private var recentUpdatesList: some View {
-        VStack(spacing: 6) {
+    private var modernRecentUpdatesList: some View {
+        VStack(spacing: 12) {
             ForEach(Array(Array(orderTracker.orderHistory.suffix(10)).prefix(5))) { update in
-                RecentUpdateRow(update: update)
+                ModernRecentUpdateRow(update: update)
             }
             
             if Array(orderTracker.orderHistory.suffix(10)).count > 5 {
-                Button("View \(Array(orderTracker.orderHistory.suffix(10)).count - 5) more updates") {
+                Button(action: {
+                    let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                    impactFeedback.impactOccurred()
                     showingAllUpdates = true
+                }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "ellipsis.circle")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(themeManager.accentColor)
+                        
+                        Text("View \(Array(orderTracker.orderHistory.suffix(10)).count - 5) more updates")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(themeManager.accentColor)
+                    }
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 16)
+                    .background(
+                        themeManager.accentColor.opacity(0.1)
+                    )
+                    .clipShape(Capsule())
                 }
-                .font(.caption)
-                .foregroundColor(.blue)
-                .padding(.top, 4)
             }
         }
     }
     
-    private var emptyActivityView: some View {
-        VStack(spacing: 8) {
+    private var modernEmptyActivityView: some View {
+        VStack(spacing: 12) {
             Image(systemName: "clock")
-                .font(.system(size: 20))
-                .foregroundColor(.secondary)
+                .font(.system(size: 24, weight: .semibold))
+                .foregroundColor(themeManager.accentColor.opacity(0.6))
             
             Text("No recent activity")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(TextColor.secondary)
         }
-        .padding(.vertical, 12)
+        .padding(.vertical, 24)
         .frame(maxWidth: .infinity)
     }
 }
 
-// MARK: - Recent Update Row
-struct RecentUpdateRow: View {
+// MARK: - Modern Recent Update Row
+struct ModernRecentUpdateRow: View {
+    @EnvironmentObject var themeManager: ThemeManager
+    
     let update: OrderStatusUpdate
     
+    // Modern 2025 UI State
+    @State private var isVisible = false
+    
     var body: some View {
-        HStack(spacing: 8) {
-            // Status indicator
-            Circle()
-                .fill(statusColor)
-                .frame(width: 6, height: 6)
+        HStack(spacing: 12) {
+            // Modern status indicator
+            ZStack {
+                Circle()
+                    .fill(statusColor.opacity(0.2))
+                    .frame(width: 20, height: 20)
+                
+                Circle()
+                    .fill(statusColor)
+                    .frame(width: 8, height: 8)
+                    .shadow(color: statusColor.opacity(0.5), radius: 2, x: 0, y: 1)
+            }
             
             // Update message
             Text(update.message ?? update.status.rawValue)
-                .font(.caption)
-                .foregroundColor(.primary)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(TextColor.primary)
                 .lineLimit(1)
             
             Spacer()
             
             // Timestamp
             Text(formatTimestamp(update.timestamp))
-                .font(.caption2)
-                .foregroundColor(.secondary)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(TextColor.secondary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(
+                    themeManager.primaryColor.opacity(0.1)
+                )
+                .clipShape(Capsule())
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .background(
+            themeManager.primaryColor.opacity(0.02)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .opacity(isVisible ? 1 : 0)
+        .offset(x: isVisible ? 0 : -10)
+        .animation(themeManager.defaultAnimation.delay(0.1), value: isVisible)
+        .onAppear {
+            withAnimation(themeManager.defaultAnimation.delay(0.1)) {
+                isVisible = true
+            }
+        }
     }
     
     private var statusColor: Color {
         switch update.status {
         case .pending:
-            return .blue
+            return themeManager.primaryColor
         case .filled:
-            return .green
+            return themeManager.successColor
         case .cancelled:
-            return .orange
+            return themeManager.warningColor
         case .rejected:
-            return .red
+            return themeManager.errorColor
         }
     }
     
@@ -399,22 +707,24 @@ struct RecentUpdateRow: View {
     }
 }
 
-// MARK: - Recent Updates List View
+// MARK: - Recent Updates List View (Enhanced)
 struct RecentUpdatesListView: View {
+    @EnvironmentObject var themeManager: ThemeManager
     @StateObject private var orderTracker = OrderStatusTracker.shared
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
         NavigationView {
             ScrollView {
-                LazyVStack(spacing: 8) {
+                LazyVStack(spacing: 12) {
                     ForEach(Array(orderTracker.orderHistory.suffix(10))) { update in
-                        RecentUpdateRow(update: update)
-                            .padding(.horizontal)
+                        ModernRecentUpdateRow(update: update)
+                            .padding(.horizontal, 20)
                     }
                 }
-                .padding(.vertical)
+                .padding(.vertical, 20)
             }
+            .background(themeManager.backgroundGradient)
             .navigationTitle("Recent Activity")
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarItems(trailing: Button("Done") { dismiss() })
@@ -431,5 +741,6 @@ struct RecentUpdatesListView: View {
         Spacer()
     }
     .padding()
-    .background(Color(.systemBackground))
+    .background(ThemeManager.shared.backgroundGradient)
+    .environmentObject(ThemeManager.shared)
 }

@@ -27,7 +27,7 @@ extension Color {
 // HelpIconView is defined in Views/Components/HelpIconView.swift
 
 struct SettingsView: View {
-    @ObservedObject private var settings = AppSettings.shared
+    @StateObject private var appSettings = AppSettings.shared
     @ObservedObject private var settingsRepo = SettingsRepository.shared
     @EnvironmentObject private var navigationCoordinator: NavigationCoordinator
     @EnvironmentObject private var toastManager: ToastManager
@@ -100,7 +100,7 @@ struct SettingsView: View {
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.large)
         }
-        .preferredColorScheme(settings.darkMode ? .dark : .light)
+        .preferredColorScheme(appSettings.darkMode ? .dark : .light)
         .sheet(isPresented: $showShareSheet) {
             if let url = exportedLogURL {
                 ShareSheet(items: [url])
@@ -134,7 +134,7 @@ struct SettingsView: View {
                             title: "Demo Mode",
                             description: "Use simulated trading environment for testing strategies without real money. All trades will be virtual.",
                             helpText: "Demo Mode creates a completely simulated trading environment where you can test strategies without any risk. All trades are virtual and no real money is involved. This is perfect for learning and testing new strategies.",
-                            isOn: $settings.demoMode,
+                            isOn: $appSettings.demoMode,
                             style: .warning
                         )
                     )
@@ -147,7 +147,7 @@ struct SettingsView: View {
                             title: "Auto Trading",
                             description: "Allow AI strategies to automatically place trades when conditions are met. Requires valid API keys and live mode.",
                             helpText: "Auto Trading allows the AI to execute trades automatically based on strategy signals. This requires:\n\n• Valid exchange API keys\n• Live trading mode enabled\n• Sufficient account balance\n\nThe AI will place buy/sell orders when conditions are met. Always monitor your positions when auto trading is enabled.",
-                            isOn: $settings.autoTrading,
+                            isOn: $appSettings.autoTrading,
                             style: .success
                         )
                     )
@@ -159,7 +159,7 @@ struct SettingsView: View {
                         SettingsToggleRow(
                             title: "Confirm Trades",
                             description: "Show confirmation dialog before placing any trade. Recommended for beginners and live trading.",
-                            isOn: $settings.confirmTrades
+                            isOn: $appSettings.confirmTrades
                         )
                     )
                 ),
@@ -171,9 +171,9 @@ struct SettingsView: View {
                             title: "Paper Trading",
                             description: "Simulate trades with real market data but without actual money. Disabled when Demo Mode is active.",
                             helpText: "Paper Trading simulates real trades using live market data without risking actual money. Unlike Demo Mode, it uses real-time prices and market conditions.\n\nKey differences:\n• Uses live market data\n• Simulates real order execution\n• Tracks realistic performance\n• Disabled when Demo Mode is active",
-                            isOn: $settings.paperTrading,
+                            isOn: $appSettings.paperTrading,
                             style: .prominent,
-                            isDisabled: settings.demoMode
+                            isDisabled: appSettings.demoMode
                         )
                     )
                 ),
@@ -185,7 +185,7 @@ struct SettingsView: View {
                             title: "Live Market Data",
                             description: "Connect to real-time exchange data feeds. Disable to use cached data and reduce API usage.",
                             helpText: "Live Market Data connects to real-time exchange feeds for the most current prices and market information.\n\nWhen enabled:\n• Real-time price updates\n• Current market conditions\n• Higher API usage\n\nWhen disabled:\n• Uses cached/historical data\n• Reduced API calls\n• May affect trading accuracy",
-                            isOn: $settings.liveMarketData,
+                            isOn: $appSettings.liveMarketData,
                             style: .default
                         )
                     )
@@ -317,8 +317,27 @@ struct SettingsView: View {
         SettingsSection(
             title: "Interface",
             icon: "rectangle.3.group",
-            footer: "Customize the app interface and widget appearance to match your preferences.",
+            footer: "Customize the app interface, theme, and widget appearance to match your preferences.",
             items: [
+                SettingsItem(
+                    title: "Theme",
+                    description: "Choose between Light, Dark, or System theme",
+                    view: AnyView(
+                        VStack(alignment: .leading, spacing: Spacing.sm) {
+                            Picker("Theme", selection: $settingsRepo.preferredTheme) {
+                                Text("System").tag(AppTheme.system)
+                                Text("Light").tag(AppTheme.light)
+                                Text("Dark").tag(AppTheme.dark)
+                            }
+                            .pickerStyle(.segmented)
+                            
+                            Text("Theme will be applied immediately across the entire app")
+                                .font(Typography.caption1)
+                                .foregroundColor(TextColor.secondary)
+                        }
+                        .padding(Spacing.sm)
+                    )
+                ),
                 SettingsItem(
                     title: "Widget Configuration",
                     description: "Customize your home screen widget display options, colors, and update frequency",
@@ -419,7 +438,7 @@ struct SettingsView: View {
                         SettingsToggleRow(
                             title: "Dark Mode",
                             description: "Use dark color scheme throughout the app. Follows system setting when disabled.",
-                            isOn: $settings.darkMode,
+                            isOn: $appSettings.darkMode,
                             style: .minimal
                         )
                     )
@@ -431,7 +450,7 @@ struct SettingsView: View {
                         SettingsToggleRow(
                             title: "Haptic Feedback",
                             description: "Enable tactile feedback for button presses, trade confirmations, and other interactions.",
-                            isOn: $settings.haptics,
+                            isOn: $appSettings.haptics,
                             style: .default
                         )
                     )
@@ -468,7 +487,7 @@ struct SettingsView: View {
                             title: "AI Debug Mode",
                             description: "Enable additional AI diagnostics and debugging information. May impact performance.",
                             helpText: "AI Debug Mode provides detailed information about AI decision-making processes:\n\n• Model input/output data\n• Confidence scores\n• Processing times\n• Strategy reasoning\n\nWarning: This may impact app performance and should only be enabled when troubleshooting AI behavior.",
-                            isOn: $settings.aiDebugMode,
+                            isOn: $appSettings.aiDebugMode,
                             style: .warning
                         )
                     )
@@ -481,7 +500,7 @@ struct SettingsView: View {
                             title: "Verbose AI Logs",
                             description: "Show detailed AI processing logs including model inputs, outputs, and decision reasoning.",
                             helpText: "Verbose AI Logs capture extensive details about AI processing:\n\n• Raw market data inputs\n• Feature calculations\n• Model predictions\n• Decision trees\n• Execution timing\n\nThis generates large log files and may significantly impact performance. Only enable for detailed troubleshooting.",
-                            isOn: $settings.verboseAILogs,
+                            isOn: $appSettings.verboseAILogs,
                             style: .danger
                         )
                     )
@@ -493,7 +512,7 @@ struct SettingsView: View {
                         SettingsToggleRow(
                             title: "PnL Demo Mode",
                             description: "Use synthetic profit/loss data for testing charts and calculations without real trading history.",
-                            isOn: $settings.pnlDemoMode,
+                            isOn: $appSettings.pnlDemoMode,
                             style: .minimal
                         )
                     )
@@ -543,18 +562,18 @@ struct SettingsView: View {
             
             HStack(spacing: Spacing.sm) {
                 Circle()
-                    .fill(settings.demoMode ? .orange : .green)
+                    .fill(appSettings.demoMode ? .orange : .green)
                     .frame(width: 10, height: 10)
                 
-                Text(settings.demoMode ? "DEMO MODE" : "LIVE MODE")
+                Text(appSettings.demoMode ? "DEMO MODE" : "LIVE MODE")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(settings.demoMode ? .orange : .green)
+                    .foregroundColor(appSettings.demoMode ? .orange : .green)
             }
             .padding(.horizontal, Spacing.md)
             .padding(.vertical, Spacing.sm)
             .background(
                 Capsule()
-                    .fill((settings.demoMode ? Color.orange : Color.green).opacity(0.12))
+                    .fill((appSettings.demoMode ? Color.orange : Color.green).opacity(0.12))
             )
         }
         .padding(.vertical, Spacing.xs)

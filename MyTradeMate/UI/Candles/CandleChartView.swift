@@ -53,18 +53,21 @@ struct CandlestickChartView: View {
                             yStart: .value("Low", candle.low),
                             yEnd: .value("High", candle.high)
                         )
-                        .foregroundStyle(.secondary)
-                        .lineStyle(.init(lineWidth: 1))
+                        .foregroundStyle(candle.isGreen ? Color.green.opacity(0.7) : Color.red.opacity(0.7))
+                        .lineStyle(.init(lineWidth: 1.5))
                         
                         // Body (open-close range) 
                         RectangleMark(
                             x: .value("Time", candle.time),
                             yStart: .value("Open", min(candle.open, candle.close)),
                             yEnd: .value("Close", max(candle.open, candle.close)),
-                            width: .fixed(8)
+                            width: .fixed(12)
                         )
-                        .foregroundStyle(candle.isGreen ? .green : .red)
-                        .opacity(0.8)
+                        .foregroundStyle(candle.isGreen ? 
+                            LinearGradient(colors: [.green.opacity(0.8), .green.opacity(0.4)], startPoint: .top, endPoint: .bottom) :
+                            LinearGradient(colors: [.red.opacity(0.8), .red.opacity(0.4)], startPoint: .top, endPoint: .bottom)
+                        )
+                        .cornerRadius(2)
                         
                         // Handle doji candles (open == close)
                         if abs(candle.open - candle.close) < 0.01 {
@@ -74,7 +77,7 @@ struct CandlestickChartView: View {
                                 yEnd: .value("Price", candle.open)
                             )
                             .foregroundStyle(.secondary)
-                            .lineStyle(.init(lineWidth: 2))
+                            .lineStyle(.init(lineWidth: 3))
                         }
                     }
                 }
@@ -84,9 +87,12 @@ struct CandlestickChartView: View {
                             AxisValueLabel {
                                 Text(date, format: .dateTime.hour().minute())
                                     .font(.caption)
+                                    .foregroundColor(.secondary)
                             }
                             AxisGridLine()
+                                .foregroundStyle(.secondary.opacity(0.3))
                             AxisTick()
+                                .foregroundStyle(.secondary.opacity(0.5))
                         }
                     }
                 }
@@ -96,9 +102,12 @@ struct CandlestickChartView: View {
                             AxisValueLabel {
                                 Text("\(price, specifier: "%.0f")")
                                     .font(.caption)
+                                    .foregroundColor(.secondary)
                             }
                             AxisGridLine()
+                                .foregroundStyle(.secondary.opacity(0.3))
                             AxisTick()
+                                .foregroundStyle(.secondary.opacity(0.5))
                         }
                     }
                 }

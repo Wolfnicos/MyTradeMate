@@ -3,7 +3,7 @@ import Combine
 import SwiftUI
 
 // MARK: - Market Regime
-enum MarketRegime: String, CaseIterable {
+public enum MarketRegime: String, CaseIterable {
     case trendingUp = "Trending Up"
     case trendingDown = "Trending Down"
     case ranging = "Ranging"

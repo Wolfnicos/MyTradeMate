@@ -4,19 +4,19 @@ import OSLog
 import Foundation
 
 struct MyTradeMateApp: App {
-    // Core singletons
-    @StateObject private var settingsRepository = SettingsRepository.shared
-    @StateObject private var themeManager = ThemeManager.shared
+    // Core singletons - use existing instances, don't create new ones
+    private let settingsRepository = SettingsRepository.shared
+    private let themeManager = ThemeManager.shared
     @StateObject private var navigationCoordinator = NavigationCoordinator()
     
-    // Manager singletons
-    @StateObject private var marketDataManager = MarketDataManager.shared
-    @StateObject private var signalManager = SignalManager.shared
-    @StateObject private var tradingManager = TradingManager.shared
-    @StateObject private var strategyManager = StrategyManager.shared
-    @StateObject private var regimeDetectionManager = RegimeDetectionManager()
-    @StateObject private var riskManager = RiskManager.shared
-    @StateObject private var pnlManager = PnLManager.shared
+    // Manager singletons - use existing instances
+    private let marketDataManager = MarketDataManager.shared
+    private let signalManager = SignalManager.shared
+    private let tradingManager = TradingManager.shared
+    private let strategyManager = StrategyManager.shared
+    private let regimeDetectionManager = RegimeDetectionManager()
+    private let riskManager = RiskManager.shared
+    private let pnlManager = PnLManager.shared
     @StateObject private var toastManager = ToastManager()
     
     // View Models
@@ -26,7 +26,7 @@ struct MyTradeMateApp: App {
         tradingManager: TradingManager.shared
     )
     @StateObject private var strategiesVM = RefactoredStrategiesVM()
-    @StateObject private var settingsVM = SettingsVM.shared
+    private let settingsVM = SettingsVM.shared
     @StateObject private var tradesVM = TradesVM()
     @StateObject private var pnlVM = PnLVM()
     
@@ -64,6 +64,7 @@ struct MyTradeMateApp: App {
                 .environmentObject(settingsRepository)
                 .environmentObject(themeManager)
                 .environmentObject(navigationCoordinator)
+                .environmentObject(AppSettings.shared)
                 
                 // Managers
                 .environmentObject(marketDataManager)

@@ -70,7 +70,11 @@ public final class AppSettings: ObservableObject, AppSettingsProtocol {
     
     public var darkMode: Bool {
         get { themeDark }
-        set { themeDark = newValue }
+        set { 
+            themeDark = newValue
+            // Don't sync with ThemeManager here to avoid infinite loop
+            // ThemeManager will read from AppSettings when needed
+        }
     }
     
     public var isDemoAI: Bool { demoMode }

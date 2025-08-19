@@ -522,7 +522,7 @@
 		9825BF98E24C25FDA92D41FB /* TradesVM.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TradesVM.swift; sourceTree = "<group>"; };
 		9955A33D1826C074DDAA92B5 /* RegimeDetectionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegimeDetectionManager.swift; sourceTree = "<group>"; };
 		99DA0F4C4D050E28230961A3 /* LoadingStateViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingStateViewTests.swift; sourceTree = "<group>"; };
-		9B339B1573B30F6E26922690 /* MyTradeMate.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MyTradeMate.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9B339B1573B30F6E26922690 /* MyTradeMate.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = MyTradeMate.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9B49C4E0E82EE56D3068B221 /* FinalIntegrationTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinalIntegrationTest.swift; sourceTree = "<group>"; };
 		9C02F6999C356B9816F66E0C /* PredictionResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PredictionResult.swift; sourceTree = "<group>"; };
 		9C39677D18B525A83202EA13 /* FeaturePreparationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeaturePreparationTests.swift; sourceTree = "<group>"; };
@@ -1815,7 +1815,6 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 9J536667NJ;
 				INFOPLIST_FILE = MyTradeMate/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -2005,7 +2004,6 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 9J536667NJ;
 				INFOPLIST_FILE = MyTradeMate/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (

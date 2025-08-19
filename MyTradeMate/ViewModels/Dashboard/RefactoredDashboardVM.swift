@@ -12,6 +12,11 @@ final class RefactoredDashboardVM: ObservableObject {
     private let marketDataManager: MarketDataManager
     private let signalManager: SignalManager
     private let tradingManager: TradingManager
+    private let strategyManager: StrategyManager
+    
+    // MARK: - Repositories and Services
+    private let settingsRepository: SettingsRepository
+    private let metaConfidenceCalculator: MetaConfidenceCalculator
     
     // MARK: - Injected Dependencies
     @Injected private var settings: AppSettingsProtocol
@@ -67,6 +72,43 @@ final class RefactoredDashboardVM: ObservableObject {
     @Published var autoTradingEnabled: Bool = false
     @Published var timeframe: Timeframe = .m5
     
+    // MARK: - Real Data Properties Connected to SettingsRepository
+    var activeStrategies: [String] {
+        // If SettingsRepository doesn't have strategy data, fall back to StrategyManager
+        if settingsRepository.strategyEnabled.isEmpty {
+            return strategyManager.activeStrategies.map { $0.name }
+        }
+        
+        var strategies: [String] = []
+        if settingsRepository.strategyEnabled["RSI"] == true { strategies.append("RSI") }
+        if settingsRepository.strategyEnabled["EMA"] == true { strategies.append("EMA") }
+        if settingsRepository.strategyEnabled["MACD"] == true { strategies.append("MACD") }
+        if settingsRepository.strategyEnabled["MeanReversion"] == true { strategies.append("Mean Reversion") }
+        if settingsRepository.strategyEnabled["ATR"] == true { strategies.append("ATR") }
+        return strategies
+    }
+    
+    var aiConfidencePercentage: Double {
+        // Get current confidence from SignalManager or MetaConfidenceCalculator
+        return signalManager.confidence * 100
+    }
+    
+    var isLiveMode: Bool {
+        return settingsRepository.tradingMode == .live
+    }
+    
+    var isPaperMode: Bool {
+        return settingsRepository.tradingMode == .paper
+    }
+    
+    var isDemoMode: Bool {
+        return settingsRepository.tradingMode == .demo
+    }
+    
+    var currentTradingMode: String {
+        return settingsRepository.tradingMode.title.uppercased()
+    }
+    
     // Portfolio properties for 2025
     @Published var totalBalance: Double = 10000.0
     @Published var availableBalance: Double = 8500.0
@@ -97,11 +139,17 @@ final class RefactoredDashboardVM: ObservableObject {
     init(
         marketDataManager: MarketDataManager,
         signalManager: SignalManager,
-        tradingManager: TradingManager
+        tradingManager: TradingManager,
+        strategyManager: StrategyManager = StrategyManager.shared,
+        settingsRepository: SettingsRepository? = nil,
+        metaConfidenceCalculator: MetaConfidenceCalculator = MetaConfidenceCalculator()
     ) {
         self.marketDataManager = marketDataManager
         self.signalManager = signalManager
         self.tradingManager = tradingManager
+        self.strategyManager = strategyManager
+        self.settingsRepository = settingsRepository ?? SettingsRepository.shared
+        self.metaConfidenceCalculator = metaConfidenceCalculator
         
         setupBindings()
         loadInitialData()
@@ -124,7 +172,7 @@ final class RefactoredDashboardVM: ObservableObject {
             .compactMap { $0 }
             .sink { [weak self] signal in
                 guard let self = self else { return }
-                if self.settings.autoTrading {
+                if self.settingsRepository.autoTradingEnabled {
                     self.tradingManager.handleAutoTrading(signal: signal, currentPrice: self.price)
                 }
             }
@@ -143,6 +191,15 @@ final class RefactoredDashboardVM: ObservableObject {
             .removeDuplicates()
             .sink { precision in
                 Log.ai.info("Precision mode \(precision ? "ON" : "OFF")")
+            }
+            .store(in: &cancellables)
+        
+        // Observe settings changes to update dashboard
+        settingsRepository.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                // This will trigger updates to computed properties like activeStrategies
+                self?.objectWillChange.send()
             }
             .store(in: &cancellables)
     }
