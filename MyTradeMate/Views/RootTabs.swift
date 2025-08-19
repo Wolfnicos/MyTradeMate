@@ -85,77 +85,67 @@ enum AppTab: String, CaseIterable {
     // NavigationCoordinator moved to Core/NavigationCoordinator.swift
 
 struct RootTabs: View {
-    @StateObject private var appSettings = AppSettings.shared
-    @StateObject private var themeManager = ThemeManager.shared
-    @StateObject private var errorManager = ErrorManager.shared
-    @StateObject private var navigationCoordinator = NavigationCoordinator()
+    // Core services
+    @EnvironmentObject var settings: SettingsRepository
+    @EnvironmentObject var themeManager: ThemeManager
+    
+    // Managers
+    @EnvironmentObject var marketDataManager: MarketDataManager
+    @EnvironmentObject var signalManager: SignalManager
+    @EnvironmentObject var tradingManager: TradingManager
+    @EnvironmentObject var strategyManager: StrategyManager
+    @EnvironmentObject var regimeDetectionManager: RegimeDetectionManager
+    @EnvironmentObject var riskManager: RiskManager
+    @EnvironmentObject var pnlManager: PnLManager
+    
+    // View Models
+    @EnvironmentObject var dashboardVM: RefactoredDashboardVM
+    @EnvironmentObject var strategiesVM: RefactoredStrategiesVM
+    @EnvironmentObject var settingsVM: SettingsVM
+    @EnvironmentObject var tradesVM: TradesVM
+    @EnvironmentObject var pnlVM: PnLVM
 
     var body: some View {
         TabView {
-            NavigationStack(path: $navigationCoordinator.dashboardPath) {
-                DashboardView()
-                    .navigationDestination(for: NavigationDestination.self) { destination in
-                        navigationCoordinator.destination(for: destination)
-                    }
-            }
-            .tabItem {
-                Label("Dashboard", systemImage: "chart.line.uptrend.xyaxis")
-            }
+            // Dashboard Tab
+            DashboardView()
+                .environmentObject(dashboardVM)
+                .tabItem { Label("Dashboard", systemImage: AppTab.dashboard.systemImage) }
+                .tag(AppTab.dashboard)
 
-            NavigationStack(path: $navigationCoordinator.tradesPath) {
-                TradesView()
-                    .navigationDestination(for: NavigationDestination.self) { destination in
-                        navigationCoordinator.destination(for: destination)
-                    }
-            }
-            .tabItem {
-                Label("Trades", systemImage: "list.bullet.rectangle")
-            }
+            // Trades Tab
+            TradesView()
+                .environmentObject(tradesVM)
+                .tabItem { Label("Trades", systemImage: AppTab.trades.systemImage) }
+                .tag(AppTab.trades)
 
-            NavigationStack(path: $navigationCoordinator.pnlPath) {
-                PnLDetailView()
-                    .navigationDestination(for: NavigationDestination.self) { destination in
-                        navigationCoordinator.destination(for: destination)
-                    }
-            }
-            .tabItem {
-                Label("P&L", systemImage: "dollarsign.circle")
-            }
+            // P&L Tab
+            PnLDetailView()
+                .environmentObject(pnlVM)
+                .tabItem { Label("P&L", systemImage: AppTab.pnl.systemImage) }
+                .tag(AppTab.pnl)
 
-            NavigationStack(path: $navigationCoordinator.strategiesPath) {
-                StrategiesView()
-                    .navigationDestination(for: NavigationDestination.self) { destination in
-                        navigationCoordinator.destination(for: destination)
-                    }
-            }
-            .tabItem {
-                Label("Strategies", systemImage: "brain")
-            }
+            // Strategies Tab
+            StrategiesView()
+                .environmentObject(strategiesVM)
+                .tabItem { Label("Strategies", systemImage: AppTab.strategies.systemImage) }
+                .tag(AppTab.strategies)
 
-            NavigationStack(path: $navigationCoordinator.settingsPath) {
-                Text("Settings")
-                    .navigationTitle("Settings")
-                    .navigationDestination(for: NavigationDestination.self) { destination in
-                        navigationCoordinator.destination(for: destination)
-                    }
-            }
-            .tabItem {
-                Label("Settings", systemImage: "gearshape")
-            }
+            // Settings Tab
+            SettingsView()
+                .environmentObject(settingsVM)
+                .tabItem { Label("Settings", systemImage: AppTab.settings.systemImage) }
+                .tag(AppTab.settings)
         }
-        .environmentObject(appSettings)
-        .environmentObject(themeManager)
-        .environmentObject(errorManager)
-        .environmentObject(navigationCoordinator)
-        .preferredColorScheme(themeManager.colorScheme)
-        .withErrorHandling()
-        .onAppear {
-                // Log app launch
-            Log.userAction("App launched")
+        .onChange(of: settings.tradingMode) { newMode in
+            Log.settings.info("[SETTINGS] Trading mode changed to \(newMode)")
         }
-        .onOpenURL { url in
-                // Handle deep link - implementation will be added later
-            print("Deep link received: \(url)")
+        .onChange(of: settings.preferredTheme) { newTheme in
+            Log.settings.info("[SETTINGS] Theme changed to \(newTheme)")
+            themeManager.setTheme(newTheme)
+        }
+        .onChange(of: settings.verboseLogging) { isVerbose in
+            Log.settings.info("[SETTINGS] Verbose logging \(isVerbose ? "enabled" : "disabled")")
         }
     }
 }

@@ -2,6 +2,8 @@ import Foundation
 
 /// Bollinger Bands strategy implementation
 public final class BollingerBandsStrategy: BaseStrategy {
+    public static let shared = BollingerBandsStrategy()
+    
     public var period: Int = 20
     public var standardDeviations: Double = 2.0
     
@@ -32,7 +34,13 @@ public final class BollingerBandsStrategy: BaseStrategy {
         let upperBand = sma + (standardDeviations * stdDev)
         let lowerBand = sma - (standardDeviations * stdDev)
         
-        let currentPrice = candles.last!.close
+        guard let currentPrice = candles.last?.close,
+              candles.count >= 2 else {
+            return StrategySignal(direction: .hold, confidence: 0.0, reason: "Insufficient data", strategyName: name)
+        }
+        guard candles.count >= 2 else {
+            return StrategySignal(direction: .hold, confidence: 0.0, reason: "Insufficient data", strategyName: name)
+        }
         let previousPrice = candles[candles.count - 2].close
         
         // Calculate band position (0 = lower band, 1 = upper band)

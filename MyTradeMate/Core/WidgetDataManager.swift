@@ -10,11 +10,11 @@ import OSLog
 // MARK: - Widget Configuration
 
 public struct WidgetConfiguration: Codable {
-    public let displayMode: String
-    public let primarySymbol: String
-    public let showDemoMode: Bool
-    public let colorTheme: String
-    public let updateFrequency: String
+    public var displayMode: String
+    public var primarySymbol: String
+    public var showDemoMode: Bool
+    public var colorTheme: String
+    public var updateFrequency: String
     
     public static let `default` = WidgetConfiguration(
         displayMode: "balanced",

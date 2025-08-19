@@ -7,11 +7,20 @@ private let logger = os.Logger(subsystem: "com.mytrademate", category: "TradingM
 // MARK: - Trading Manager
 @MainActor
 final class TradingManager: ObservableObject {
+    // MARK: - Shared Instance
+    static let shared = TradingManager()
+    
     // MARK: - Dependencies
     private let errorManager = ErrorManager.shared
+    private let pnlManager = PnLManager.shared
     
     // MARK: - Published Properties
     @Published var tradingMode: TradingMode = .demo
+    
+    // MARK: - Computed Properties
+    var currentMode: TradingMode {
+        return tradingMode
+    }
     @Published var openPositions: [Position] = []
     @Published var isConnected: Bool = false
     @Published var connectionStatus: String = "Connecting..."

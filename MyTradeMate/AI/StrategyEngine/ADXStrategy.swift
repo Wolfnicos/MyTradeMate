@@ -1,7 +1,8 @@
 import Foundation
 
-/// Average Directional Index (ADX) strategy implementation
+/// ADX strategy implementation
 public final class ADXStrategy: BaseStrategy {
+    public static let shared = ADXStrategy()
     public var period: Int = 14
     public var trendThreshold: Double = 25.0
     public var strongTrendThreshold: Double = 40.0
@@ -140,9 +141,13 @@ public final class ADXStrategy: BaseStrategy {
         
         // Subsequent values use Wilder's smoothing
         for i in period..<trueRanges.count {
-            let smoothedTR = smoothedTRs.last! - (smoothedTRs.last! / Double(period)) + trueRanges[i]
-            let smoothedPlusDM = smoothedPlusDMs.last! - (smoothedPlusDMs.last! / Double(period)) + plusDMs[i]
-            let smoothedMinusDM = smoothedMinusDMs.last! - (smoothedMinusDMs.last! / Double(period)) + minusDMs[i]
+            guard let lastSmoothedTR = smoothedTRs.last,
+                  let lastSmoothedPlusDM = smoothedPlusDMs.last,
+                  let lastSmoothedMinusDM = smoothedMinusDMs.last else { continue }
+            
+            let smoothedTR = lastSmoothedTR - (lastSmoothedTR / Double(period)) + trueRanges[i]
+            let smoothedPlusDM = lastSmoothedPlusDM - (lastSmoothedPlusDM / Double(period)) + plusDMs[i]
+            let smoothedMinusDM = lastSmoothedMinusDM - (lastSmoothedMinusDM / Double(period)) + minusDMs[i]
             
             smoothedTRs.append(smoothedTR)
             smoothedPlusDMs.append(smoothedPlusDM)
@@ -180,7 +185,8 @@ public final class ADXStrategy: BaseStrategy {
         
         // Subsequent ADX values use Wilder's smoothing
         for i in period..<dx.count {
-            let adxValue = (adx.last! * Double(period - 1) + dx[i]) / Double(period)
+            guard let lastADX = adx.last else { continue }
+            let adxValue = (lastADX * Double(period - 1) + dx[i]) / Double(period)
             adx.append(adxValue)
         }
         

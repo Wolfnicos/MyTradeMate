@@ -13,7 +13,7 @@ final class RefactoredStrategiesVM: ObservableObject {
     @StateObject private var regimeDetectionManager = RegimeDetectionManager()
     
     // MARK: - Injected Dependencies
-    @Injected private var settings: AppSettingsProtocol
+    @Injected private var settings: any AppSettingsProtocol
     @Injected private var marketDataService: MarketDataServiceProtocol
     
     // MARK: - Published Properties (Delegated to Components)

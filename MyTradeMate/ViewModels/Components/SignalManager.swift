@@ -9,10 +9,14 @@ private let logger = os.Logger(subsystem: "com.mytrademate", category: "SignalMa
 // MARK: - Signal Manager
 @MainActor
 final class SignalManager: ObservableObject {
+    // MARK: - Shared Instance
+    static let shared = SignalManager()
+    
     // MARK: - Dependencies
     private let aiModelManager = AIModelManager.shared
     private let strategyManager = StrategyManager.shared
     private let errorManager = ErrorManager.shared
+    private let metaSignalEngine = MetaSignalEngine.shared
     
     // MARK: - Published Properties
     @Published var currentSignal: SignalInfo?

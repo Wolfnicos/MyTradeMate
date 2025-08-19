@@ -5,9 +5,13 @@ import SwiftUI
 // MARK: - Market Data Manager
 @MainActor
 final class MarketDataManager: ObservableObject {
+    // MARK: - Shared Instance
+    static let shared = MarketDataManager()
+    
     // MARK: - Dependencies
     private let marketDataService = MarketDataService.shared
     private let errorManager = ErrorManager.shared
+    private let settings = SettingsRepository.shared
     
     // MARK: - Published Properties
     @Published var price: Double = 0.0
@@ -106,13 +110,13 @@ final class MarketDataManager: ObservableObject {
     // MARK: - Data Loading
     func loadMarketData() async {
         do {
-            if AppSettings.shared.demoMode {
+            if settings.tradingMode == .demo {
                 generateMockData()
-                Log.app.info("Loaded demo market data")
-            } else if AppSettings.shared.liveMarketData {
+                Log.data.info("[MARKET] Loaded demo market data")
+            } else {
                 // Load real market data
                 let marketData = try await marketDataService.fetchCandles(
-                    symbol: AppSettings.shared.defaultSymbol,
+                    symbol: settings.selectedTradingPair.base.symbol,
                     timeframe: timeframe
                 )
                 
@@ -122,14 +126,14 @@ final class MarketDataManager: ObservableObject {
                     self.updateChartPoints()
                     self.lastUpdated = Date()
                 }
-                Log.app.info("Loaded live market data: \(marketData.count) candles")
-            } else {
-                // Fallback to demo data
-                generateMockData()
-                Log.app.info("Fallback to demo data")
+                Log.data.info("[MARKET] Loaded live data: \(marketData.count) candles")
+                
+                if settings.verboseLogging {
+                    Log.data.debug("[MARKET] Latest price: \(marketData.last?.close ?? 0.0)")
+                }
             }
         } catch {
-            Log.app.error("Failed to load market data: \(error.localizedDescription)")
+            Log.data.error("[MARKET] Failed to load data: \(error.localizedDescription)")
             errorManager.handle(error, context: "Load Market Data")
             // Fallback to demo data on error
             generateMockData()

@@ -157,7 +157,7 @@ struct PnLDetailView: View {
 }
 
 struct PnLDetailContentView: View {
-    @StateObject private var viewModel = PnLVM()
+    @EnvironmentObject var pnlVM: PnLVM
     @State private var selectedSymbol: String = "All"
     
     var body: some View {
@@ -174,10 +174,10 @@ struct PnLDetailContentView: View {
         .navigationTitle("PnL")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
-            selectedSymbol = viewModel.symbolFilter
-            viewModel.start()
+            selectedSymbol = pnlVM.symbolFilter
+            pnlVM.start()
         }
-        .onDisappear { viewModel.stop() }
+        .onDisappear { pnlVM.stop() }
     }
     
     // MARK: - View Components
@@ -186,17 +186,17 @@ struct PnLDetailContentView: View {
         VStack(spacing: 16) {
             // Header with equity information
             HStack {
-                EquityView(equity: viewModel.equity)
+                EquityView(equity: pnlVM.equity)
                 Spacer()
-                TodayPnLView(today: viewModel.today)
+                TodayPnLView(today: pnlVM.today)
             }
             
             // Unrealized PnL and timeframe picker
             HStack {
-                UnrealizedPnLView(unrealized: viewModel.unrealized)
+                UnrealizedPnLView(unrealized: pnlVM.unrealized)
                 Spacer()
-                TimeframePickerView(timeframe: $viewModel.timeframe, onTimeframeChange: { newValue in
-                    viewModel.setTimeframe(newValue)
+                TimeframePickerView(timeframe: $pnlVM.timeframe, onTimeframeChange: { newValue in
+                    pnlVM.setTimeframe(newValue)
                     print("🖥️ PnL timeframe=\(newValue.rawValue)")
                 })
             }
@@ -213,13 +213,13 @@ struct PnLDetailContentView: View {
                     .foregroundColor(.secondary)
                 
                 Picker("Symbol Filter", selection: $selectedSymbol) {
-                    ForEach(viewModel.availableSymbols, id: \.self) { symbol in
+                    ForEach(pnlVM.availableSymbols, id: \.self) { symbol in
                         Text(symbol).tag(symbol)
                     }
                 }
                 .pickerStyle(.menu)
                 .onChange(of: selectedSymbol) { _, newValue in
-                    viewModel.updateSymbolFilter(newValue)
+                    pnlVM.updateSymbolFilter(newValue)
                 }
             }
             
@@ -231,9 +231,9 @@ struct PnLDetailContentView: View {
     
     private var chartSection: some View {
         Group {
-            if viewModel.isLoading {
+            if pnlVM.isLoading {
                 loadingView
-            } else if viewModel.history.isEmpty {
+            } else if pnlVM.history.isEmpty {
                 emptyStateView
             } else {
                 equityChartView
@@ -318,17 +318,17 @@ struct PnLDetailContentView: View {
     
     private var equityChart: some View {
         Chart {
-            ForEach(viewModel.history.indices, id: \.self) { index in
-                let item = viewModel.history[index]
+            ForEach(pnlVM.history.indices, id: \.self) { index in
+                let item = pnlVM.history[index]
                 LineMark(
                     x: .value("Time", item.0),
                     y: .value("Equity", item.1)
                 )
-                .foregroundStyle(viewModel.equity >= 10000 ? .green : .red)
+                .foregroundStyle(pnlVM.equity >= 10000 ? .green : .red)
             }
         }
         .chartXAxis {
-            AxisMarks(values: .stride(by: .hour, count: viewModel.timeframeHours)) { value in
+            AxisMarks(values: .stride(by: .hour, count: pnlVM.timeframeHours)) { value in
                 AxisGridLine()
                 AxisTick()
                 AxisValueLabel(format: .dateTime.hour().minute())

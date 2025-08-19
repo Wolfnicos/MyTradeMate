@@ -2,7 +2,7 @@ import SwiftUI
 import Security
 
 struct ExchangeKeysView: View {
-    @StateObject private var viewModel = ExchangeKeysViewModel()
+    @EnvironmentObject var viewModel: ExchangeKeysViewModel
     @State private var showingDeleteAlert = false
     @State private var keyToDelete: Exchange?
     
@@ -366,9 +366,7 @@ struct ExchangeLoadingStateView: View {
     }
 }
 
-extension Exchange: Identifiable {
-    public var id: String { rawValue }
-}
+// Exchange already conforms to Identifiable in Exchange.swift
 
 #Preview {
     NavigationStack {

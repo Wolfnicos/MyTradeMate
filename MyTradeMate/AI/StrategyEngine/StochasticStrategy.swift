@@ -2,6 +2,8 @@ import Foundation
 
 /// Stochastic Oscillator strategy implementation
 public final class StochasticStrategy: BaseStrategy {
+    public static let shared = StochasticStrategy()
+    
     public var kPeriod: Int = 14
     public var dPeriod: Int = 3
     public var overboughtLevel: Double = 80.0
@@ -48,7 +50,9 @@ public final class StochasticStrategy: BaseStrategy {
         }
         
         // Calculate %D (moving average of %K)
-        let currentK = kValues.last!
+        guard let currentK = kValues.last else {
+            return StrategySignal(direction: .hold, confidence: 0.0, reason: "Insufficient Stochastic data", strategyName: name)
+        }
         let currentD = kValues.suffix(dPeriod).reduce(0, +) / Double(dPeriod)
         let previousK = kValues.count > 1 ? kValues[kValues.count - 2] : currentK
         let previousD = kValues.count >= dPeriod + 1 ? 

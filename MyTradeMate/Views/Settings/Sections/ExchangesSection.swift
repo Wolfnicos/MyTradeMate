@@ -1,11 +1,12 @@
 import SwiftUI
 
-struct ExchangesSection: View {
+struct ExchangeKeysSection: View {
+    @EnvironmentObject var settings: SettingsRepository
     @State private var showBinanceKeys = false
     @State private var showKrakenKeys = false
     
     var body: some View {
-        Section {
+        Section("Exchange Keys") {
             VStack(alignment: .leading, spacing: 4) {
                 Button("Binance API Keys") {
                     showBinanceKeys = true

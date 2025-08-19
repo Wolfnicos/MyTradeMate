@@ -30,4 +30,47 @@ final class OrderStatusTracker: ObservableObject {
     func removeOrder(_ orderId: String) {
         activeOrders.removeValue(forKey: orderId)
     }
+    
+    func executeOrderWithTracking(_ request: TradeRequest) async -> TrackedOrder {
+        let orderId = UUID().uuidString
+        
+        // Create initial tracking
+        var trackedOrder = TrackedOrder(
+            id: orderId,
+            originalRequest: request,
+            currentStatus: .pending
+        )
+        
+        // Update status to pending
+        updateOrderStatus(orderId, status: .pending)
+        
+        // Simulate order execution
+        do {
+            // Convert TradeRequest to OrderRequest format
+            let orderRequest = OrderRequest(
+                pair: TradingPair(base: Asset.bitcoin, quote: QuoteCurrency.USD),
+                side: request.side == .buy ? .buy : .sell,
+                amountMode: .fixedNotional,
+                amountValue: request.amount
+            )
+            
+            // Execute through TradeManager
+            let fill = try await TradeManager.shared.manualOrder(orderRequest)
+            
+            // Update status to completed
+            updateOrderStatus(orderId, status: .filled)
+            
+            trackedOrder.updateStatus(.filled, orderFill: fill)
+            
+            return trackedOrder
+            
+        } catch {
+            // Update status to failed
+            updateOrderStatus(orderId, status: .rejected, message: error.localizedDescription)
+            
+            trackedOrder.updateStatus(.rejected, errorMessage: error.localizedDescription)
+            
+            return trackedOrder
+        }
+    }
 }

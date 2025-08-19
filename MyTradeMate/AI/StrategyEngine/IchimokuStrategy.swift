@@ -2,6 +2,7 @@ import Foundation
 
 /// Ichimoku Cloud strategy implementation
 public final class IchimokuStrategy: BaseStrategy {
+    public static let shared = IchimokuStrategy()
     public var tenkanPeriod: Int = 9
     public var kijunPeriod: Int = 26
     public var senkouBPeriod: Int = 52

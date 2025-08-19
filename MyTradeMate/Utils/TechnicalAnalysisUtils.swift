@@ -32,7 +32,8 @@ public struct TechnicalAnalysisUtils {
         
         // Calculate subsequent EMAs
         for i in period..<values.count {
-            let newEMA = (values[i] * multiplier) + (ema.last! * (1 - multiplier))
+            guard let lastEMA = ema.last else { continue }
+            let newEMA = (values[i] * multiplier) + (lastEMA * (1 - multiplier))
             ema.append(newEMA)
         }
         
@@ -197,7 +198,8 @@ public struct TechnicalAnalysisUtils {
         
         // Subsequent ATR values use Wilder's smoothing
         for i in period..<trueRanges.count {
-            let newATR = (atr.last! * Double(period - 1) + trueRanges[i]) / Double(period)
+            guard let lastATR = atr.last else { continue }
+            let newATR = (lastATR * Double(period - 1) + trueRanges[i]) / Double(period)
             atr.append(newATR)
         }
         
@@ -215,7 +217,7 @@ public struct TechnicalAnalysisUtils {
         for i in 1..<candles.count {
             let current = candles[i]
             let previous = candles[i-1]
-            let lastOBV = obv.last!
+            guard let lastOBV = obv.last else { continue }
             
             if current.close > previous.close {
                 obv.append(lastOBV + current.volume)

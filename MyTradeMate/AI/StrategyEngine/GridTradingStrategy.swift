@@ -1,7 +1,8 @@
 import Foundation
 
-/// Grid trading strategy for range-bound markets
+/// Grid Trading strategy implementation
 public final class GridTradingStrategy: BaseStrategy {
+    public static let shared = GridTradingStrategy()
     public var gridLevels: Int = 10
     public var gridSpacing: Double = 0.01 // 1% spacing between levels
     public var baseOrderSize: Double = 100.0
@@ -30,7 +31,9 @@ public final class GridTradingStrategy: BaseStrategy {
             )
         }
         
-        let currentPrice = candles.last!.close
+        guard let currentPrice = candles.last?.close else { 
+            return StrategySignal(direction: .hold, confidence: 0.0, reason: "Insufficient data", strategyName: name)
+        }
         
         // Check market volatility
         let volatility = calculateVolatility(candles: Array(candles.suffix(volatilityPeriod)))

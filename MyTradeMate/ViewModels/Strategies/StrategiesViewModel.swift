@@ -6,7 +6,7 @@ final class StrategiesViewModel: ObservableObject {
     // MARK: - Injected Dependencies
     @Injected private var strategyManager: StrategyManagerProtocol
     @Injected private var errorManager: ErrorManagerProtocol
-    @Injected private var settings: AppSettingsProtocol
+    @Injected private var settings: any AppSettingsProtocol
     
     // MARK: - Published Properties
     @Published var availableStrategies: [TradingStrategy] = []
@@ -81,12 +81,12 @@ extension StrategiesViewModel {
     convenience init(
         strategyManager: StrategyManagerProtocol,
         errorManager: ErrorManagerProtocol,
-        settings: AppSettingsProtocol
+        settings: any AppSettingsProtocol
     ) {
         // Register mocks for testing
-        DIContainer.shared.registerMock(StrategyManagerProtocol.self, mock: strategyManager)
-        DIContainer.shared.registerMock(ErrorManagerProtocol.self, mock: errorManager)
-        DIContainer.shared.registerMock(AppSettingsProtocol.self, mock: settings)
+        DIContainer.shared?.registerMock(StrategyManagerProtocol.self, mock: strategyManager)
+        DIContainer.shared?.registerMock(ErrorManagerProtocol.self, mock: errorManager)
+        DIContainer.shared?.registerMock(AppSettingsProtocol.self, mock: settings)
         
         self.init()
     }

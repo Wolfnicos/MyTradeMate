@@ -112,21 +112,11 @@ struct CandlestickChartView: View {
 // DashboardVM extension would be in ViewModels/DashboardVM.swift
 
 #Preview {
-    let sampleData = (0..<20).map { i in
-        let basePrice = 45000.0
-        let time = Date().addingTimeInterval(-Double(i * 300))
-        let volatility = basePrice * 0.01
-        
-        let open = basePrice + Double.random(in: -volatility...volatility)
-        let close = open + Double.random(in: -volatility/2...volatility/2)
-        let high = max(open, close) + Double.random(in: 0...volatility/3)
-        let low = min(open, close) - Double.random(in: 0...volatility/3)
-        
-        return CandlePoint(time: time, open: open, high: high, low: low, close: close)
-    }.reversed()
-    
-    CandleChartView(data: Array(sampleData.map { point in
-        CandleData(timestamp: point.time, open: point.open, high: point.high, low: point.low, close: point.close, volume: 1000.0)
-    }))
-        .padding()
+    VStack {
+        Text("Candle Chart Preview")
+            .font(.headline)
+        Text("Chart would be displayed here")
+            .foregroundColor(.secondary)
+    }
+    .padding()
 }

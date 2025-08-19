@@ -38,7 +38,8 @@ public final class TechnicalIndicatorsService {
         
         // Calculate subsequent EMAs
         for i in period..<prices.count {
-            let ema = (prices[i] * multiplier) + (result.last! * (1 - multiplier))
+            guard let lastResult = result.last else { continue }
+            let ema = (prices[i] * multiplier) + (lastResult * (1 - multiplier))
             result.append(ema)
         }
         
@@ -178,12 +179,13 @@ public final class TechnicalIndicatorsService {
         
         for i in 0..<smaValues.count {
             let startIndex = i
-            let endIndex = i + period
+            let endIndex = min(i + period, prices.count)
             let slice = Array(prices[startIndex..<endIndex])
             
             // Calculate standard deviation
+            guard !slice.isEmpty else { continue }
             let mean = smaValues[i]
-            let variance = slice.map { pow($0 - mean, 2) }.reduce(0, +) / Double(period)
+            let variance = slice.map { pow($0 - mean, 2) }.reduce(0, +) / Double(slice.count)
             let stdDev = sqrt(variance)
             
             upperBand.append(mean + (standardDeviations * stdDev))

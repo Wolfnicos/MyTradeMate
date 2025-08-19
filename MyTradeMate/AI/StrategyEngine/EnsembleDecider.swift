@@ -3,6 +3,7 @@ import OSLog
 
 private let logger = os.Logger(subsystem: "com.mytrademate", category: "StrategyEngine")
 
+@MainActor
 public class EnsembleDecider {
     private var strategies: [Strategy] = []
     private let regimeDetector = RegimeDetector()
@@ -14,7 +15,7 @@ public class EnsembleDecider {
     private func setupDefaultStrategies() {
         strategies = [
             EMAStrategy(),
-            RSIStrategy(),
+            RSIStrategy.shared, // Use shared instance for thread safety
             MACDStrategy(),
             MeanReversionStrategy(),
             BreakoutStrategy()

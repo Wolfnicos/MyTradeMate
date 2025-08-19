@@ -249,7 +249,7 @@ public struct OrderFill: Codable, Identifiable {
 }
 
 /// Position for a specific trading pair
-public struct Position: Codable, Identifiable {
+public struct Position: Codable, Identifiable, Sendable {
     public let id: UUID
     public let pair: TradingPair
     public var quantity: Double

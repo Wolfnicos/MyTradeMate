@@ -2,6 +2,7 @@ import Foundation
 
 /// Parabolic SAR strategy implementation
 public final class ParabolicSARStrategy: BaseStrategy {
+    public static let shared = ParabolicSARStrategy()
     public var accelerationFactor: Double = 0.02
     public var maxAcceleration: Double = 0.20
     
@@ -33,9 +34,14 @@ public final class ParabolicSARStrategy: BaseStrategy {
             )
         }
         
-        let currentCandle = candles.last!
+        guard let currentCandle = candles.last else { return StrategySignal(direction: .hold, confidence: 0.0, reason: "Insufficient data", strategyName: name) }
+        guard candles.count >= 2 else {
+            return StrategySignal(direction: .hold, confidence: 0.0, reason: "Insufficient data", strategyName: name)
+        }
         let previousCandle = candles[candles.count - 2]
-        let currentSAR = sarData.last!
+        guard let currentSAR = sarData.last else {
+            return StrategySignal(direction: .hold, confidence: 0.0, reason: "Insufficient SAR data", strategyName: name)
+        }
         let previousSAR = sarData[sarData.count - 2]
         
         // Determine trend direction
@@ -105,10 +111,13 @@ public final class ParabolicSARStrategy: BaseStrategy {
         guard candles.count >= 2 else { return [] }
         
         var sarValues: [Double] = []
-        var isUptrend = candles[1].close > candles[0].close
-        var extremePoint = isUptrend ? candles[1].high : candles[1].low
+        guard let firstCandle = candles.first,
+              let secondCandle = candles.dropFirst().first else { return [] }
+        
+        var isUptrend = secondCandle.close > firstCandle.close
+        var extremePoint = isUptrend ? secondCandle.high : secondCandle.low
         var acceleration = accelerationFactor
-        var sar = candles[0].close
+        var sar = firstCandle.close
         
         sarValues.append(sar)
         

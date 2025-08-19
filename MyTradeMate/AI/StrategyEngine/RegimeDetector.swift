@@ -75,7 +75,7 @@ public class RegimeDetector {
         
         let recentTRs = Array(trueRanges.suffix(atrPeriod))
         let atr = recentTRs.reduce(0, +) / Double(recentTRs.count)
-        let currentPrice = candles.last!.close
+        guard let currentPrice = candles.last?.close else { return 0 }
         
         return atr / currentPrice // Normalized volatility
     }

@@ -11,10 +11,10 @@ final class ThemeManager: ObservableObject {
     @Published var isDarkMode: Bool = false
     
     private var cancellables = Set<AnyCancellable>()
-    private let settings: AppSettings
+    private let settingsRepo: SettingsRepository
     
-    init(settings: AppSettings = AppSettings.shared) {
-        self.settings = settings
+    init(settingsRepo: SettingsRepository = SettingsRepository.shared) {
+        self.settingsRepo = settingsRepo
         setupThemeBinding()
         updateTheme()
     }
@@ -22,27 +22,22 @@ final class ThemeManager: ObservableObject {
     // MARK: - Theme Management
     
     private func setupThemeBinding() {
-        // Monitor theme changes
-        isDarkMode = settings.themeDark
-        currentTheme = isDarkMode ? .dark : .light
-        applyTheme()
+        // Monitor theme changes from SettingsRepository
+        currentTheme = settingsRepo.preferredTheme
+        updateTheme()
+        
+        // Subscribe to theme changes
+        settingsRepo.$preferredTheme
+            .sink { [weak self] newTheme in
+                self?.currentTheme = newTheme
+                self?.updateTheme()
+            }
+            .store(in: &cancellables)
     }
     
     func setTheme(_ theme: AppTheme) {
         currentTheme = theme
-        
-        switch theme {
-        case .light:
-            settings.themeDark = false
-        case .dark:
-            settings.themeDark = true
-        case .system:
-            // Use system preference
-            let systemIsDark = UITraitCollection.current.userInterfaceStyle == .dark
-            settings.themeDark = systemIsDark
-        }
-        
-        applyTheme()
+        updateTheme()
         Log.userAction("Theme changed", parameters: ["theme": theme.rawValue])
     }
     
@@ -203,12 +198,12 @@ final class ThemeManager: ObservableObject {
 
 // MARK: - App Theme Enum
 
-enum AppTheme: String, CaseIterable, Identifiable {
+public enum AppTheme: String, CaseIterable, Identifiable {
     case light = "Light"
     case dark = "Dark"
     case system = "System"
     
-    var id: String { rawValue }
+    public var id: String { rawValue }
     
     var displayName: String {
         switch self {

@@ -1,10 +1,10 @@
 import SwiftUI
 
 struct TradingSection: View {
-    @ObservedObject private var settings = AppSettings.shared
+    @EnvironmentObject var settings: SettingsRepository
     
     var body: some View {
-        Section {
+        Section("Trading") {
             StandardToggleRow(
                 title: "Confirm Trades",
                 description: "Show confirmation dialog before placing any trade. Recommended for beginners and live trading.",
@@ -16,8 +16,8 @@ struct TradingSection: View {
                 title: "Paper Trading",
                 description: "Simulate trades with real market data but without actual money. Safe way to test strategies.",
                 isOn: Binding(
-                    get: { !settings.liveMarketDataEnabled },
-                    set: { settings.liveMarketDataEnabled = !$0 }
+                    get: { settings.paperTrading },
+                    set: { settings.paperTrading = $0 }
                 ),
                 style: .prominent
             )
@@ -25,7 +25,7 @@ struct TradingSection: View {
             StandardToggleRow(
                 title: "Auto Trading",
                 description: "Enable automated trading based on AI signals. Requires valid API keys and confirmation trades enabled.",
-                isOn: $settings.autoTrading,
+                isOn: $settings.autoTradingEnabled,
                 style: .success,
                 isDisabled: !settings.confirmTrades
             )

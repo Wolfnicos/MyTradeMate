@@ -1,23 +1,23 @@
 import SwiftUI
 
 struct InterfaceSection: View {
-    @ObservedObject private var settings = AppSettings.shared
+    @EnvironmentObject var settings: SettingsRepository
     
     var body: some View {
-        Section {
+        Section("Interface") {
             StandardToggleRow(
-                title: "Haptics",
-                description: "Enable tactile feedback for button presses, trade confirmations, and other interactions.",
-                isOn: $settings.hapticsEnabled,
+                title: "Verbose Logging",
+                description: "Enable detailed logging for debugging.",
+                isOn: $settings.verboseLogging,
                 style: .default
             )
             
-            StandardToggleRow(
-                title: "Dark Mode",
-                description: "Use dark color scheme throughout the app. Follows system setting when disabled.",
-                isOn: $settings.darkMode,
-                style: .minimal
-            )
+            Picker("Theme", selection: $settings.preferredTheme) {
+                Text("System").tag(AppTheme.system)
+                Text("Light").tag(AppTheme.light)
+                Text("Dark").tag(AppTheme.dark)
+            }
+            .pickerStyle(.segmented)
         }
     }
 }

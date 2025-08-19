@@ -21,6 +21,8 @@ final class StrategiesVM: ObservableObject {
     // MARK: - Private Properties
     private let ensembleDecider = EnsembleDecider()
     private let regimeDetector = RegimeDetector()
+    private let strategyEngine = StrategyEngine.shared
+    private let settingsRepo = SettingsRepository.shared
     private var cancellables = Set<AnyCancellable>()
     
     // MARK: - Computed Properties
@@ -31,6 +33,47 @@ final class StrategiesVM: ObservableObject {
         case "Volatile": return Accent.yellow
         default: return Brand.blue
         }
+    }
+    
+    var allStrategies: [StrategyInfo] {
+        // Get strategies from StrategyEngine registry instead of hardcoded list
+        return strategyEngine.allStrategies.map { strategy in
+            StrategyInfo(
+                id: strategy.name,
+                name: strategy.name,
+                description: strategy.description,
+                isEnabled: settingsRepo.isStrategyEnabled(strategy.name),
+                weight: settingsRepo.getStrategyWeight(strategy.name),
+                parameters: [] // TODO: Get parameters from strategy if available
+            )
+        }.sorted { $0.name < $1.name }
+    }
+    
+    func isEnabled(_ strategyId: String) -> Bool {
+        guard let index = strategies.firstIndex(where: { $0.id == strategyId }) else { return false }
+        return strategies[index].isEnabled
+    }
+    
+    func setEnabled(_ strategyId: String, enabled: Bool) {
+        guard let index = strategies.firstIndex(where: { $0.id == strategyId }) else { return }
+        strategies[index].isEnabled = enabled
+        
+        // Update SettingsRepository
+        settingsRepo.updateStrategyEnabled(strategyId, enabled: enabled)
+        
+        // Notify StrategyEngine to refresh active set
+        Task {
+            await strategyEngine.refreshActiveStrategies()
+        }
+        
+        // Log the change
+        Log.settings.info("[STRATEGY] \(strategyId) \(enabled ? "enabled" : "disabled")")
+    }
+    
+    func loadIfNeeded() async {
+        // This method ensures strategies are loaded from the registry
+        // The allStrategies computed property will automatically fetch from StrategyEngine
+        Log.settings.info("[STRATEGIES] Loading strategies from registry")
     }
     
     // MARK: - Initialization
@@ -208,6 +251,11 @@ final class StrategiesVM: ObservableObject {
         guard let index = strategies.firstIndex(where: { $0.id == id }) else { return }
         
         strategies[index].isEnabled = enabled
+        
+        // Update SettingsRepository for persistence
+        settingsRepo.updateStrategyEnabled(strategies[index].name, enabled: enabled)
+        
+        // Update ensemble decider
         ensembleDecider.enableStrategy(strategyName: strategies[index].name, enabled: enabled)
         
         Task { await logger.info("Strategy \(strategies[index].name) \(enabled ? "enabled" : "disabled")") }
@@ -218,6 +266,11 @@ final class StrategiesVM: ObservableObject {
         guard let index = strategies.firstIndex(where: { $0.id == id }) else { return }
         
         strategies[index].weight = weight
+        
+        // Update SettingsRepository for persistence
+        settingsRepo.updateStrategyWeight(strategies[index].name, weight: weight)
+        
+        // Update ensemble decider
         ensembleDecider.updateStrategyWeight(strategyName: strategies[index].name, weight: weight)
         
         Task { await logger.info("Strategy \(strategies[index].name) weight updated to \(weight)") }

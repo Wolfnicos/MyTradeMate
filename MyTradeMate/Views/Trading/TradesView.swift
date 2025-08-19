@@ -1,12 +1,12 @@
 import SwiftUI
 
 struct TradesView: View {
-    @StateObject private var viewModel = TradesVM()
+    @EnvironmentObject var tradesVM: TradesVM
     
     var body: some View {
         NavigationStack {
             VStack {
-                if viewModel.trades.isEmpty {
+                if tradesVM.trades.isEmpty {
                     EmptyStateView(
                         icon: "list.bullet.rectangle",
                         title: "No Trades Yet",
@@ -15,7 +15,7 @@ struct TradesView: View {
                     )
                 } else {
                     List {
-                        ForEach(viewModel.trades, id: \.id) { trade in
+                        ForEach(tradesVM.trades, id: \.id) { trade in
                             TradeRowView(trade: trade)
                         }
                     }
@@ -23,7 +23,7 @@ struct TradesView: View {
             }
             .navigationTitle("Trades")
             .refreshable {
-                await viewModel.loadTrades()
+                await tradesVM.loadTrades()
             }
         }
     }

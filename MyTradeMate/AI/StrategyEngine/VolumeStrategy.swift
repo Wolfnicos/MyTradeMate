@@ -1,7 +1,8 @@
 import Foundation
 
-/// Volume-based trading strategy
+/// Volume strategy implementation
 public final class VolumeStrategy: BaseStrategy {
+    public static let shared = VolumeStrategy()
     public var volumePeriod: Int = 20
     public var volumeThreshold: Double = 1.5 // Multiple of average volume
     public var priceChangeThreshold: Double = 0.02 // 2% price change
@@ -23,7 +24,10 @@ public final class VolumeStrategy: BaseStrategy {
             )
         }
         
-        let currentCandle = candles.last!
+        guard let currentCandle = candles.last,
+              candles.count >= 2 else { 
+            return StrategySignal(direction: .hold, confidence: 0.0, reason: "Insufficient data", strategyName: name) 
+        }
         let previousCandle = candles[candles.count - 2]
         
         // Calculate average volume
@@ -139,12 +143,25 @@ public final class VolumeStrategy: BaseStrategy {
         guard candles.count >= 5 else { return nil }
         
         let recentCandles = Array(candles.suffix(5))
-        let prices = recentCandles.map { $0.close }
-        let volumes = recentCandles.map { $0.volume }
+        
+        // Filter out invalid candles first
+        let validCandles = recentCandles.filter { candle in
+            candle.close > 0 && candle.close.isFinite &&
+            candle.volume > 0 && candle.volume.isFinite
+        }
+        guard validCandles.count >= 3 else { return nil } // Need at least 3 valid candles
+        
+        let prices = validCandles.map { $0.close }
+        let volumes = validCandles.map { $0.volume }
         
         // Check for price trend
-        let priceSlope = (prices.last! - prices.first!) / Double(prices.count - 1)
-        let volumeSlope = (volumes.last! - volumes.first!) / Double(volumes.count - 1)
+        guard let lastPrice = prices.last, let firstPrice = prices.first,
+              let lastVolume = volumes.last, let firstVolume = volumes.first else {
+            return nil
+        }
+        
+        let priceSlope = (lastPrice - firstPrice) / Double(prices.count - 1)
+        let volumeSlope = (lastVolume - firstVolume) / Double(volumes.count - 1)
         
         // Bullish divergence: price declining but volume increasing
         if priceSlope < -0.01 && volumeSlope > 0 {

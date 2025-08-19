@@ -1,108 +1,99 @@
 import Foundation
 import Combine
 
-/// Manages and coordinates all trading strategies
+// MARK: - Supporting Types
+
+struct EnsembleSignal {
+    let direction: SignalDirection
+    let confidence: Double
+    let reason: String
+    let contributingStrategies: [String]
+    let timestamp: Date
+}
+
+// MARK: - StrategyManager
+
 @MainActor
-final class StrategyManager: ObservableObject, StrategyManagerProtocol {
+final class StrategyManager: ObservableObject {
     static let shared = StrategyManager()
     
-    @Published var strategies: [any Strategy] = []
-    @Published var _activeStrategies: [any Strategy] = []
+    @Published var strategies: [Strategy] = []
     @Published var lastSignals: [String: StrategySignal] = [:]
-    @Published var ensembleSignal: EnsembleSignal?
     @Published var isGeneratingSignals: Bool = false
+    @Published var ensembleSignal: EnsembleSignal? = nil
     
-    // Computed property for enabled strategies
-    var enabledStrategies: [any Strategy] {
-        return strategies.filter { $0.isEnabled }
-    }
-    
+    // MARK: - Private Properties
+    private let settingsRepo = SettingsRepository.shared
     private var cancellables = Set<AnyCancellable>()
     
-    private init() {
-        setupStrategies()
-        loadConfiguration()
+    // MARK: - Computed Properties
+    var enabledStrategies: [Strategy] {
+        strategies.filter { strategy in
+            settingsRepo.isStrategyEnabled(strategy.name)
+        }
     }
     
-    // MARK: - Strategy Management
+    var activeStrategies: [Strategy] {
+        enabledStrategies
+    }
+    
+    var availableStrategies: [Strategy] {
+        strategies
+    }
+    
+    init() {
+        setupStrategies()
+        setupBindings()
+    }
+    
+    private func setupBindings() {
+        // Subscribe to strategy changes to trigger UI updates
+        settingsRepo.$strategyEnabled
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+    }
     
     private func setupStrategies() {
         strategies = [
-            // Original strategies
-            RSIStrategy(),                    // 0
-            EMAStrategy(),                    // 1
-            MACDStrategy(),                   // 2
-            MeanReversionStrategy(),          // 3
-            BreakoutStrategy(),               // 4
-            
-            // Technical analysis strategies
-            BollingerBandsStrategy(),         // 5
-            // StochasticStrategy(),             // 6 - TODO: Add when file is included in target
-            WilliamsRStrategy(),              // 7
-            ADXStrategy(),                    // 8
-            IchimokuStrategy(),               // 9
-            ParabolicSARStrategy(),           // 10
-            VolumeStrategy(),                 // 11
-            
-            // Specialized trading strategies
-            ScalpingStrategy(),               // 12
-            SwingTradingStrategy(),           // 13
-            GridTradingStrategy()             // 14
+            RSIStrategy.shared,
+            EMAStrategy.shared,
+            MACDStrategy.shared,
+            MeanReversionStrategy.shared,
+            BreakoutStrategy.shared,
+            BollingerBandsStrategy.shared,
+            IchimokuStrategy.shared,
+            ParabolicSARStrategy.shared,
+            WilliamsRStrategy.shared,
+            GridTradingStrategy.shared,
+            SwingTradingStrategy.shared,
+            ScalpingStrategy.shared,
+            VolumeStrategy.shared,
+            ADXStrategy.shared,
+            StochasticStrategy.shared
         ]
         
-        // Enable some default strategies for demonstration
-        strategies[0].isEnabled = true   // RSI
-        strategies[5].isEnabled = true   // Bollinger Bands
-        strategies[6].isEnabled = true   // WilliamsR (index 6 since Stochastic is commented out)
-        strategies[8].isEnabled = true   // Ichimoku (adjusted index)
-        strategies[12].isEnabled = true  // Swing Trading (adjusted index)
+        // Strategies are now managed by SettingsRepository
+        // No need to hardcode enabled/disabled states
         
-        // Disable others by default
-        let disabledIndices = [1, 2, 3, 4, 7, 9, 10, 11, 13, 14]
-        for i in disabledIndices {
-            if i < strategies.count {
-                strategies[i].isEnabled = false
-            }
-        }
-        
-        updateActiveStrategies()
-        
-        Log.ai.info("Initialized \(strategies.count) strategies with \(enabledStrategies.count) enabled")
-        Log.ai.info("Enabled strategies: \(enabledStrategies.map { $0.name }.joined(separator: ", "))")
+        Log.ai.info("Initialized \(strategies.count) strategies")
     }
     
     func enableStrategy(named name: String) {
-        if let index = strategies.firstIndex(where: { $0.name == name }) {
-            strategies[index].isEnabled = true
-            updateActiveStrategies()
-            saveConfiguration()
-            Log.userAction("Strategy enabled", parameters: ["strategy": name])
-        }
+        settingsRepo.updateStrategyEnabled(name, enabled: true)
+        Log.userAction("Strategy enabled", parameters: ["strategy": name])
     }
     
     func disableStrategy(named name: String) {
-        if let index = strategies.firstIndex(where: { $0.name == name }) {
-            strategies[index].isEnabled = false
-            updateActiveStrategies()
-            saveConfiguration()
-            Log.userAction("Strategy disabled", parameters: ["strategy": name])
-        }
+        settingsRepo.updateStrategyEnabled(name, enabled: false)
+        Log.userAction("Strategy disabled", parameters: ["strategy": name])
     }
     
     func updateStrategyWeight(named name: String, weight: Double) {
-        if let index = strategies.firstIndex(where: { $0.name == name }) {
-            strategies[index].weight = max(0.1, min(2.0, weight))
-            saveConfiguration()
-            Log.userAction("Strategy weight updated", parameters: ["strategy": name, "weight": weight])
-        }
+        settingsRepo.updateStrategyWeight(name, weight: weight)
+        Log.userAction("Strategy weight updated", parameters: ["strategy": name, "weight": weight])
     }
-    
-    private func updateActiveStrategies() {
-        _activeStrategies = strategies.filter { $0.isEnabled }
-        Log.ai.info("Active strategies: \(_activeStrategies.map { $0.name }.joined(separator: ", "))")
-    }
-    
-    // MARK: - Signal Generation
     
     func generateSignals(from candles: [Candle]) async -> EnsembleSignal {
         isGeneratingSignals = true
@@ -113,7 +104,7 @@ final class StrategyManager: ObservableObject, StrategyManagerProtocol {
         var signals: [StrategySignal] = []
         
         // Generate signals from all active strategies
-        for strategy in _activeStrategies {
+        for strategy in activeStrategies {
             let requiredCandles = strategy.requiredCandles()
             
             guard candles.count >= requiredCandles else {
@@ -159,20 +150,20 @@ final class StrategyManager: ObservableObject, StrategyManagerProtocol {
         var contributingStrategies: [String] = []
         
         for signal in signals {
-            guard let strategy = _activeStrategies.first(where: { $0.name == signal.strategyName }) else { continue }
-            
-            let weight = strategy.weight * signal.confidence
-            totalWeight += weight
-            contributingStrategies.append(signal.strategyName)
+            let weight = settingsRepo.getStrategyWeight(signal.strategyName)
+            let weightedConfidence = signal.confidence * weight
             
             switch signal.direction {
             case .buy:
-                buyScore += weight
+                buyScore += weightedConfidence
             case .sell:
-                sellScore += weight
+                sellScore += weightedConfidence
             case .hold:
-                holdScore += weight
+                holdScore += weightedConfidence
             }
+            
+            totalWeight += weight
+            contributingStrategies.append(signal.strategyName)
         }
         
         // Normalize scores
@@ -182,252 +173,28 @@ final class StrategyManager: ObservableObject, StrategyManagerProtocol {
             holdScore /= totalWeight
         }
         
-        // Determine ensemble direction and confidence
-        let direction: StrategySignal.Direction
-        let confidence: Double
+        // Determine final direction
+        let maxScore = max(buyScore, sellScore, holdScore)
+        let direction: SignalDirection
         let reason: String
         
-        if buyScore > sellScore && buyScore > holdScore {
+        if maxScore == buyScore {
             direction = .buy
-            confidence = buyScore
-            let buyStrategies = signals.filter { $0.direction == .buy }.map { $0.strategyName }
-            reason = "Buy consensus from: \(buyStrategies.joined(separator: ", "))"
-            
-        } else if sellScore > buyScore && sellScore > holdScore {
+            reason = "Buy signals dominate"
+        } else if maxScore == sellScore {
             direction = .sell
-            confidence = sellScore
-            let sellStrategies = signals.filter { $0.direction == .sell }.map { $0.strategyName }
-            reason = "Sell consensus from: \(sellStrategies.joined(separator: ", "))"
-            
+            reason = "Sell signals dominate"
         } else {
             direction = .hold
-            confidence = holdScore
-            reason = "No clear consensus (\(signals.count) strategies)"
+            reason = "Hold signals dominate"
         }
         
         return EnsembleSignal(
             direction: direction,
-            confidence: confidence,
+            confidence: maxScore,
             reason: reason,
             contributingStrategies: contributingStrategies,
             timestamp: Date()
         )
     }
-    
-    // MARK: - Configuration Persistence
-    
-    private func saveConfiguration() {
-        let config = StrategyManagerConfiguration(
-            enabledStrategies: strategies.filter { $0.isEnabled }.map { $0.name },
-            strategyWeights: Dictionary(uniqueKeysWithValues: strategies.map { ($0.name, $0.weight) })
-        )
-        
-        do {
-            let data = try JSONEncoder().encode(config)
-            UserDefaults.standard.set(data, forKey: "strategyConfiguration")
-            Log.verbose("Strategy configuration saved", category: .ai)
-        } catch {
-            Log.error(error, context: "Saving strategy configuration", category: .ai)
-        }
-    }
-    
-    private func loadConfiguration() {
-        guard let data = UserDefaults.standard.data(forKey: "strategyConfiguration") else { return }
-        
-        do {
-            let config = try JSONDecoder().decode(StrategyManagerConfiguration.self, from: data)
-            
-            // Apply configuration
-            for i in 0..<strategies.count {
-                strategies[i].isEnabled = config.enabledStrategies.contains(strategies[i].name)
-                strategies[i].weight = config.strategyWeights[strategies[i].name] ?? 1.0
-            }
-            
-            updateActiveStrategies()
-            Log.verbose("Strategy configuration loaded", category: .ai)
-            
-        } catch {
-            Log.error(error, context: "Loading strategy configuration", category: .ai)
-        }
-    }
-    
-    // MARK: - Strategy Parameter Updates
-    
-    func updateStrategyParameter(strategyName: String, parameter: String, value: Any) {
-        guard let strategy = strategies.first(where: { $0.name == strategyName }) else {
-            Log.warning("Strategy not found: \(strategyName)", category: .ai)
-            return
-        }
-        
-        // Update parameter based on strategy type
-        switch strategy {
-        case let rsiStrategy as RSIStrategy:
-            rsiStrategy.updateParameter(key: parameter, value: value)
-        case let emaStrategy as EMAStrategy:
-            updateEMAParameter(emaStrategy, parameter: parameter, value: value)
-        case let macdStrategy as MACDStrategy:
-            updateMACDParameter(macdStrategy, parameter: parameter, value: value)
-        case let meanReversionStrategy as MeanReversionStrategy:
-            updateMeanReversionParameter(meanReversionStrategy, parameter: parameter, value: value)
-        case let breakoutStrategy as BreakoutStrategy:
-            updateBreakoutParameter(breakoutStrategy, parameter: parameter, value: value)
-        default:
-            Log.warning("Unknown strategy type for parameter update: \(strategyName)", category: .ai)
-        }
-        
-        saveConfiguration()
-    }
-    
-    // MARK: - Private Parameter Update Methods
-    
-    private func updateEMAParameter(_ strategy: EMAStrategy, parameter: String, value: Any) {
-        switch parameter {
-        case "fastPeriod":
-            if let intValue = value as? Int {
-                strategy.fastPeriod = max(1, min(50, intValue))
-            }
-        case "slowPeriod":
-            if let intValue = value as? Int {
-                strategy.slowPeriod = max(2, min(100, intValue))
-            }
-        default:
-            Log.warning("Unknown EMA parameter: \(parameter)", category: .ai)
-        }
-    }
-    
-    private func updateMACDParameter(_ strategy: MACDStrategy, parameter: String, value: Any) {
-        switch parameter {
-        case "fastPeriod":
-            if let intValue = value as? Int {
-                strategy.fastPeriod = max(1, min(50, intValue))
-            }
-        case "slowPeriod":
-            if let intValue = value as? Int {
-                strategy.slowPeriod = max(2, min(100, intValue))
-            }
-        case "signalPeriod":
-            if let intValue = value as? Int {
-                strategy.signalPeriod = max(1, min(50, intValue))
-            }
-        default:
-            Log.warning("Unknown MACD parameter: \(parameter)", category: .ai)
-        }
-    }
-    
-    private func updateMeanReversionParameter(_ strategy: MeanReversionStrategy, parameter: String, value: Any) {
-        switch parameter {
-        case "period":
-            if let intValue = value as? Int {
-                strategy.period = max(5, min(100, intValue))
-            }
-        case "standardDeviations":
-            if let doubleValue = value as? Double {
-                strategy.standardDeviations = max(0.5, min(4.0, doubleValue))
-            }
-        default:
-            Log.warning("Unknown Mean Reversion parameter: \(parameter)", category: .ai)
-        }
-    }
-    
-    private func updateBreakoutParameter(_ strategy: BreakoutStrategy, parameter: String, value: Any) {
-        switch parameter {
-        case "atrPeriod":
-            if let intValue = value as? Int {
-                strategy.atrPeriod = max(5, min(50, intValue))
-            }
-        case "multiplier":
-            if let doubleValue = value as? Double {
-                strategy.multiplier = max(0.5, min(5.0, doubleValue))
-            }
-        default:
-            Log.warning("Unknown Breakout parameter: \(parameter)", category: .ai)
-        }
-    }
-    
-    // MARK: - StrategyManagerProtocol Conformance
-    
-    var availableStrategies: [any TradingStrategy] {
-        get async {
-            // Convert Strategy to TradingStrategy - they're compatible protocols
-            return strategies.map { StrategyAdapter(strategy: $0) }
-        }
-    }
-    
-    var activeStrategies: [any TradingStrategy] {
-        get async {
-            return _activeStrategies.map { StrategyAdapter(strategy: $0) }
-        }
-    }
-    
-    func addStrategy(_ strategy: any TradingStrategy) async {
-        // Convert TradingStrategy back to Strategy if needed
-        // For now, log that this is called but maintain existing logic
-        Log.warning("addStrategy called with TradingStrategy protocol - not implemented", category: .ai)
-    }
-    
-    func removeStrategy(withId id: String) async {
-        if let index = strategies.firstIndex(where: { $0.name == id }) {
-            strategies.remove(at: index)
-            updateActiveStrategies()
-            saveConfiguration()
-            Log.userAction("Strategy removed", parameters: ["strategyId": id])
-        }
-    }
-    
-    func enableStrategy(withId id: String) async {
-        enableStrategy(named: id)
-    }
-    
-    func disableStrategy(withId id: String) async {
-        disableStrategy(named: id)
-    }
-    
-    func generateSignals(for candles: [Candle]) async -> [StrategySignal] {
-        let ensembleSignal = await generateSignals(from: candles)
-        // Return individual signals for protocol conformance
-        return Array(lastSignals.values)
-    }
-}
-
-// MARK: - Strategy Adapter
-
-/// Adapter to bridge Strategy protocol to TradingStrategy protocol
-private struct StrategyAdapter: TradingStrategy {
-    private let strategy: any Strategy
-    
-    init(strategy: any Strategy) {
-        self.strategy = strategy
-    }
-    
-    var id: String { strategy.name }
-    var name: String { strategy.name }
-    var isEnabled: Bool {
-        get { strategy.isEnabled }
-        set { /* This adapter is read-only */ }
-    }
-    var parameters: [StrategyParameter] { [] } // Simplified for now
-    
-    func generateSignal(from candles: [Candle]) async -> StrategySignal {
-        return strategy.signal(candles: candles)
-    }
-    
-    func updateParameter(_ parameter: StrategyParameter, value: Any) throws {
-        // This would need to be implemented to modify the underlying strategy
-        throw NSError(domain: "StrategyAdapter", code: 1, userInfo: [NSLocalizedDescriptionKey: "Parameter updates not supported through adapter"])
-    }
-}
-
-// MARK: - Supporting Types
-
-struct EnsembleSignal {
-    let direction: StrategySignal.Direction
-    let confidence: Double
-    let reason: String
-    let contributingStrategies: [String]
-    let timestamp: Date
-}
-
-private struct StrategyManagerConfiguration: Codable {
-    let enabledStrategies: [String]
-    let strategyWeights: [String: Double]
 }

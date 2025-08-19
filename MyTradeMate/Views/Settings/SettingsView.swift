@@ -24,35 +24,7 @@ extension Color {
 
 // Using Spacing from DesignSystem.swift
 
-/// A reusable help icon component that displays a tooltip when tapped
-struct HelpIconView: View {
-    let helpText: String
-    @State private var showTooltip = false
-    
-    var body: some View {
-        Button(action: {
-            showTooltip.toggle()
-        }) {
-            Image(systemName: "questionmark.circle")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundColor(.settingsSecondary)
-        }
-        .buttonStyle(PlainButtonStyle())
-        .popover(isPresented: $showTooltip, arrowEdge: .top) {
-            VStack(alignment: .leading, spacing: Spacing.sm) {
-                Text(helpText)
-                    .bodyStyle()
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .padding(Spacing.md)
-            .frame(maxWidth: 280)
-            .presentationCompactAdaptation(.popover)
-        }
-        .accessibilityLabel("Help")
-        .accessibilityHint("Tap to show help information")
-    }
-}
+// HelpIconView is defined in Views/Components/HelpIconView.swift
 
 struct SettingsView: View {
     @ObservedObject private var settings = AppSettings.shared
@@ -109,15 +81,15 @@ struct SettingsView: View {
                                 .frame(width: 20)
                             
                             Text(section.title)
-                                .font(.settingsHeadline)
-                                .foregroundColor(.settingsPrimary)
+                                .font(Typography.headline)
+                                .foregroundColor(TextColor.primary)
                         }
                         .padding(.top, Spacing.xs)
                     } footer: {
                         if !section.footer.isEmpty {
                             Text(section.footer)
-                                .font(.settingsFootnote)
-                                .foregroundColor(.settingsTertiary)
+                                .font(Typography.footnote)
+                                .foregroundColor(TextColor.tertiary)
                                 .padding(.horizontal, Spacing.xs)
                         }
                     }
@@ -225,15 +197,15 @@ struct SettingsView: View {
                         VStack(alignment: .leading, spacing: Spacing.sm) {
                             HStack {
                                 Text("Available Trading Pairs")
-                                    .font(.settingsBody)
+                                    .font(Typography.body)
                                     .fontWeight(.medium)
-                                    .foregroundColor(.settingsPrimary)
+                                    .foregroundColor(TextColor.primary)
                                 
                                 Spacer()
                                 
                                 Text("\(TradingPair.popular.count) pairs")
-                                    .font(.settingsCaption)
-                                    .foregroundColor(.settingsSecondary)
+                                    .font(Typography.caption1)
+                                    .foregroundColor(TextColor.secondary)
                             }
                             
                             LazyVGrid(columns: [
@@ -243,7 +215,7 @@ struct SettingsView: View {
                             ], spacing: Spacing.xs) {
                                 ForEach(TradingPair.popular, id: \.symbol) { pair in
                                     HStack(spacing: Spacing.xs) {
-                                        Text(pair.baseSymbol)
+                                        Text(pair.base.symbol)
                                             .font(.system(size: 11, weight: .semibold))
                                             .foregroundColor(.primary)
                                         
@@ -251,7 +223,7 @@ struct SettingsView: View {
                                             .font(.system(size: 10))
                                             .foregroundColor(.secondary)
                                         
-                                        Text(pair.quoteSymbol)
+                                        Text(pair.quote.rawValue)
                                             .font(.system(size: 10))
                                             .foregroundColor(.secondary)
                                     }
@@ -272,15 +244,15 @@ struct SettingsView: View {
                         VStack(alignment: .leading, spacing: Spacing.sm) {
                             HStack {
                                 Text("Available Timeframes")
-                                    .font(.settingsBody)
+                                    .font(Typography.body)
                                     .fontWeight(.medium)
-                                    .foregroundColor(.settingsPrimary)
+                                    .foregroundColor(TextColor.primary)
                                 
                                 Spacer()
                                 
                                 Text("\(Timeframe.allCases.count) timeframes")
-                                    .font(.settingsCaption)
-                                    .foregroundColor(.settingsSecondary)
+                                    .font(Typography.caption1)
+                                    .foregroundColor(TextColor.secondary)
                             }
                             
                             HStack(spacing: Spacing.sm) {
@@ -330,7 +302,7 @@ struct SettingsView: View {
                             action: {
                                 Task {
                                     await settingsRepo.resetPaperAccount()
-                                    toastManager.showSuccess("Paper account reset to $10,000")
+                                    toastManager.showSuccess(title: "Paper account reset to $10,000")
                                 }
                             },
                             style: .destructive
@@ -368,7 +340,7 @@ struct SettingsView: View {
                                     if let lastRefresh = widgetRefreshStats.lastRefresh {
                                         Text("Last updated: \(lastRefresh, formatter: widgetRefreshDateFormatter)")
                                             .font(Typography.caption2)
-                                            .foregroundColor(.tertiary)
+                                            .foregroundColor(.secondary)
                                     }
                                 }
                                 
@@ -939,7 +911,7 @@ struct SettingsButtonRow: View {
         var color: Color {
             switch self {
             case .primary: return .accentColor
-            case .secondary: return .settingsSecondary
+            case .secondary: return TextColor.secondary
             case .destructive: return .red
             }
         }
@@ -951,14 +923,14 @@ struct SettingsButtonRow: View {
                 HStack {
                     VStack(alignment: .leading, spacing: Spacing.xs) {
                         Text(title)
-                            .font(.settingsBody)
+                            .font(Typography.body)
                             .fontWeight(.medium)
                             .foregroundColor(style.color)
                         
                         if !description.isEmpty {
                             Text(description)
-                                .font(.settingsCaption)
-                                .foregroundColor(.settingsSecondary)
+                                .font(Typography.caption1)
+                                .foregroundColor(TextColor.secondary)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     }
@@ -984,14 +956,14 @@ struct SettingsExportButtonRow: View {
                 HStack {
                     VStack(alignment: .leading, spacing: Spacing.xs) {
                         Text(title)
-                            .font(.settingsBody)
+                            .font(Typography.body)
                             .fontWeight(.medium)
-                            .foregroundColor(isLoading ? .settingsSecondary : .accentColor)
+                            .foregroundColor(isLoading ? TextColor.secondary : .accentColor)
                         
                         if !description.isEmpty {
                             Text(description)
-                                .font(.settingsCaption)
-                                .foregroundColor(.settingsSecondary)
+                                .font(Typography.caption1)
+                                .foregroundColor(TextColor.secondary)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     }

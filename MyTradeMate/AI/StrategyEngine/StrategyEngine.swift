@@ -50,9 +50,24 @@ public final class StrategyEngine: ObservableObject {
     private let macdStrategy = MACDStrategy.shared
     private let meanReversionStrategy = MeanReversionStrategy.shared
     private let breakoutStrategy = BreakoutStrategy.shared
+    private let bollingerBandsStrategy = BollingerBandsStrategy.shared
+    private let ichimokuStrategy = IchimokuStrategy.shared
+    private let parabolicSARStrategy = ParabolicSARStrategy.shared
+    private let williamsRStrategy = WilliamsRStrategy.shared
+    private let gridTradingStrategy = GridTradingStrategy.shared
+    private let swingTradingStrategy = SwingTradingStrategy.shared
+    private let scalpingStrategy = ScalpingStrategy.shared
+    private let volumeStrategy = VolumeStrategy.shared
+    private let adxStrategy = ADXStrategy.shared
+    private let stochasticStrategy = StochasticStrategy.shared
     
-    private var allStrategies: [Strategy] {
-        [rsiStrategy, emaStrategy, macdStrategy, meanReversionStrategy, breakoutStrategy]
+    public var allStrategies: [Strategy] {
+        [
+            rsiStrategy, emaStrategy, macdStrategy, meanReversionStrategy, breakoutStrategy,
+            bollingerBandsStrategy, ichimokuStrategy, parabolicSARStrategy, williamsRStrategy,
+            gridTradingStrategy, swingTradingStrategy, scalpingStrategy, volumeStrategy,
+            adxStrategy, stochasticStrategy
+        ]
     }
     
     public var activeStrategies: [Strategy] {
@@ -60,6 +75,12 @@ public final class StrategyEngine: ObservableObject {
             // Use settings repository to check if strategy is enabled
             settingsRepo.isStrategyEnabled(strategy.name)
         }
+    }
+    
+    public func refreshActiveStrategies() async {
+        // This method is called when strategies are enabled/disabled
+        // The activeStrategies computed property will automatically reflect changes
+        Log.settings.info("[ENGINE] Refreshing active strategies")
     }
     
     private init() {
@@ -78,49 +99,13 @@ public final class StrategyEngine: ObservableObject {
             .store(in: &cancellables)
     }
     
-    /// Handle settings state changes and update engine instantly
+    /// Handle settings state changes - just log them, don't write back to avoid circular updates
     private func handleSettingsChange(_ state: SettingsState) {
-        // Update routing
-        settingsRepo.useStrategyRouting = state.routingEnabled
+        // Just log the current state - no circular updates to avoid publishing warnings
+        Log.settings.info("[ENGINE] Settings updated: routing=\(state.routingEnabled) confidence=\(String(format: "%.2f", state.strategyMinConf))-\(String(format: "%.2f", state.strategyMaxConf))")
         
-        // Update confidence range
-        settingsRepo.strategyConfidenceMin = state.strategyMinConf
-        settingsRepo.strategyConfidenceMax = state.strategyMaxConf
-        
-        // Update individual strategy enable/disable and weights
-        settingsRepo.updateStrategyEnabled("RSI", enabled: state.rsiEnabled)
-        settingsRepo.updateStrategyWeight("RSI", weight: state.rsiWeight)
-        
-        settingsRepo.updateStrategyEnabled("EMA Crossover", enabled: state.emaEnabled)
-        settingsRepo.updateStrategyWeight("EMA Crossover", weight: state.emaWeight)
-        
-        settingsRepo.updateStrategyEnabled("MACD", enabled: state.macdEnabled)
-        settingsRepo.updateStrategyWeight("MACD", weight: state.macdWeight)
-        
-        settingsRepo.updateStrategyEnabled("Mean Reversion", enabled: state.meanRevEnabled)
-        settingsRepo.updateStrategyWeight("Mean Reversion", weight: state.meanRevWeight)
-        
-        settingsRepo.updateStrategyEnabled("ATR Breakout", enabled: state.atrEnabled)
-        settingsRepo.updateStrategyWeight("ATR Breakout", weight: state.atrWeight)
-        
-        // Log the settings update with proper [SETTINGS] format
-        let activeStrategies = [
-            (state.rsiEnabled ? "RSI" : nil),
-            (state.emaEnabled ? "EMA" : nil),
-            (state.macdEnabled ? "MACD" : nil),
-            (state.meanRevEnabled ? "MeanRev" : nil),
-            (state.atrEnabled ? "ATR" : nil)
-        ].compactMap { $0 }
-        
-        let weights = [
-            "RSI:\(String(format: "%.1f", state.rsiWeight))",
-            "EMA:\(String(format: "%.1f", state.emaWeight))",
-            "MACD:\(String(format: "%.1f", state.macdWeight))",
-            "MeanRev:\(String(format: "%.1f", state.meanRevWeight))",
-            "ATR:\(String(format: "%.1f", state.atrWeight))"
-        ]
-        
-        Log.settings.info("[SETTINGS] routingEnabled=\(state.routingEnabled) min=\(String(format: "%.2f", state.strategyMinConf)) max=\(String(format: "%.2f", state.strategyMaxConf)) active=[\(activeStrategies.joined(separator: ","))] weights={\(weights.joined(separator: ","))}")
+        // The engine will automatically reflect changes through computed properties like activeStrategies
+        // which read directly from SettingsRepository without triggering circular updates
     }
     
     /// Generate signal with proper [STRATEGY] logging format

@@ -1,21 +1,21 @@
 import SwiftUI
 
 struct AISection: View {
-    @ObservedObject private var settings = AppSettings.shared
+    @StateObject private var appSettings = AppSettings.shared
     
     var body: some View {
-        Section {
+        Section("AI Configuration") {
             StandardToggleRow(
                 title: "AI Debug Mode",
                 description: "Enable AI debugging features and additional diagnostics. May impact performance.",
-                isOn: $settings.aiDebugMode,
+                isOn: $appSettings.aiDebugMode,
                 style: .warning
             )
             
             StandardToggleRow(
                 title: "Verbose AI Logs",
                 description: "Enable detailed AI logging including model inputs, outputs, and decision reasoning.",
-                isOn: $settings.verboseAILogs,
+                isOn: $appSettings.verboseAILogs,
                 style: .danger
             )
             
@@ -44,7 +44,7 @@ struct AISection: View {
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                 
-                Picker("Timeframe", selection: $settings.defaultTimeframe) {
+                Picker("Timeframe", selection: $appSettings.defaultTimeframe) {
                     Text("5m").tag("5m")
                     Text("1h").tag("1h")
                     Text("4h").tag("4h")

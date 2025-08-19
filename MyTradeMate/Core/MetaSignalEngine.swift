@@ -182,8 +182,18 @@ public final class MetaSignalEngine: ObservableObject {
         let ensembleSignal = await strategyManager.generateSignals(from: candles)
         
         // Convert EnsembleSignal to StrategySignal
+        let strategyDirection: StrategySignal.Direction
+        switch ensembleSignal.direction {
+        case .buy:
+            strategyDirection = .buy
+        case .sell:
+            strategyDirection = .sell
+        case .hold:
+            strategyDirection = .hold
+        }
+        
         return StrategySignal(
-            direction: ensembleSignal.direction,
+            direction: strategyDirection,
             confidence: ensembleSignal.confidence,
             reason: ensembleSignal.reason,
             strategyName: "Ensemble"
@@ -275,23 +285,39 @@ public final class MetaSignalEngine: ObservableObject {
             return [:]  // Return empty if insufficient data
         }
         
-        let closes = candles.map { $0.close }
-        let volumes = candles.map { $0.volume }
-        let highs = candles.map { $0.high }
-        let lows = candles.map { $0.low }
+        // Filter out invalid candles first
+        let validCandles = candles.filter { candle in
+            candle.close > 0 && candle.close.isFinite &&
+            candle.volume > 0 && candle.volume.isFinite &&
+            candle.high > 0 && candle.high.isFinite &&
+            candle.low > 0 && candle.low.isFinite
+        }
+        guard validCandles.count >= 20 else {
+            return [:]  // Return empty if insufficient valid data
+        }
+        
+        let closes = validCandles.map { $0.close }
+        let volumes = validCandles.map { $0.volume }
+        let highs = validCandles.map { $0.high }
+        let lows = validCandles.map { $0.low }
         
         // Calculate basic features (simplified versions)
-        let return1 = closes.count > 1 ? (closes.last! - closes[closes.count - 2]) / closes[closes.count - 2] : 0.0
-        let return3 = closes.count > 3 ? (closes.last! - closes[closes.count - 4]) / closes[closes.count - 4] : 0.0  
-        let return5 = closes.count > 5 ? (closes.last! - closes[closes.count - 6]) / closes[closes.count - 6] : 0.0
+        guard let lastClose = closes.last else { return ["return1": 0.0, "return3": 0.0, "return5": 0.0] }
+        
+        let return1 = closes.count > 1 ? (lastClose - closes[closes.count - 2]) / closes[closes.count - 2] : 0.0
+        let return3 = closes.count > 3 ? (lastClose - closes[closes.count - 4]) / closes[closes.count - 4] : 0.0  
+        let return5 = closes.count > 5 ? (lastClose - closes[closes.count - 6]) / closes[closes.count - 6] : 0.0
         
         let volatility = calculateVolatility(closes)
         let rsi = calculateRSI(closes)
         let macdHist = calculateMACDHistogram(closes)
         let emaRatio = calculateEMARatio(closes)
         let volumeZ = calculateVolumeZScore(volumes)
-        let highLowRange = (highs.last! - lows.last!) / closes.last!
-        let pricePosition = (closes.last! - lows.last!) / (highs.last! - lows.last!)
+        guard let lastHigh = highs.last, let lastLow = lows.last, let lastClose = closes.last,
+              lastHigh > lastLow, lastClose > 0 else { return [:] }
+        
+        let highLowRange = (lastHigh - lastLow) / lastClose
+        let pricePosition = (lastClose - lastLow) / (lastHigh - lastLow)
         let atr14 = calculateATR(highs, lows, closes, period: 14)
         let (stochK, stochD) = calculateStochastic(highs, lows, closes)
         let bbPercent = calculateBollingerBandPercent(closes)
@@ -317,7 +343,15 @@ public final class MetaSignalEngine: ObservableObject {
     // MARK: - Technical Indicator Helpers (Simplified)
     private func calculateVolatility(_ closes: [Double]) -> Double {
         guard closes.count > 1 else { return 0.0 }
-        let returns = (1..<closes.count).map { closes[$0] / closes[$0-1] - 1 }
+        
+        var returns: [Double] = []
+        for i in 1..<closes.count {
+            guard closes[i-1] > 0 else { continue } // Avoid division by zero
+            let returnValue = closes[i] / closes[i-1] - 1
+            returns.append(returnValue)
+        }
+        
+        guard !returns.isEmpty else { return 0.0 }
         let mean = returns.reduce(0, +) / Double(returns.count)
         let variance = returns.map { pow($0 - mean, 2) }.reduce(0, +) / Double(returns.count)
         return sqrt(variance)
@@ -330,8 +364,9 @@ public final class MetaSignalEngine: ObservableObject {
         let gains = changes.suffix(period).map { max($0, 0) }
         let losses = changes.suffix(period).map { abs(min($0, 0)) }
         
-        let avgGain = gains.reduce(0, +) / Double(period)
-        let avgLoss = losses.reduce(0, +) / Double(period)
+        guard !gains.isEmpty && !losses.isEmpty else { return 50.0 }
+        let avgGain = gains.reduce(0, +) / Double(gains.count)
+        let avgLoss = losses.reduce(0, +) / Double(losses.count)
         
         guard avgLoss != 0 else { return 100.0 }
         let rs = avgGain / avgLoss
@@ -360,7 +395,8 @@ public final class MetaSignalEngine: ObservableObject {
         let variance = recent.map { pow($0 - mean, 2) }.reduce(0, +) / Double(recent.count)
         let stdDev = sqrt(variance)
         guard stdDev > 0 else { return 0.0 }
-        return (volumes.last! - mean) / stdDev
+        guard let lastVolume = volumes.last else { return 0.0 }
+        return (lastVolume - mean) / stdDev
     }
     
     private func calculateATR(_ highs: [Double], _ lows: [Double], _ closes: [Double], period: Int) -> Double {
@@ -385,7 +421,8 @@ public final class MetaSignalEngine: ObservableObject {
         let highestHigh = recentHighs.max() ?? 0
         let lowestLow = recentLows.min() ?? 0
         
-        let stochK = ((closes.last! - lowestLow) / (highestHigh - lowestLow)) * 100
+        guard let lastClose = closes.last else { return (50.0, 50.0) }
+        let stochK = ((lastClose - lowestLow) / (highestHigh - lowestLow)) * 100
         let stochD = stochK  // Simplified - should be 3-period MA of %K
         
         return (stochK, stochD)
@@ -403,7 +440,8 @@ public final class MetaSignalEngine: ObservableObject {
         let lowerBand = sma - (2 * stdDev)
         
         guard upperBand != lowerBand else { return 0.5 }
-        return (closes.last! - lowerBand) / (upperBand - lowerBand)
+        guard let lastClose = closes.last else { return 0.5 }
+        return (lastClose - lowerBand) / (upperBand - lowerBand)
     }
     
     private func calculateEMA(_ values: [Double], period: Int) -> Double {

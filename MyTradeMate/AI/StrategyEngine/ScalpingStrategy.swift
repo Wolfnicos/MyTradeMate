@@ -1,7 +1,8 @@
 import Foundation
 
-/// High-frequency scalping strategy
+/// Scalping strategy implementation
 public final class ScalpingStrategy: BaseStrategy {
+    public static let shared = ScalpingStrategy()
     public var fastEMAPeriod: Int = 5
     public var slowEMAPeriod: Int = 13
     public var rsiPeriod: Int = 7
@@ -26,7 +27,10 @@ public final class ScalpingStrategy: BaseStrategy {
             )
         }
         
-        let currentCandle = candles.last!
+        guard let currentCandle = candles.last else { return StrategySignal(direction: .hold, confidence: 0.0, reason: "Insufficient data", strategyName: name) }
+        guard candles.count >= 2 else {
+            return StrategySignal(direction: .hold, confidence: 0.0, reason: "Insufficient data", strategyName: name)
+        }
         let previousCandle = candles[candles.count - 2]
         
         // Calculate EMAs
@@ -151,7 +155,8 @@ public final class ScalpingStrategy: BaseStrategy {
         
         // Calculate subsequent EMAs
         for i in period..<candles.count {
-            let newEMA = (candles[i].close * multiplier) + (ema.last! * (1 - multiplier))
+            guard let lastEMA = ema.last else { continue }
+            let newEMA = (candles[i].close * multiplier) + (lastEMA * (1 - multiplier))
             ema.append(newEMA)
         }
         

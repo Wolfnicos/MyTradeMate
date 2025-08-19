@@ -10,12 +10,12 @@ protocol ServiceContainer {
 
 // MARK: - Dependency Injection Container
 final class DIContainer: ServiceContainer {
-    static let shared = DIContainer()
+    static var shared: DIContainer? // set by MyTradeMateApp
     
     private var services: [String: Any] = [:]
     private var factories: [String: () -> Any] = [:]
     
-    private init() {
+    init() {
         registerDefaultServices()
     }
     
@@ -87,12 +87,10 @@ final class DIContainer: ServiceContainer {
         register(KrakenClientProtocol.self) { KrakenClient() }
         
         // Strategy Services
-        register(StrategyManagerProtocol.self) { StrategyManager.shared }
+        register(StrategyManagerProtocol.self) { StrategyManager.shared as! StrategyManagerProtocol }
         
         // Settings
         register(AppSettingsProtocol.self) { AppSettings.shared }
-        
-        Log.app.info("Dependency injection container initialized with default services")
     }
     
     // MARK: - Testing Support
@@ -100,14 +98,11 @@ final class DIContainer: ServiceContainer {
     func registerMock<T>(_ type: T.Type, mock: T) {
         let key = String(describing: type)
         services[key] = mock
-        Log.app.debug("Registered mock for \(key)")
     }
     
-    func reset() {
+    func clearMocks() {
         services.removeAll()
-        factories.removeAll()
         registerDefaultServices()
-        Log.app.debug("Dependency injection container reset")
     }
 }
 
@@ -120,7 +115,7 @@ struct Injected<T> {
         container.resolve(T.self)
     }
     
-    init(container: ServiceContainer = DIContainer.shared) {
+    init(container: ServiceContainer = DIContainer.shared ?? DIContainer()) {
         self.container = container
     }
 }
@@ -134,7 +129,7 @@ struct OptionalInjected<T> {
         container.resolve(T.self)
     }
     
-    init(container: ServiceContainer = DIContainer.shared) {
+    init(container: ServiceContainer = DIContainer.shared ?? DIContainer()) {
         self.container = container
     }
 }

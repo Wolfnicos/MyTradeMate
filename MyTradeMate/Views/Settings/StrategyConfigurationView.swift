@@ -571,14 +571,9 @@ struct StrategyParametersSheet: View {
     private func saveParameters() {
         strategyManager.updateStrategyWeight(named: strategy.name, weight: weight)
         
-        // Save strategy-specific parameters
-        for (key, value) in parameters {
-            strategyManager.updateStrategyParameter(
-                strategyName: strategy.name,
-                parameter: key,
-                value: value
-            )
-        }
+        // Note: Strategy-specific parameters are not yet implemented in StrategyManager
+        // This will be available in a future update
+        // For now, only the weight is saved
     }
 }
 

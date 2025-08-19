@@ -124,7 +124,7 @@ class ToastManager: ObservableObject {
 
 /// Toast container view that displays toasts at the top of the screen
 struct ToastContainer: View {
-    @StateObject private var toastManager = ToastManager()
+    @EnvironmentObject var toastManager: ToastManager
     
     var body: some View {
         VStack(spacing: 8) {
@@ -168,7 +168,7 @@ extension EnvironmentValues {
 
 /// View modifier to add toast functionality to any view
 struct ToastModifier: ViewModifier {
-    @StateObject private var toastManager = ToastManager()
+    @EnvironmentObject var toastManager: ToastManager
     
     func body(content: Content) -> some View {
         ZStack {

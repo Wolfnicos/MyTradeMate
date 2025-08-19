@@ -361,7 +361,8 @@ final class AIModelManager: AIModelManagerProtocol {
         let varc = values.map { pow($0 - mean, 2) }.reduce(0,+)/Double(values.count)
         let sd = sqrt(varc)
         guard sd > 0 else { return 0 }
-        return (values.last! - mean)/sd
+        guard let lastValue = values.last else { return 0.0 }
+        return (lastValue - mean)/sd
     }
 
     private func atrNormalized(candles: [Candle], period: Int) -> Double {
@@ -375,16 +376,17 @@ final class AIModelManager: AIModelManagerProtocol {
         }
         let recent = Array(trs.suffix(period))
         let atr = recent.reduce(0,+)/Double(recent.count)
-        let lastClose = candles.last!.close
+        guard let lastClose = candles.last?.close else { return 0.0 }
         return lastClose > 0 ? atr/lastClose : 0
     }
 
     private func stochasticKD(candles: [Candle], lookback: Int, smoothK: Int, smoothD: Int) -> (Double, Double) {
         guard candles.count >= lookback + smoothD else { return (50, 50) }
         let lastLB = Array(candles.suffix(lookback))
-        let hh = lastLB.map{$0.high}.max() ?? candles.last!.high
-        let ll = lastLB.map{$0.low}.min() ?? candles.last!.low
-        let close = candles.last!.close
+        guard let lastCandle = candles.last else { return (50.0, 50.0) }
+        let hh = lastLB.map{$0.high}.max() ?? lastCandle.high
+        let ll = lastLB.map{$0.low}.min() ?? lastCandle.low
+        let close = lastCandle.close
         let rawK = (hh > ll) ? (close - ll) / (hh - ll) * 100.0 : 50.0
             // simplificat: fără smoothing real pe fereastră (pentru viteză și robustețe)
         let K = rawK
@@ -401,7 +403,7 @@ final class AIModelManager: AIModelManagerProtocol {
         if sd == 0 { return 0.5 }
         let upper = mean + stdK*sd
         let lower = mean - stdK*sd
-        let p = prices.last!
+        guard let p = prices.last else { return 0.0 }
         return (p - lower) / (upper - lower)
     }
 

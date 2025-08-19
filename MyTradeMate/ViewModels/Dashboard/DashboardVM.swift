@@ -26,15 +26,19 @@ final class DashboardVM: ObservableObject {
     private let marketDataService = MarketDataService.shared
     private let tradeManager = TradeManager.shared
     private let metaSignalEngine = MetaSignalEngine.shared
+    private let tradingEngine = TradingEngine.shared
     
     // MARK: - Published Properties
-    @Published var price: Double = 0.0
-    @Published var priceChange: Double = 0.0
-    @Published var priceChangePercent: Double = 0.0
     @Published var candles: [Candle] = []
     @Published var chartPoints: [CGPoint] = []
     @Published var isLoading = false
     @Published var isRefreshing = false
+    
+    // Price properties
+    @Published var price: Double = 0.0
+    @Published var priceChange: Double = 0.0
+    @Published var priceChangePercent: Double = 0.0
+    @Published var lastUpdated: Date = Date()
     
     // Portfolio properties
     @Published var totalBalance: Double = 10000.0
@@ -87,7 +91,6 @@ final class DashboardVM: ObservableObject {
     @Published var openPositions: [TradingPosition] = []
     @Published var isConnected: Bool = false
     @Published var connectionStatus: String = "Connecting..."
-    @Published var lastUpdated: Date = Date()
     
     // Trade confirmation
     @Published var showingTradeConfirmation = false
@@ -208,7 +211,16 @@ final class DashboardVM: ObservableObject {
         
         Task {
             do {
-                let result = try await tradeManager.executeTrade(tradeRequest)
+                // Convert TradeSide to OrderSide for TradingEngine
+                let orderSide: OrderSide = tradeRequest.side == .buy ? .buy : .sell
+                
+                let result = try await tradingEngine.placeOrder(
+                    symbol: tradeRequest.symbol,
+                    side: orderSide,
+                    amount: tradeRequest.amount,
+                    amountMode: amountMode,
+                    quoteCurrency: selectedQuoteCurrency
+                )
                 
                 await MainActor.run {
                     self.isExecutingTrade = false
@@ -262,18 +274,24 @@ final class DashboardVM: ObservableObject {
         
         Task {
             do {
-                let tradeRequest: TradeRequest
+                let side: OrderSide
                 
                 switch signal.direction.uppercased() {
                 case "BUY":
-                    tradeRequest = createTradeRequest(side: .buy)
+                    side = .buy
                 case "SELL":
-                    tradeRequest = createTradeRequest(side: .sell)
+                    side = .sell
                 default:
                     return // Don't trade on HOLD signals
                 }
                 
-                let result = try await tradeManager.executeTrade(tradeRequest)
+                let result = try await tradingEngine.placeOrder(
+                    symbol: selectedTradingPair.symbol,
+                    side: side,
+                    amount: calculateTradeAmount(),
+                    amountMode: amountMode,
+                    quoteCurrency: selectedQuoteCurrency
+                )
                 
                 await MainActor.run {
                     self.showSuccessToast("Auto trade executed: \(signal.direction)")

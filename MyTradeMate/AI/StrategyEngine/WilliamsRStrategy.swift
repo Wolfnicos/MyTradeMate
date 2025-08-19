@@ -2,6 +2,7 @@ import Foundation
 
 /// Williams %R strategy implementation
 public final class WilliamsRStrategy: BaseStrategy {
+    public static let shared = WilliamsRStrategy()
     public var period: Int = 14
     public var overboughtLevel: Double = -20.0
     public var oversoldLevel: Double = -80.0

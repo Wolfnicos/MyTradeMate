@@ -1,7 +1,8 @@
 import Foundation
 
-/// Swing trading strategy for medium-term positions
+/// Swing Trading strategy implementation
 public final class SwingTradingStrategy: BaseStrategy {
+    public static let shared = SwingTradingStrategy()
     public var sma20Period: Int = 20
     public var sma50Period: Int = 50
     public var rsiPeriod: Int = 14
@@ -47,7 +48,10 @@ public final class SwingTradingStrategy: BaseStrategy {
             )
         }
         
-        let currentPrice = candles.last!.close
+        guard let currentPrice = candles.last?.close,
+              candles.count >= 2 else { 
+            return StrategySignal(direction: .hold, confidence: 0.0, reason: "Insufficient data", strategyName: name) 
+        }
         let previousPrice = candles[candles.count - 2].close
         
         var signals: [String] = []
@@ -251,7 +255,8 @@ public final class SwingTradingStrategy: BaseStrategy {
         ema.append(firstSMA)
         
         for i in period..<candles.count {
-            let newEMA = (candles[i].close * multiplier) + (ema.last! * (1 - multiplier))
+            guard let lastEMA = ema.last else { continue }
+            let newEMA = (candles[i].close * multiplier) + (lastEMA * (1 - multiplier))
             ema.append(newEMA)
         }
         
@@ -268,7 +273,8 @@ public final class SwingTradingStrategy: BaseStrategy {
         ema.append(firstSMA)
         
         for i in period..<values.count {
-            let newEMA = (values[i] * multiplier) + (ema.last! * (1 - multiplier))
+            guard let lastEMA = ema.last else { continue }
+            let newEMA = (values[i] * multiplier) + (lastEMA * (1 - multiplier))
             ema.append(newEMA)
         }
         
@@ -298,8 +304,10 @@ public final class SwingTradingStrategy: BaseStrategy {
     private func checkMACDCrossover(macd: (macd: [Double], signal: [Double], histogram: [Double])) -> MACDCrossover {
         guard macd.macd.count >= 2 && macd.signal.count >= 2 else { return .none }
         
-        let currentMACD = macd.macd.last!
-        let currentSignal = macd.signal.last!
+        guard let currentMACD = macd.macd.last,
+              let currentSignal = macd.signal.last else {
+            return .none
+        }
         let previousMACD = macd.macd[macd.macd.count - 2]
         let previousSignal = macd.signal[macd.signal.count - 2]
         

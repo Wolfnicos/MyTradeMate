@@ -8,10 +8,10 @@ private let logger = os.Logger(subsystem: "com.mytrademate", category: "Dashboar
 // MARK: - Refactored Dashboard ViewModel
 @MainActor
 final class RefactoredDashboardVM: ObservableObject {
-    // MARK: - Component Managers
-    @StateObject private var marketDataManager = MarketDataManager()
-    @StateObject private var signalManager = SignalManager()
-    @StateObject private var tradingManager = TradingManager()
+    // MARK: - Component Managers (Injected)
+    private let marketDataManager: MarketDataManager
+    private let signalManager: SignalManager
+    private let tradingManager: TradingManager
     
     // MARK: - Injected Dependencies
     @Injected private var settings: AppSettingsProtocol
@@ -94,7 +94,15 @@ final class RefactoredDashboardVM: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     
     // MARK: - Initialization
-    init() {
+    init(
+        marketDataManager: MarketDataManager,
+        signalManager: SignalManager,
+        tradingManager: TradingManager
+    ) {
+        self.marketDataManager = marketDataManager
+        self.signalManager = signalManager
+        self.tradingManager = tradingManager
+        
         setupBindings()
         loadInitialData()
     }
@@ -233,14 +241,22 @@ final class RefactoredDashboardVM: ObservableObject {
 extension RefactoredDashboardVM {
     /// Creates a RefactoredDashboardVM that can be used as a drop-in replacement for DashboardVM
     static func createCompatible() -> RefactoredDashboardVM {
-        return RefactoredDashboardVM()
+        return RefactoredDashboardVM(
+            marketDataManager: MarketDataManager.shared,
+            signalManager: SignalManager.shared,
+            tradingManager: TradingManager.shared
+        )
     }
 }
 
 // MARK: - Preview Support
 extension RefactoredDashboardVM {
     static func preview() -> RefactoredDashboardVM {
-        let vm = RefactoredDashboardVM()
+        let vm = RefactoredDashboardVM(
+            marketDataManager: MarketDataManager.shared,
+            signalManager: SignalManager.shared,
+            tradingManager: TradingManager.shared
+        )
         // Set up preview data
         return vm
     }

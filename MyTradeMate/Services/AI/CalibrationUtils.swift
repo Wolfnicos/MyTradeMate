@@ -109,11 +109,17 @@ public class CalibrationUtils {
         calibratedPoints: [Double]
     ) -> Double {
         // Clamp to bounds
-        if rawValue <= rawPoints.first! {
-            return clamp(calibratedPoints.first!, to: 0.5...0.9)
+        guard let firstRawPoint = rawPoints.first,
+              let firstCalibratedPoint = calibratedPoints.first else { return 0.5 }
+        
+        if rawValue <= firstRawPoint {
+            return clamp(firstCalibratedPoint, to: 0.5...0.9)
         }
-        if rawValue >= rawPoints.last! {
-            return clamp(calibratedPoints.last!, to: 0.5...0.9)
+        guard let lastRawPoint = rawPoints.last,
+              let lastCalibratedPoint = calibratedPoints.last else { return 0.5 }
+        
+        if rawValue >= lastRawPoint {
+            return clamp(lastCalibratedPoint, to: 0.5...0.9)
         }
         
         // Find interpolation points
@@ -131,7 +137,8 @@ public class CalibrationUtils {
             }
         }
         
-        return clamp(calibratedPoints.last!, to: 0.5...0.9)
+        guard let lastCalibratedPoint = calibratedPoints.last else { return 0.5 }
+        return clamp(lastCalibratedPoint, to: 0.5...0.9)
     }
     
     // MARK: - Utility Functions

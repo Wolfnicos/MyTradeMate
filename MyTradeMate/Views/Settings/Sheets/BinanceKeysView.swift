@@ -330,46 +330,7 @@ struct BinanceKeysView: View {
 
 // MARK: - Supporting Types
 
-enum ValidationState: Equatable {
-    case none
-    case validating
-    case valid
-    case invalid(String)
-}
-
-struct ValidationIndicatorView: View {
-    let state: ValidationState
-    
-    var body: some View {
-        HStack(spacing: 6) {
-            switch state {
-            case .none:
-                EmptyView()
-            case .validating:
-                ProgressView()
-                    .scaleEffect(0.7)
-                Text("Validating...")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-            case .valid:
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundColor(.green)
-                    .font(.caption)
-                Text("Valid format")
-                    .font(.caption2)
-                    .foregroundColor(.green)
-            case .invalid(let message):
-                Image(systemName: "exclamationmark.circle.fill")
-                    .foregroundColor(.red)
-                    .font(.caption)
-                Text(message)
-                    .font(.caption2)
-                    .foregroundColor(.red)
-            }
-        }
-        .animation(.easeInOut(duration: 0.2), value: state)
-    }
-}
+// ValidationState and ValidationIndicatorView are defined in ExchangeKeysView.swift
 
 
 

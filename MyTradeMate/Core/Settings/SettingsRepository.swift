@@ -1,5 +1,8 @@
 import Foundation
 import Combine
+import SwiftUI
+
+// MARK: - SettingsRepository
 
 /// Unified settings state for live engine binding
 public struct SettingsState: Equatable {
@@ -58,6 +61,29 @@ public struct SettingsState: Equatable {
         self.atrWeight = atrWeight
         self.autoTradingEnabled = autoTradingEnabled
     }
+    
+    // MARK: - Equatable
+    public static func == (lhs: SettingsState, rhs: SettingsState) -> Bool {
+        return lhs.routingEnabled == rhs.routingEnabled &&
+               lhs.strategyMinConf == rhs.strategyMinConf &&
+               lhs.strategyMaxConf == rhs.strategyMaxConf &&
+               lhs.selectedTradingPair == rhs.selectedTradingPair &&
+               lhs.defaultAmountMode == rhs.defaultAmountMode &&
+               lhs.defaultAmountValue == rhs.defaultAmountValue &&
+               lhs.feeBps == rhs.feeBps &&
+               lhs.slippageBps == rhs.slippageBps &&
+               lhs.rsiEnabled == rhs.rsiEnabled &&
+               lhs.rsiWeight == rhs.rsiWeight &&
+               lhs.emaEnabled == rhs.emaEnabled &&
+               lhs.emaWeight == rhs.emaWeight &&
+               lhs.macdEnabled == rhs.macdEnabled &&
+               lhs.macdWeight == rhs.macdWeight &&
+               lhs.meanRevEnabled == rhs.meanRevEnabled &&
+               lhs.meanRevWeight == rhs.meanRevWeight &&
+               lhs.atrEnabled == rhs.atrEnabled &&
+               lhs.atrWeight == rhs.atrWeight &&
+               lhs.autoTradingEnabled == rhs.autoTradingEnabled
+    }
 }
 
 /// Centralized settings repository with proper persistence and type safety
@@ -65,25 +91,31 @@ public struct SettingsState: Equatable {
 public final class SettingsRepository: ObservableObject {
     public static let shared = SettingsRepository()
     
-    // MARK: - Published Settings
+    // MARK: - Private Properties
+    
+    private let userDefaults = UserDefaults.standard
+    private var updateStateTask: Task<Void, Never>?
+    private var isBootstrapping = false
+    
+    // MARK: - Published Properties
     
     // Trading Settings
     @Published public var useStrategyRouting: Bool {
         didSet { 
             save(useStrategyRouting, forKey: .useStrategyRouting)
-            updateState()
+            deferredUpdateState()
         }
     }
     @Published public var strategyConfidenceMin: Double {
         didSet { 
             save(strategyConfidenceMin, forKey: .strategyConfidenceMin)
-            updateState()
+            deferredUpdateState()
         }
     }
     @Published public var strategyConfidenceMax: Double {
         didSet { 
             save(strategyConfidenceMax, forKey: .strategyConfidenceMax)
-            updateState()
+            deferredUpdateState()
         }
     }
     @Published public var tradeThreshold: Double {
@@ -94,26 +126,38 @@ public final class SettingsRepository: ObservableObject {
     @Published public var selectedTradingPair: TradingPair {
         didSet { 
             saveTradingPair(selectedTradingPair, forKey: .selectedTradingPair)
-            updateState()
+            deferredUpdateState()
         }
     }
     @Published public var defaultAmountMode: AmountMode {
         didSet { 
             save(defaultAmountMode.rawValue, forKey: .defaultAmountMode)
-            updateState()
+            deferredUpdateState()
         }
     }
     @Published public var defaultAmountValue: Double {
         didSet { 
             save(defaultAmountValue, forKey: .defaultAmountValue)
-            updateState()
+            deferredUpdateState()
         }
     }
     @Published public var autoTradingEnabled: Bool {
         didSet { 
             save(autoTradingEnabled, forKey: .autoTradingEnabled)
-            updateState()
+            deferredUpdateState()
         }
+    }
+    @Published public var confirmTrades: Bool {
+        didSet { save(confirmTrades, forKey: .confirmTrades) }
+    }
+    @Published public var paperTrading: Bool {
+        didSet { save(paperTrading, forKey: .paperTrading) }
+    }
+    @Published public var hapticsEnabled: Bool {
+        didSet { save(hapticsEnabled, forKey: .hapticsEnabled) }
+    }
+    @Published public var darkMode: Bool {
+        didSet { save(darkMode, forKey: .darkMode) }
     }
     
     // Paper Trading Settings
@@ -138,20 +182,39 @@ public final class SettingsRepository: ObservableObject {
     // Strategy Settings
     @Published public var strategyEnabled: [String: Bool] = [:] {
         didSet { 
-            saveStrategySettings()
-            updateState()
+            if !isBootstrapping {
+                saveStrategySettings()
+                deferredUpdateState()
+            }
         }
     }
     @Published public var strategyWeights: [String: Double] = [:] {
         didSet { 
-            saveStrategySettings()
-            updateState()
+            if !isBootstrapping {
+                saveStrategySettings()
+                deferredUpdateState()
+            }
         }
     }
     
     // System Settings
     @Published public var verboseLogging: Bool {
-        didSet { save(verboseLogging, forKey: .verboseLogging) }
+        didSet { if !isBootstrapping { save(verboseLogging, forKey: .verboseLogging) } }
+    }
+    
+    // Trading Mode
+    @Published public var tradingMode: TradingMode {
+        didSet { if !isBootstrapping { save(tradingMode.rawValue, forKey: .tradingMode) } }
+    }
+    
+    // Theme
+    @Published public var preferredTheme: AppTheme {
+        didSet { 
+            if !isBootstrapping { 
+                save(preferredTheme.rawValue, forKey: .preferredTheme)
+                notifyThemeChange()
+            }
+        }
     }
     
     // MetaSignal Settings
@@ -207,6 +270,10 @@ public final class SettingsRepository: ObservableObject {
         case defaultAmountMode = "settings.defaultAmountMode"
         case defaultAmountValue = "settings.defaultAmountValue"
         case autoTradingEnabled = "settings.autoTradingEnabled"
+        case confirmTrades = "settings.confirmTrades"
+        case paperTrading = "settings.paperTrading"
+        case hapticsEnabled = "settings.hapticsEnabled"
+        case darkMode = "settings.darkMode"
         case verboseLogging = "settings.verboseLogging"
         case metaAiWeight = "settings.metaAiWeight"
         case metaStrategyWeight = "settings.metaStrategyWeight"
@@ -216,6 +283,8 @@ public final class SettingsRepository: ObservableObject {
         case metaMinConfidenceH1 = "settings.metaMinConfidenceH1"
         case metaMinConfidenceH4 = "settings.metaMinConfidenceH4"
         case schemaVersion = "settings.schemaVersion"
+        case tradingMode = "settings.tradingMode"
+        case preferredTheme = "settings.preferredTheme"
     }
     
     // MARK: - Schema Versioning
@@ -224,29 +293,28 @@ public final class SettingsRepository: ObservableObject {
     
     // MARK: - Initialization
     
-    private init() {
-        // Initialize all properties with default values first
+    init() {
+        // Initialize all required properties with defaults first
         self.useStrategyRouting = true
         self.strategyConfidenceMin = 0.55
         self.strategyConfidenceMax = 0.90
         self.tradeThreshold = 0.65
-        
         self.paperStartingCash = 10_000.0
         self.paperFeeBps = 10.0
         self.paperSlippageBps = 5.0
-        
-        self.riskDefaultSL = 0.02 // 2%
-        self.riskDefaultTP = 0.04 // 4%
-        
-        // Multi-Asset Trading Settings
+        self.riskDefaultSL = 0.02
+        self.riskDefaultTP = 0.04
         self.selectedTradingPair = .btcUsd
         self.defaultAmountMode = .percentOfEquity
-        self.defaultAmountValue = 5.0 // 5% of equity
+        self.defaultAmountValue = 5.0
         self.autoTradingEnabled = false
-        
+        self.confirmTrades = true
+        self.paperTrading = false
+        self.hapticsEnabled = true
+        self.darkMode = false
         self.verboseLogging = false
-        
-        // MetaSignal Settings
+        self.tradingMode = .demo
+        self.preferredTheme = .system
         self.metaAiWeight = 0.6
         self.metaStrategyWeight = 0.4
         self.metaMinConfidenceM1 = 0.70
@@ -255,15 +323,16 @@ public final class SettingsRepository: ObservableObject {
         self.metaMinConfidenceH1 = 0.60
         self.metaMinConfidenceH4 = 0.58
         
-        // Load strategy settings
-        self.strategyEnabled = [:]
-        self.strategyWeights = [:]
+        // Now set bootstrapping and load actual values
+        isBootstrapping = true
         
-        // After initialization, load actual values
+        // Load all settings with bootstrap guard
         loadAllSettings()
         
         // Initialize the unified state
         updateState()
+        
+        isBootstrapping = false
         
         Log.settings.info("✅ SettingsRepository initialized")
     }
@@ -289,8 +358,14 @@ public final class SettingsRepository: ObservableObject {
         self.defaultAmountMode = AmountMode(rawValue: load(forKey: .defaultAmountMode, defaultValue: "percent_equity")) ?? .percentOfEquity
         self.defaultAmountValue = load(forKey: .defaultAmountValue, defaultValue: 5.0) // 5% of equity
         self.autoTradingEnabled = load(forKey: .autoTradingEnabled, defaultValue: false)
+        self.confirmTrades = load(forKey: .confirmTrades, defaultValue: true)
+        self.paperTrading = load(forKey: .paperTrading, defaultValue: false)
+        self.hapticsEnabled = load(forKey: .hapticsEnabled, defaultValue: true)
+        self.darkMode = load(forKey: .darkMode, defaultValue: false)
         
         self.verboseLogging = load(forKey: .verboseLogging, defaultValue: false)
+        self.tradingMode = TradingMode(rawValue: load(forKey: .tradingMode, defaultValue: "demo")) ?? .demo
+        self.preferredTheme = AppTheme(rawValue: load(forKey: .preferredTheme, defaultValue: "System")) ?? .system
         
         // MetaSignal Settings
         self.metaAiWeight = load(forKey: .metaAiWeight, defaultValue: 0.6)
@@ -312,14 +387,20 @@ public final class SettingsRepository: ObservableObject {
     // MARK: - Strategy Management
     
     public func updateStrategyEnabled(_ strategyName: String, enabled: Bool) {
-        strategyEnabled[strategyName] = enabled
-        Log.settings.debug("📝 Strategy \(strategyName): \(enabled ? "enabled" : "disabled")")
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.strategyEnabled[strategyName] = enabled
+            Log.settings.debug("📝 Strategy \(strategyName): \(enabled ? "enabled" : "disabled")")
+        }
     }
     
     public func updateStrategyWeight(_ strategyName: String, weight: Double) {
-        let clampedWeight = max(0.1, min(2.0, weight))
-        strategyWeights[strategyName] = clampedWeight
-        Log.settings.debug("⚖️ Strategy \(strategyName) weight: \(clampedWeight)")
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            let clampedWeight = max(0.1, min(2.0, weight))
+            self.strategyWeights[strategyName] = clampedWeight
+            Log.settings.debug("⚖️ Strategy \(strategyName) weight: \(clampedWeight)")
+        }
     }
     
     public func isStrategyEnabled(_ strategyName: String) -> Bool {
@@ -406,6 +487,8 @@ public final class SettingsRepository: ObservableObject {
         riskDefaultTP = 0.04
         
         verboseLogging = false
+        tradingMode = .live
+        preferredTheme = .system
         
         // Reset strategy settings
         strategyEnabled.removeAll()
@@ -426,31 +509,58 @@ public final class SettingsRepository: ObservableObject {
     
     // MARK: - State Updates
     
+    /// Safely defer state updates to avoid publishing warnings
+    private func deferredUpdateState() {
+        DispatchQueue.main.async { [weak self] in
+            self?.updateState()
+        }
+    }
+    
+    /// Update theme through ThemeManager when preferredTheme changes
+    private func notifyThemeChange() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            ThemeManager.shared.setTheme(self.preferredTheme)
+        }
+    }
+    
     /// Update the unified state whenever any setting changes
     private func updateState() {
-        state = SettingsState(
-            routingEnabled: useStrategyRouting,
-            strategyMinConf: strategyConfidenceMin,
-            strategyMaxConf: strategyConfidenceMax,
-            selectedTradingPair: selectedTradingPair,
-            defaultAmountMode: defaultAmountMode,
-            defaultAmountValue: defaultAmountValue,
-            feeBps: paperFeeBps,
-            slippageBps: paperSlippageBps,
-            rsiEnabled: isStrategyEnabled("RSI"),
-            rsiWeight: getStrategyWeight("RSI"),
-            emaEnabled: isStrategyEnabled("EMA Crossover"),
-            emaWeight: getStrategyWeight("EMA Crossover"),
-            macdEnabled: isStrategyEnabled("MACD"),
-            macdWeight: getStrategyWeight("MACD"),
-            meanRevEnabled: isStrategyEnabled("Mean Reversion"),
-            meanRevWeight: getStrategyWeight("Mean Reversion"),
-            atrEnabled: isStrategyEnabled("ATR Breakout"),
-            atrWeight: getStrategyWeight("ATR Breakout"),
-            autoTradingEnabled: autoTradingEnabled
-        )
+        // Cancel any pending update task
+        updateStateTask?.cancel()
         
-        Log.settings.debug("[SETTINGS] State updated: routing=\(state.routingEnabled), conf=\(String(format: "%.2f", state.strategyMinConf))-\(String(format: "%.2f", state.strategyMaxConf))")
+        // Create a new debounced update task
+        updateStateTask = Task { @MainActor in
+            // Wait a short delay to debounce rapid updates
+            try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
+            
+            // Check if task was cancelled during the delay
+            if Task.isCancelled { return }
+            
+            state = SettingsState(
+                routingEnabled: useStrategyRouting,
+                strategyMinConf: strategyConfidenceMin,
+                strategyMaxConf: strategyConfidenceMax,
+                selectedTradingPair: selectedTradingPair,
+                defaultAmountMode: defaultAmountMode,
+                defaultAmountValue: defaultAmountValue,
+                feeBps: paperFeeBps,
+                slippageBps: paperSlippageBps,
+                rsiEnabled: isStrategyEnabled("RSI"),
+                rsiWeight: getStrategyWeight("RSI"),
+                emaEnabled: isStrategyEnabled("EMA Crossover"),
+                emaWeight: getStrategyWeight("EMA Crossover"),
+                macdEnabled: isStrategyEnabled("MACD"),
+                macdWeight: getStrategyWeight("MACD"),
+                meanRevEnabled: isStrategyEnabled("Mean Reversion"),
+                meanRevWeight: getStrategyWeight("Mean Reversion"),
+                atrEnabled: isStrategyEnabled("ATR Breakout"),
+                atrWeight: getStrategyWeight("ATR Breakout"),
+                autoTradingEnabled: autoTradingEnabled
+            )
+            
+            Log.settings.debug("[SETTINGS] State updated: routing=\(state.routingEnabled), conf=\(String(format: "%.2f", state.strategyMinConf))-\(String(format: "%.2f", state.strategyMaxConf))")
+        }
     }
     
     // MARK: - Private Persistence Methods
@@ -564,6 +674,8 @@ public final class SettingsRepository: ObservableObject {
             "strategyEnabled": strategyEnabled,
             "strategyWeights": strategyWeights,
             "verboseLogging": verboseLogging,
+            "tradingMode": tradingMode.rawValue,
+            "preferredTheme": preferredTheme.rawValue,
             "schemaVersion": currentSchemaVersion
         ]
     }

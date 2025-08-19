@@ -2,8 +2,17 @@ import SwiftUI
 import CoreML
 
 struct DiagnosticsSection: View {
+    @EnvironmentObject var settings: SettingsRepository
+    
     var body: some View {
-        Section {
+        Section("Diagnostics") {
+            StandardToggleRow(
+                title: "Verbose Logging",
+                description: "Enable detailed logging for debugging. May impact performance.",
+                isOn: $settings.verboseLogging,
+                style: .warning
+            )
+            
             VStack(alignment: .leading, spacing: 4) {
                 Button("Run CoreML Sanity Check") {
                     Task {
@@ -44,11 +53,12 @@ struct DiagnosticsSection: View {
             Log.ai.info("✅ CoreML models validated successfully")
             
             for (kind, model) in aiManager.models {
-                guard let mlModel = model as? MLModel else { continue }
+                guard let mlModel = model as? MLModel,
+                      let modelKind = kind as? ModelKind else { continue }
                 let inputs = mlModel.modelDescription.inputDescriptionsByName
                 let outputs = mlModel.modelDescription.outputDescriptionsByName
                 
-                Log.ai.info("📊 Model: \(kind.modelName)")
+                Log.ai.info("📊 Model: \(modelKind.modelName)")
                 for (key, desc) in inputs {
                     let shape = desc.multiArrayConstraint?.shape ?? []
                     Log.ai.info("  Input: \(key) -> \(shape)")
