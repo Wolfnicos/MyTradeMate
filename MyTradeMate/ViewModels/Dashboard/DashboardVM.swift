@@ -25,6 +25,7 @@ final class DashboardVM: ObservableObject {
     private let settingsRepo = SettingsRepository.shared
     private let marketDataService = MarketDataService.shared
     private let tradeManager = TradeManager.shared
+    private let metaSignalEngine = MetaSignalEngine.shared
     
     // MARK: - Published Properties
     @Published var price: Double = 0.0
@@ -797,65 +798,50 @@ final class DashboardVM: ObservableObject {
             return
         }
         
-        // let verboseLogging = AppSettings.shared.verboseAILogs
-        let verboseLogging = false
+        let verboseLogging = AppSettings.shared.verboseAILogs
         
-        // if AppSettings.shared.demoMode {
-        //     // Demo mode - generate synthetic signal
-        //     let demoSignal = generateDemoSignal()
-        //     await MainActor.run {
-        //         self.currentSignal = demoSignal
-        //     }
-        //     
-        //     if verboseLogging {
-        //         logger.info("Demo signal: \(demoSignal.direction) @ \(String(format: "%.1f%%", demoSignal.confidence * 100))")
-        //     }
-        // } else {
-        // Live mode - use ensemble strategy engine
+        // Use MetaSignalEngine to generate unified signal
         let startTime = CFAbsoluteTimeGetCurrent()
         
-        // Get ensemble decision
-        // let ensembleDecision = ensembleDecider.decide(
-        //     candles: candles,
-        //     verboseLogging: verboseLogging
-        // )
-        
-        // Try to get CoreML prediction  
-        let coreMLSignal = aiModelManager.predictSafely(
-            timeframe: timeframe,
-            candles: self.candles
-        )
-        
-        // Combine ensemble and CoreML signals
-        let finalSignal = combineSignals(
-            coreML: coreMLSignal,
-            verboseLogging: verboseLogging
-        )
-        
-        let inferenceTime = (CFAbsoluteTimeGetCurrent() - startTime) * 1000
-        
-        if verboseLogging {
-            logger.info("Inference time: \(String(format: "%.1f", inferenceTime))ms")
-            logger.info("Final signal: \(finalSignal.direction) @ \(String(format: "%.1f%%", finalSignal.confidence * 100))")
-        }
-        
-        await MainActor.run {
-            self.currentSignal = finalSignal
-            self.confidence = finalSignal.confidence
+        do {
+            let metaSignal = await metaSignalEngine.generateMetaSignal(
+                for: selectedTradingPair,
+                timeframe: timeframe,
+                candles: self.candles
+            )
             
-            // Log prediction to CSV/JSON files
-            if let coreMLSignal = coreMLSignal {
-                let mode = self.precisionMode ? "precision" : "normal"
-                let strategies: String? = nil // TODO: Implement ensemble strategy signal
-                // PredictionLogger.shared.logPrediction(coreMLSignal, mode: mode, strategies: strategies)
+            let inferenceTime = (CFAbsoluteTimeGetCurrent() - startTime) * 1000
+            
+            if verboseLogging {
+                logger.info("MetaSignal inference time: \(String(format: "%.1f", inferenceTime))ms")
+                logger.info("MetaSignal: \(metaSignal.direction.rawValue) @ \(String(format: "%.1f%%", metaSignal.confidence * 100))")
             }
             
-            // Auto trading logic
-            if self.autoTradingEnabled {
-                self.handleAutoTrading(signal: finalSignal)
+            // Convert MetaSignal to SignalInfo for UI compatibility
+            let signalInfo: SignalInfo = SignalInfo(
+                direction: metaSignal.direction.rawValue,
+                confidence: metaSignal.confidence,
+                reason: metaSignal.source,
+                timestamp: metaSignal.timestamp
+            )
+            
+            await MainActor.run {
+                self.currentSignal = signalInfo
+                self.confidence = metaSignal.confidence
+                
+                // Auto trading logic
+                if self.autoTradingEnabled {
+                    self.handleAutoTrading(signal: signalInfo)
+                }
+            }
+            
+        } catch {
+            logger.error("MetaSignal generation failed: \(error)")
+            await MainActor.run {
+                self.currentSignal = nil
+                self.confidence = 0.0
             }
         }
-        // }
     }
     
     private func generateDemoSignal() -> SignalInfo {

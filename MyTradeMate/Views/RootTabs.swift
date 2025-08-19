@@ -1,9 +1,7 @@
 import SwiftUI
 import Foundation
 
-    // Exchange model is defined in Models/Exchange.swift
-
-    // MARK: - Navigation Types
+// MARK: - Navigation Types
 enum NavigationDestination: Hashable {
     case dashboard
     case trades
@@ -15,6 +13,55 @@ enum NavigationDestination: Hashable {
     case exchangeKeys
     case exchangeKeyEdit(Exchange)
     case about
+    
+    func hash(into hasher: inout Hasher) {
+        switch self {
+        case .dashboard:
+            hasher.combine(0)
+        case .trades:
+            hasher.combine(1)
+        case .tradeDetail(let id):
+            hasher.combine(2)
+            hasher.combine(id)
+        case .pnl:
+            hasher.combine(3)
+        case .strategies:
+            hasher.combine(4)
+        case .strategyDetail(let name):
+            hasher.combine(5)
+            hasher.combine(name)
+        case .settings:
+            hasher.combine(6)
+        case .exchangeKeys:
+            hasher.combine(7)
+        case .exchangeKeyEdit(let exchange):
+            hasher.combine(8)
+            hasher.combine(exchange)
+        case .about:
+            hasher.combine(9)
+        }
+    }
+    
+    static func == (lhs: NavigationDestination, rhs: NavigationDestination) -> Bool {
+        switch (lhs, rhs) {
+        case (.dashboard, .dashboard),
+             (.trades, .trades),
+             (.pnl, .pnl),
+             (.strategies, .strategies),
+             (.settings, .settings),
+             (.exchangeKeys, .exchangeKeys),
+             (.about, .about):
+            return true
+        case (.tradeDetail(let lhsId), .tradeDetail(let rhsId)):
+            return lhsId == rhsId
+        case (.strategyDetail(let lhsName), .strategyDetail(let rhsName)):
+            return lhsName == rhsName
+        case (.exchangeKeyEdit(let lhsExchange), .exchangeKeyEdit(let rhsExchange)):
+            return lhsExchange == rhsExchange
+        default:
+            return false
+        }
+    }
 }
 
 enum AppTab: String, CaseIterable {
@@ -36,12 +83,6 @@ enum AppTab: String, CaseIterable {
 }
 
     // NavigationCoordinator moved to Core/NavigationCoordinator.swift
-
-struct TradesView: View {
-    var body: some View {
-        Text("Trades")
-    }
-}
 
 struct RootTabs: View {
     @StateObject private var appSettings = AppSettings.shared
