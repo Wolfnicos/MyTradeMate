@@ -53,12 +53,12 @@ final class StrategyManager: ObservableObject, StrategyManagerProtocol {
         // Enable some default strategies for demonstration
         strategies[0].isEnabled = true   // RSI
         strategies[5].isEnabled = true   // Bollinger Bands
-        strategies[6].isEnabled = true   // Stochastic
-        strategies[9].isEnabled = true   // Ichimoku
-        strategies[13].isEnabled = true  // Swing Trading
+        strategies[6].isEnabled = true   // WilliamsR (index 6 since Stochastic is commented out)
+        strategies[8].isEnabled = true   // Ichimoku (adjusted index)
+        strategies[12].isEnabled = true  // Swing Trading (adjusted index)
         
         // Disable others by default
-        let disabledIndices = [1, 2, 3, 4, 7, 8, 10, 11, 12, 14]
+        let disabledIndices = [1, 2, 3, 4, 7, 9, 10, 11, 13, 14]
         for i in disabledIndices {
             if i < strategies.count {
                 strategies[i].isEnabled = false
@@ -159,7 +159,7 @@ final class StrategyManager: ObservableObject, StrategyManagerProtocol {
         var contributingStrategies: [String] = []
         
         for signal in signals {
-            guard let strategy = activeStrategies.first(where: { $0.name == signal.strategyName }) else { continue }
+            guard let strategy = _activeStrategies.first(where: { $0.name == signal.strategyName }) else { continue }
             
             let weight = strategy.weight * signal.confidence
             totalWeight += weight

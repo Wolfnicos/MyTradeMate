@@ -86,12 +86,13 @@ actor BinanceClient: BinanceClientProtocol {
     
     func placeMarketOrder(_ req: OrderRequest) async throws -> OrderFill {
         // Mock implementation for paper trading
-        let price = try await bestPrice(for: req.symbol)
+        let price = try await bestPrice(for: Symbol(req.pair.exchangeSymbol, exchange: .binance))
+        let quantity = req.calculateQuantity(currentPrice: price, equity: 1000.0) // Mock equity
         return OrderFill(
             id: UUID(),
-            symbol: req.symbol,
+            pair: req.pair,
             side: req.side,
-            quantity: req.quantity,
+            quantity: quantity,
             price: price,
             timestamp: Date()
         )
@@ -101,25 +102,32 @@ actor BinanceClient: BinanceClientProtocol {
     
     func placeOrder(symbol: String, side: OrderSide, quantity: Double, price: Double?) async throws -> Order {
         // Mock implementation for demo/paper trading
-        let orderPrice = price ?? (try await bestPrice(for: Symbol(raw: symbol)))
+        let orderPrice: Double
+        if let price = price {
+            orderPrice = price
+        } else {
+            orderPrice = try await bestPrice(for: Symbol(symbol, exchange: .binance))
+        }
         return Order(
             id: UUID().uuidString,
             symbol: symbol,
             side: side,
-            quantity: quantity,
+            amount: quantity,
             price: orderPrice,
             status: .filled,
-            timestamp: Date()
+            orderType: .market,
+            createdAt: Date(),
+            filledAt: Date()
         )
     }
     
     func getAccountInfo() async throws -> Account {
         // Mock account for demo trading
         return Account(
-            balance: 10000.0,
             equity: 10000.0,
-            margin: 0.0,
-            timestamp: Date()
+            cash: 10000.0,
+            positions: [],
+            balances: []
         )
     }
     

@@ -94,7 +94,7 @@ final class TradingManager: ObservableObject {
         do {
             // Convert TradeRequest to OrderRequest
             let orderRequest = OrderRequest(
-                pair: TradingPair(base: "BTC", quote: "USDT"), // Convert from symbol later
+                pair: TradingPair(base: Asset.bitcoin, quote: QuoteCurrency.USD), // Convert from symbol later
                 side: request.side == .buy ? .buy : .sell,
                 amountMode: .fixedNotional,
                 amountValue: request.amount
@@ -214,7 +214,7 @@ final class TradingManager: ObservableObject {
         
         // Generate mock position
         let mockPosition = Position(
-            pair: TradingPair(base: "BTC", quote: "USDT"),
+            pair: TradingPair(base: Asset.bitcoin, quote: QuoteCurrency.USD),
             quantity: 0.01,
             averagePrice: 45000.0 + Double.random(in: -100...100)
         )
@@ -233,7 +233,7 @@ final class TradingManager: ObservableObject {
         
         // Generate mock position for paper trading
         let mockPosition = Position(
-            pair: TradingPair(base: "BTC", quote: "USDT"),
+            pair: TradingPair(base: Asset.bitcoin, quote: QuoteCurrency.USD),
             quantity: orderType == "BUY" ? 0.01 : -0.01,
             averagePrice: price
         )

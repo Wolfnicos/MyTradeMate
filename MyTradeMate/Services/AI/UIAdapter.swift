@@ -184,7 +184,7 @@ public class UIAdapter {
         let riskAdjustment: Double
         switch riskLevel {
         case .low: riskAdjustment = 1.0
-        case .moderate: riskAdjustment = 0.8
+        case .medium: riskAdjustment = 0.8
         case .high: riskAdjustment = 0.6
         }
         
@@ -256,7 +256,7 @@ public class UIAdapter {
         let passedGates = conformalResults.filter { $0.passesGate }.count
         let total = conformalResults.count
         
-        return "\(overallRisk.description) - \(passedGates)/\(total) gates passed"
+        return "\(overallRisk.displayName) - \(passedGates)/\(total) gates passed"
     }
     
     /// Generate quality metrics summary
@@ -291,7 +291,7 @@ public class UIAdapter {
     
     /// Assess overall risk from conformal results
     private func assessOverallRisk(conformalResults: [ConformalResult]) -> RiskLevel {
-        guard !conformalResults.isEmpty else { return .moderate }
+        guard !conformalResults.isEmpty else { return .medium }
         
         let riskLevels = conformalResults.map { $0.riskLevel }
         let highRiskCount = riskLevels.filter { $0 == .high }.count
@@ -302,7 +302,7 @@ public class UIAdapter {
         } else if lowRiskCount > conformalResults.count / 2 {
             return .low
         } else {
-            return .moderate
+            return .medium
         }
     }
     

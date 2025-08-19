@@ -241,7 +241,7 @@ final class TradeManager: ObservableObject {
         let now = Date()
         return [
             OrderFill(
-                pair: .btcUsdt,
+                pair: .btcUsd,
                 side: .buy,
                 quantity: 0.1,
                 price: 45000.0,
@@ -249,7 +249,7 @@ final class TradeManager: ObservableObject {
                 timestamp: now.addingTimeInterval(-2 * 3600),
                 orderType: .market,
                 originalRequest: OrderRequest(
-                    pair: .btcUsdt,
+                    pair: .btcUsd,
                     side: .buy,
                     type: .market,
                     amountMode: .fixedNotional,
@@ -261,7 +261,7 @@ final class TradeManager: ObservableObject {
                 )
             ),
             OrderFill(
-                pair: .btcUsdt,
+                pair: .btcUsd,
                 side: .sell,
                 quantity: 0.05,
                 price: 46000.0,
@@ -269,7 +269,7 @@ final class TradeManager: ObservableObject {
                 timestamp: now.addingTimeInterval(-1 * 3600),
                 orderType: .market,
                 originalRequest: OrderRequest(
-                    pair: .btcUsdt,
+                    pair: .btcUsd,
                     side: .sell,
                     type: .market,
                     amountMode: .fixedNotional,
@@ -281,7 +281,7 @@ final class TradeManager: ObservableObject {
                 )
             ),
             OrderFill(
-                pair: .btcUsdt,
+                pair: .btcUsd,
                 side: .buy,
                 quantity: 0.2,
                 price: 44000.0,
@@ -289,7 +289,7 @@ final class TradeManager: ObservableObject {
                 timestamp: now.addingTimeInterval(-30 * 60),
                 orderType: .market,
                 originalRequest: OrderRequest(
-                    pair: .btcUsdt,
+                    pair: .btcUsd,
                     side: .buy,
                     type: .market,
                     amountMode: .fixedNotional,

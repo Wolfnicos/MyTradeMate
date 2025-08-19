@@ -10,7 +10,7 @@ struct StrategiesView: View {
     
     var body: some View {
         NavigationStack {
-            ScrollView {
+            ScrollView(.vertical, showsIndicators: true) {
                 LazyVStack(spacing: 16) {
                     if viewModel.strategies.isEmpty {
                         emptyStateView
@@ -23,20 +23,12 @@ struct StrategiesView: View {
             }
             .navigationTitle("Strategies")
             .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh") {
-                        // Refresh strategy signals
-                        Log.userAction("Strategies refreshed")
-                    }
-                }
-            }
         }
-        .sheet(item: Binding<StrategyWrapper?>(
-            get: { viewModel.selectedStrategy.map(StrategyWrapper.init) },
-            set: { viewModel.selectedStrategy = $0?.strategy }
+        .sheet(item: Binding<StrategyInfoWrapper?>(
+            get: { viewModel.selectedStrategy.map(StrategyInfoWrapper.init) },
+            set: { viewModel.selectedStrategy = $0?.strategyInfo }
         )) { wrapper in
-            StrategyParametersView(strategy: wrapper.strategy)
+            StrategyParametersView(strategyInfo: wrapper.strategyInfo)
         }
     }
     
@@ -54,7 +46,7 @@ struct StrategiesView: View {
     
     private var strategiesListView: some View {
         VStack(spacing: 12) {
-            ForEach(Array(viewModel.strategies.enumerated()), id: \.offset) { index, strategy in
+            ForEach(viewModel.strategies) { strategy in
                 StrategyRowView(
                     strategy: strategy,
                     lastSignal: viewModel.lastSignals[strategy.name],
@@ -139,7 +131,7 @@ struct StrategiesView: View {
 }
 
 struct StrategyRowView: View {
-    let strategy: any Strategy
+    let strategy: StrategyInfo
     let lastSignal: StrategySignal?
     let onToggle: () -> Void
     let onConfigure: () -> Void
@@ -209,7 +201,7 @@ struct StrategyRowView: View {
 }
 
 struct StrategyParametersView: View {
-    let strategy: any Strategy
+    let strategyInfo: StrategyInfo
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
@@ -220,7 +212,7 @@ struct StrategyParametersView: View {
                         Text("Strategy Information")
                             .font(.headline)
                         
-                        Text(strategy.description)
+                        Text(strategyInfo.description)
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     }
@@ -239,7 +231,7 @@ struct StrategyParametersView: View {
                 }
                 .padding()
             }
-            .navigationTitle(strategy.name)
+            .navigationTitle(strategyInfo.name)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -254,9 +246,13 @@ struct StrategyParametersView: View {
 
 // MARK: - Helper Types
 
-private struct StrategyWrapper: Identifiable {
+private struct StrategyInfoWrapper: Identifiable {
     let id = UUID()
-    let strategy: any Strategy
+    let strategyInfo: StrategyInfo
+    
+    init(_ strategyInfo: StrategyInfo) {
+        self.strategyInfo = strategyInfo
+    }
 }
 
 // Using description from StrategySignal.Direction in Strategy.swift

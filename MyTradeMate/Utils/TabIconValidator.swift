@@ -29,10 +29,10 @@ struct TabIconValidator {
             let baseImage = UIImage(systemName: iconName)
             
             let lightImage = baseImage?.withConfiguration(
-                UIImage.SymbolConfiguration(for: lightTraits)
+                UIImage.SymbolConfiguration(traitCollection: lightTraits)
             )
             let darkImage = baseImage?.withConfiguration(
-                UIImage.SymbolConfiguration(for: darkTraits)
+                UIImage.SymbolConfiguration(traitCollection: darkTraits)
             )
             
             results["\(tab.rawValue) (\(iconName))"] = (

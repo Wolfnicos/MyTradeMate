@@ -141,7 +141,7 @@ final class KrakenExchangeClient {
 
         // MARK: - Trading
 
-    func createOrder(_ req: OrderRequest) async throws -> OrderFill {
+    func createOrder(_ req: TradeRequest) async throws -> OrderFill {
             // TODO: Implement live trading with API keys and signatures
             // For MVP, only support MARKET orders when credentials are present
         guard let apiKey = try? await KeychainStore.shared.getAPIKey(for: .kraken),
@@ -151,10 +151,10 @@ final class KrakenExchangeClient {
 
         let nonce = String(Int64(Date().timeIntervalSince1970 * 1000))
         let params: [String: String] = [
-            "pair": normalized(symbol: req.pair),
+            "pair": normalized(symbol: req.symbol),
             "type": req.side == .buy ? "buy" : "sell",
             "ordertype": "market",
-            "volume": String(format: "%.8f", req.volume),
+            "volume": String(format: "%.8f", req.amount),
             "nonce": nonce
         ]
 
@@ -181,13 +181,31 @@ final class KrakenExchangeClient {
                 throw ExchangeError.invalidResponse
             }
 
+            let orderSide: OrderSide
+            switch req.side {
+            case .buy:
+                orderSide = .buy
+            case .sell:
+                orderSide = .sell
+            }
+
+            let upper = req.symbol.uppercased()
+            let baseLength = upper.count - 4
+            let baseStr = String(upper.prefix(baseLength))
+            let quoteStr = String(upper.suffix(4))
+            guard let base = Asset.asset(for: baseStr),
+                  let quote = QuoteCurrency(rawValue: quoteStr) else {
+                throw ExchangeError.invalidResponse
+            }
+            let tradingPair = TradingPair(base: base, quote: quote)
+
                 // For MVP, assume immediate fill at market price
             return OrderFill(
                 id: UUID(),
-                pair: req.pair,
-                side: req.side,
-                quantity: req.volume,
-                price: req.limitPrice ?? 0,
+                pair: tradingPair,
+                side: orderSide,
+                quantity: req.amount,
+                price: req.price ?? 0,
                 timestamp: Date()
             )
         case 401:
@@ -233,8 +251,8 @@ final class KrakenExchangeClient {
 
         // MARK: - ExchangeClient Protocol
 
-    func normalized(symbol: TradingPair) -> String {
-        let symbolStr = (String(describing: symbol.base) + String(describing: symbol.quote)).uppercased()
+    func normalized(symbol: String) -> String {
+        let symbolStr = symbol.uppercased()
             // Convert BTC to XBT for Kraken
         if symbolStr.hasPrefix("BTC") {
             return "XBT" + String(symbolStr.dropFirst(3))
@@ -244,7 +262,7 @@ final class KrakenExchangeClient {
 
     func bestPrice(for symbol: TradingPair) async throws -> Double {
             // Simple implementation - get current market price from API
-        let symbolStr = normalized(symbol: symbol)
+        let symbolStr = normalized(symbol: symbol.base.symbol + symbol.quote.rawValue)
         guard let url = URL(string: "https://api.kraken.com/0/public/Ticker?pair=\(symbolStr)") else {
             throw URLError(.badURL)
         }

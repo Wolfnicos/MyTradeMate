@@ -90,7 +90,7 @@ public class ModeEngine {
                     prediction: prediction,
                     uncertainty: uncertainty,
                     qualityScore: qualifies.score,
-                    timeframePriority: getTimeframePriority(prediction.timeframe)
+                    timeframePriority: getTimeframePriority(prediction.model.timeframeLabel)
                 ))
             }
         }

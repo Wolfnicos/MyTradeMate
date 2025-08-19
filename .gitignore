@@ -23,3 +23,10 @@ not_in_project.txt
 swift_referenced_by_xcode.txt
 .DS_Store
 **/.DS_Store
+
+# Local & temp
+*.backup
+.grok/
+.claude/settings.local.json
+fix_build_errors.swift
+launch_validation.swift

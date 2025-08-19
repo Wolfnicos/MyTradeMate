@@ -65,6 +65,8 @@ final class DashboardVM: ObservableObject {
     
     // Multi-Asset Trading Properties
     @Published var selectedTradingPair: TradingPair = .btcUsd
+    @Published var selectedExchange: Exchange = .binance
+    @Published var selectedQuoteCurrency: QuoteCurrency = .USD
     @Published var amountMode: AmountMode = .percentOfEquity
     @Published var amountValue: Double = 5.0
     @Published var currentEquity: Double = 10_000.0
@@ -122,7 +124,7 @@ final class DashboardVM: ObservableObject {
         
         let tradeRequest = createTradeRequest(side: .buy)
         
-        if settings.requireTradeConfirmation {
+        if settings.confirmTrades {
             pendingTradeRequest = tradeRequest
             showingTradeConfirmation = true
         } else {
@@ -135,7 +137,7 @@ final class DashboardVM: ObservableObject {
         
         let tradeRequest = createTradeRequest(side: .sell)
         
-        if settings.requireTradeConfirmation {
+        if settings.confirmTrades {
             pendingTradeRequest = tradeRequest
             showingTradeConfirmation = true
         } else {
@@ -386,8 +388,9 @@ final class DashboardVM: ObservableObject {
             }
             .store(in: &cancellables)
         
-        // Observe trading mode changes  
-        $tradingMode
+        // Observe trading mode changes via settings
+        settings.objectWillChange
+            .map { [weak self] _ in self?.tradingMode ?? .demo }
             .removeDuplicates()
             .sink { [weak self] mode in
                 Log.trade.info("Trading mode: \(mode.rawValue)")
@@ -462,7 +465,8 @@ final class DashboardVM: ObservableObject {
             let hasValidKeys = await validateAPIKeys()
             if !hasValidKeys {
                 await MainActor.run {
-                    self.tradingMode = .paper // Fall back to paper mode
+                    self.settings.demoMode = false
+                    self.settings.paperTrading = true // Fall back to paper mode
                     self.showErrorToast("Live trading requires valid API keys. Switched to Paper mode.")
                 }
                 return
@@ -481,18 +485,13 @@ final class DashboardVM: ObservableObject {
     
     private func validateAPIKeys() async -> Bool {
         // Check if we have valid API keys for the selected exchange
-        guard !settings.binanceApiKey.isEmpty && !settings.binanceSecretKey.isEmpty else {
-            Log.trade.warning("No Binance API keys configured")
-            return false
-        }
-        
-        // Optionally test API key validity with a simple call
         do {
-            // This would be a test call to the exchange
-            // For now, just check that keys are not empty
-            return !settings.binanceApiKey.isEmpty && !settings.binanceSecretKey.isEmpty
+            let apiKey = try await KeychainStore.shared.getAPIKey(for: .binance)
+            let apiSecret = try await KeychainStore.shared.getAPISecret(for: .binance)
+            
+            return !apiKey.isEmpty && !apiSecret.isEmpty
         } catch {
-            Log.trade.error("API key validation failed: \(error)")
+            Log.trade.warning("No Binance API keys configured: \(error)")
             return false
         }
     }
@@ -722,7 +721,7 @@ final class DashboardVM: ObservableObject {
             switch timeframe {
             case .h4:
                 source = "4h Model"
-            case .m5, .h1:
+            case .m1, .m5, .m15, .h1:
                 source = "Strategies"
             }
             
@@ -748,6 +747,14 @@ final class DashboardVM: ObservableObject {
             
             // [HEALTH] heartbeat log as specified
             Log.health.info("[HEALTH] tframe=\(timeframe.rawValue) source=\(source) signal=\(signal) conf=\(conf) pos=\(positionStr) BTC equity=\(equityStr)")
+        }
+    }
+    
+    // MARK: - Public Methods
+    func refreshData() {
+        Task {
+            await loadMarketData()
+            await refreshPredictionAsync()
         }
     }
     
@@ -839,7 +846,7 @@ final class DashboardVM: ObservableObject {
             // Log prediction to CSV/JSON files
             if let coreMLSignal = coreMLSignal {
                 let mode = self.precisionMode ? "precision" : "normal"
-                let strategies = strategySignal?.reason
+                let strategies: String? = nil // TODO: Implement ensemble strategy signal
                 // PredictionLogger.shared.logPrediction(coreMLSignal, mode: mode, strategies: strategies)
             }
             
@@ -899,8 +906,8 @@ final class DashboardVM: ObservableObject {
                 return getStrategySignal(source: "4h Model (fallback)")
             }
             
-        case .m5, .h1:
-            // m5/h1 always use strategies (per specification)
+        case .m1, .m5, .m15, .h1:
+            // Short timeframes always use strategies (per specification)
             Log.routing.info("[ROUTING] timeframe=\(timeframe.rawValue) pair=\(selectedTradingPair.symbol) source=Strategies")
             return getStrategySignal(source: "Strategies")
         }
@@ -965,7 +972,9 @@ final class DashboardVM: ObservableObject {
     
     private func modelKindForTimeframe(_ timeframe: Timeframe) -> ModelKind {
         switch timeframe {
+        case .m1: return .m5  // Use m5 model for m1
         case .m5: return .m5
+        case .m15: return .h1  // Use h1 model for m15
         case .h1: return .h1
         case .h4: return .h4
         }

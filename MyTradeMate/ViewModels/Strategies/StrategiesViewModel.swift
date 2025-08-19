@@ -28,7 +28,7 @@ final class StrategiesViewModel: ObservableObject {
     func enableStrategy(_ strategy: TradingStrategy) {
         Task {
             do {
-                strategyManager.enableStrategy(withId: strategy.id)
+                await strategyManager.enableStrategy(withId: strategy.id)
                 await MainActor.run {
                     loadStrategies()
                 }
@@ -42,7 +42,7 @@ final class StrategiesViewModel: ObservableObject {
     func disableStrategy(_ strategy: TradingStrategy) {
         Task {
             do {
-                strategyManager.disableStrategy(withId: strategy.id)
+                await strategyManager.disableStrategy(withId: strategy.id)
                 await MainActor.run {
                     loadStrategies()
                 }
@@ -64,8 +64,8 @@ final class StrategiesViewModel: ObservableObject {
         isLoading = true
         
         Task {
-            let available = strategyManager.availableStrategies
-            let active = strategyManager.activeStrategies
+            let available = await strategyManager.availableStrategies
+            let active = await strategyManager.activeStrategies
             
             await MainActor.run {
                 self.availableStrategies = available

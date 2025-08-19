@@ -28,7 +28,7 @@ public struct TradeRequest: Codable, Identifiable {
         self.timestamp = Date()
         
         // Default values for new properties
-        self.tradingPair = TradingPair.btcUsdt
+        self.tradingPair = TradingPair.btcUsd
         self.amountMode = .fixedNotional
         self.quoteCurrency = .USD
     }

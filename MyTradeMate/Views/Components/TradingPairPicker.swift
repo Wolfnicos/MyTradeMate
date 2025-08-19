@@ -48,31 +48,14 @@ struct TradingPairPickerSheet: View {
             List {
                 Section("Popular Pairs") {
                     ForEach(TradingPair.popular, id: \.symbol) { pair in
-                        Button(action: {
-                            selectedPair = pair
-                            dismiss()
-                        }) {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(pair.displayName)
-                                        .font(.subheadline)
-                                        .fontWeight(.medium)
-                                        .foregroundColor(.primary)
-                                    
-                                    Text(pair.symbol)
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                                
-                                Spacer()
-                                
-                                if pair.symbol == selectedPair.symbol {
-                                    Image(systemName: "checkmark")
-                                        .foregroundColor(.blue)
-                                }
+                        TradingPairRow(
+                            pair: pair,
+                            isSelected: pair.symbol == selectedPair.symbol,
+                            onSelect: {
+                                selectedPair = pair
+                                dismiss()
                             }
-                        }
-                        .buttonStyle(PlainButtonStyle())
+                        )
                     }
                 }
             }
@@ -91,4 +74,35 @@ struct TradingPairPickerSheet: View {
 
 #Preview {
     TradingPairPicker(selectedPair: .constant(.btcUsd))
+}
+
+struct TradingPairRow: View {
+    let pair: TradingPair
+    let isSelected: Bool
+    let onSelect: () -> Void
+    
+    var body: some View {
+        Button(action: onSelect) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(pair.displayName)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundColor(.primary)
+                    
+                    Text(pair.symbol)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .foregroundColor(.blue)
+                }
+            }
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
 }

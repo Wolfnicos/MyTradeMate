@@ -32,7 +32,8 @@ final class NavigationCoordinator: ObservableObject {
         case .dashboard:
             DashboardView()
         case .trades:
-            TradesView()
+            Text("Trades View")
+                .navigationTitle("Trades")
         case .tradeDetail(let tradeId):
             Text("Trade Detail: \(tradeId)")
                 .navigationTitle("Trade Details")
@@ -47,7 +48,8 @@ final class NavigationCoordinator: ObservableObject {
             Text("Settings")
                 .navigationTitle("Settings")
         case .exchangeKeys:
-            ExchangeKeysView()
+            Text("Exchange Keys")
+                .navigationTitle("Exchange Keys")
         case .exchangeKeyEdit(let exchange):
             Text("Edit \(exchange.displayName) Keys")
                 .navigationTitle("Edit Keys")

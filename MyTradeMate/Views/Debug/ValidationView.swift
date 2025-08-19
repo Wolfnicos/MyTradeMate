@@ -8,7 +8,7 @@ class SimpleValidationSuite: ObservableObject {
     @Published var validationResults: [ValidationResult] = []
     
     enum ValidationStatus {
-        case notStarted, running, passed, failed, partiallyPassed
+        case notStarted, running, passed, failed, partiallyPassed, skipped
         
         var description: String {
             switch self {
@@ -17,6 +17,18 @@ class SimpleValidationSuite: ObservableObject {
             case .passed: return "All Tests Passed ✅"
             case .failed: return "Tests Failed ❌"
             case .partiallyPassed: return "Partially Passed ⚠️"
+            case .skipped: return "Skipped ⏭️"
+            }
+        }
+        
+        var icon: String {
+            switch self {
+            case .notStarted: return "⏸️"
+            case .running: return "🔄"
+            case .passed: return "✅"
+            case .failed: return "❌"
+            case .partiallyPassed: return "⚠️"
+            case .skipped: return "⏭️"
             }
         }
         
@@ -27,6 +39,7 @@ class SimpleValidationSuite: ObservableObject {
             case .passed: return .green
             case .failed: return .red
             case .partiallyPassed: return .orange
+            case .skipped: return .orange
             }
         }
     }
@@ -35,18 +48,24 @@ class SimpleValidationSuite: ObservableObject {
         let id = UUID()
         let testName: String
         let category: String
-        let passed: Bool
+        let status: ValidationStatus
         let message: String
         let details: String?
         let timestamp: Date
+        let duration: TimeInterval
         
-        init(testName: String, category: String, passed: Bool, message: String, details: String? = nil) {
+        init(testName: String, category: String, status: ValidationStatus, message: String, details: String? = nil, duration: TimeInterval = 0.0) {
             self.testName = testName
             self.category = category
-            self.passed = passed
+            self.status = status
             self.message = message
             self.details = details
             self.timestamp = Date()
+            self.duration = duration
+        }
+        
+        var passed: Bool {
+            return status == .passed
         }
     }
     
@@ -60,7 +79,7 @@ class SimpleValidationSuite: ObservableObject {
         validationResults.append(ValidationResult(
             testName: "App Settings",
             category: "Configuration", 
-            passed: true,
+            status: .passed,
             message: "Settings are properly configured"
         ))
         
@@ -96,7 +115,7 @@ struct ValidationView: View {
                     }
                 }
                 .padding()
-                .background(Color(.systemGray6))
+                .background(Color.gray.opacity(0.1))
                 .cornerRadius(12)
                 
                 // Test Results
@@ -204,7 +223,7 @@ struct ValidationResultRow: View {
     }
     
     private var statusBadge: some View {
-        Text(result.status == .passed ? "PASS" : result.status == .failed ? "FAIL" : "SKIP")
+        Text(result.status == .passed ? "PASS" : result.status == .failed ? "FAIL" : result.status == .skipped ? "SKIP" : "RUN")
             .font(.caption)
             .fontWeight(.bold)
             .padding(.horizontal, 8)
@@ -219,6 +238,9 @@ struct ValidationResultRow: View {
         case .passed: return .green
         case .failed: return .red
         case .skipped: return .orange
+        case .running: return .blue
+        case .notStarted: return .gray
+        case .partiallyPassed: return .orange
         }
     }
 }

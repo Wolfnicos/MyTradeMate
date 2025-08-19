@@ -142,14 +142,12 @@ struct ButtonStylePreview: View {
                         HStack(spacing: 12) {
                             BuyButton(
                                 isDisabled: isDisabled,
-                                isLoading: isLoading,
                                 isDemoMode: true,
                                 action: { print("Buy button tapped") }
                             )
                             
                             SellButton(
                                 isDisabled: isDisabled,
-                                isLoading: isLoading,
                                 isDemoMode: false,
                                 action: { print("Sell button tapped") }
                             )

@@ -13,6 +13,10 @@ final class StrategiesVM: ObservableObject {
     @Published var strategies: [StrategyInfo] = []
     @Published var currentRegime: String = "Ranging"
     @Published var recommendedStrategies: [String] = []
+    @Published var selectedStrategy: StrategyInfo? = nil
+    @Published var lastSignals: [String: StrategySignal] = [:]
+    @Published var isGeneratingSignals: Bool = false
+    @Published var ensembleSignal: EnsembleSignal? = nil
     
     // MARK: - Private Properties
     private let ensembleDecider = EnsembleDecider()
@@ -77,8 +81,8 @@ final class StrategiesVM: ObservableObject {
                         name: "Period",
                         type: .stepper,
                         value: 14,
-                        min: 5,
-                        max: 30,
+                        minValue: 5,
+                        maxValue: 30,
                         step: 1
                     ),
                     StrategyParameter(
@@ -86,8 +90,8 @@ final class StrategiesVM: ObservableObject {
                         name: "Oversold",
                         type: .textField,
                         value: 30,
-                        min: 10,
-                        max: 40,
+                        minValue: 10,
+                        maxValue: 40,
                         step: 5
                     ),
                     StrategyParameter(
@@ -95,8 +99,8 @@ final class StrategiesVM: ObservableObject {
                         name: "Overbought",
                         type: .textField,
                         value: 70,
-                        min: 60,
-                        max: 90,
+                        minValue: 60,
+                        maxValue: 90,
                         step: 5
                     )
                 ]
@@ -113,8 +117,8 @@ final class StrategiesVM: ObservableObject {
                         name: "Fast",
                         type: .stepper,
                         value: 12,
-                        min: 5,
-                        max: 20,
+                        minValue: 5,
+                        maxValue: 20,
                         step: 1
                     ),
                     StrategyParameter(
@@ -122,8 +126,8 @@ final class StrategiesVM: ObservableObject {
                         name: "Slow",
                         type: .stepper,
                         value: 26,
-                        min: 20,
-                        max: 40,
+                        minValue: 20,
+                        maxValue: 40,
                         step: 1
                     ),
                     StrategyParameter(
@@ -131,8 +135,8 @@ final class StrategiesVM: ObservableObject {
                         name: "Signal",
                         type: .stepper,
                         value: 9,
-                        min: 5,
-                        max: 15,
+                        minValue: 5,
+                        maxValue: 15,
                         step: 1
                     )
                 ]
@@ -149,8 +153,8 @@ final class StrategiesVM: ObservableObject {
                         name: "Period",
                         type: .slider,
                         value: 20,
-                        min: 10,
-                        max: 50,
+                        minValue: 10,
+                        maxValue: 50,
                         step: 1
                     ),
                     StrategyParameter(
@@ -158,8 +162,8 @@ final class StrategiesVM: ObservableObject {
                         name: "Std Dev",
                         type: .slider,
                         value: 2.0,
-                        min: 1.0,
-                        max: 3.0,
+                        minValue: 1.0,
+                        maxValue: 3.0,
                         step: 0.5
                     )
                 ]
@@ -176,8 +180,8 @@ final class StrategiesVM: ObservableObject {
                         name: "ATR Period",
                         type: .stepper,
                         value: 14,
-                        min: 5,
-                        max: 30,
+                        minValue: 5,
+                        maxValue: 30,
                         step: 1
                     ),
                     StrategyParameter(
@@ -185,8 +189,8 @@ final class StrategiesVM: ObservableObject {
                         name: "Multiplier",
                         type: .slider,
                         value: 1.5,
-                        min: 0.5,
-                        max: 3.0,
+                        minValue: 0.5,
+                        maxValue: 3.0,
                         step: 0.1
                     )
                 ]
@@ -206,8 +210,8 @@ final class StrategiesVM: ObservableObject {
         strategies[index].isEnabled = enabled
         ensembleDecider.enableStrategy(strategyName: strategies[index].name, enabled: enabled)
         
-        logger.info("Strategy \(strategies[index].name) \(enabled ? "enabled" : "disabled")")
-        Haptics.impact(.light)
+        Task { await logger.info("Strategy \(strategies[index].name) \(enabled ? "enabled" : "disabled")") }
+        Haptics.playImpact(.light)
     }
     
     func updateWeight(_ id: String, weight: Double) {
@@ -216,7 +220,7 @@ final class StrategiesVM: ObservableObject {
         strategies[index].weight = weight
         ensembleDecider.updateStrategyWeight(strategyName: strategies[index].name, weight: weight)
         
-        logger.info("Strategy \(strategies[index].name) weight updated to \(weight)")
+        Task { await logger.info("Strategy \(strategies[index].name) weight updated to \(weight)") }
     }
     
     func updateParameter(strategyId: String, paramId: String, value: Double) {
@@ -230,7 +234,17 @@ final class StrategiesVM: ObservableObject {
         // Update the actual strategy parameters
         updateStrategyEngine(strategyId: strategyId, paramId: paramId, value: value)
         
-        logger.info("Parameter \(paramId) for \(strategies[strategyIndex].name) updated to \(value)")
+        Task { await logger.info("Parameter \(paramId) for \(strategies[strategyIndex].name) updated to \(value)") }
+    }
+    
+    func enableStrategy(named name: String) {
+        guard let index = strategies.firstIndex(where: { $0.name == name }) else { return }
+        toggleStrategy(strategies[index].id, enabled: true)
+    }
+    
+    func disableStrategy(named name: String) {
+        guard let index = strategies.firstIndex(where: { $0.name == name }) else { return }
+        toggleStrategy(strategies[index].id, enabled: false)
     }
     
     // MARK: - Private Methods
@@ -264,10 +278,10 @@ final class StrategiesVM: ObservableObject {
                     self.recommendedStrategies = recommended
                 }
                 
-                logger.info("Market regime: \(self.currentRegime)")
-                logger.info("Recommended strategies: \(recommended.joined(separator: ", "))")
+                await logger.info("Market regime: \(self.currentRegime)")
+                await logger.info("Recommended strategies: \(recommended.joined(separator: ", "))")
             } catch {
-                logger.error("Failed to update regime: \(error.localizedDescription)")
+                await logger.error("Failed to update regime: \(error.localizedDescription)")
                 
                 // Use default values in case of error
                 await MainActor.run {
@@ -280,7 +294,7 @@ final class StrategiesVM: ObservableObject {
     
     private func updateStrategyEngine(strategyId: String, paramId: String, value: Double) {
         // Update the actual strategy engine parameters
-        logger.info("Updating strategy engine: \(strategyId).\(paramId) = \(value)")
+        Task { await logger.info("Updating strategy engine: \(strategyId).\(paramId) = \(value)") }
         
         switch strategyId {
         case "ema":
@@ -294,7 +308,7 @@ final class StrategiesVM: ObservableObject {
         case "breakout":
             updateBreakoutStrategy(paramId: paramId, value: value)
         default:
-            logger.warning("Unknown strategy ID: \(strategyId)")
+            Task { await logger.warning("Unknown strategy ID: \(strategyId)") }
         }
     }
     
@@ -305,7 +319,7 @@ final class StrategiesVM: ObservableObject {
         case "slow":
             EMAStrategy.shared.updateSlowPeriod(Int(value))
         default:
-            logger.warning("Unknown EMA parameter: \(paramId)")
+            Task { await logger.warning("Unknown EMA parameter: \(paramId)") }
         }
     }
     
@@ -318,7 +332,7 @@ final class StrategiesVM: ObservableObject {
         case "overbought":
             RSIStrategy.shared.updateOverboughtLevel(value)
         default:
-            logger.warning("Unknown RSI parameter: \(paramId)")
+            Task { await logger.warning("Unknown RSI parameter: \(paramId)") }
         }
     }
     
@@ -331,7 +345,7 @@ final class StrategiesVM: ObservableObject {
         case "signal":
             MACDStrategy.shared.updateSignalPeriod(Int(value))
         default:
-            logger.warning("Unknown MACD parameter: \(paramId)")
+            Task { await logger.warning("Unknown MACD parameter: \(paramId)") }
         }
     }
     
@@ -342,7 +356,7 @@ final class StrategiesVM: ObservableObject {
         case "deviations":
             MeanReversionStrategy.shared.updateStandardDeviations(value)
         default:
-            logger.warning("Unknown Mean Reversion parameter: \(paramId)")
+            Task { await logger.warning("Unknown Mean Reversion parameter: \(paramId)") }
         }
     }
     
@@ -353,7 +367,7 @@ final class StrategiesVM: ObservableObject {
         case "multiplier":
             BreakoutStrategy.shared.updateMultiplier(value)
         default:
-            logger.warning("Unknown Breakout parameter: \(paramId)")
+            Task { await logger.warning("Unknown Breakout parameter: \(paramId)") }
         }
     }
 }

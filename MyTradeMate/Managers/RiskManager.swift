@@ -15,6 +15,10 @@ final class RiskManager: ObservableObject {
     
     @Published var currentDailyRisk: Double = 0.0
     @Published var currentPortfolioRisk: Double = 0.0
+    @Published var currentPositionRisk: Double = 0.0
+    @Published var maxPositionRisk: Double = 0.10 // 10% max risk per position
+    @Published var openPositionsCount: Int = 0
+    @Published var maxOpenPositions: Int = 5
     @Published var activePositions: [RiskPosition] = []
     
     private var cancellables = Set<AnyCancellable>()

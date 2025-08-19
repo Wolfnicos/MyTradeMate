@@ -181,6 +181,15 @@ extension EmptyStateView {
             useIllustration: useIllustration
         )
     }
+    
+    /// Alias for strategiesNoData for backward compatibility
+    static func strategies(
+        title: String = "No Strategies Available",
+        description: String = "Trading strategies will appear here when loaded",
+        useIllustration: Bool = false
+    ) -> EmptyStateView {
+        strategiesNoData(title: title, description: description, useIllustration: useIllustration)
+    }
 }
 
 #Preview {

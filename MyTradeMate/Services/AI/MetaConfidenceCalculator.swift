@@ -219,7 +219,7 @@ public class MetaConfidenceCalculator {
             
             // Additional penalty if not all models agree
             if modeResult.qualifiedPredictions.count < 3 {
-                let penalty = 0.1 * (3 - modeResult.qualifiedPredictions.count)
+                let penalty = 0.1 * Double(3 - modeResult.qualifiedPredictions.count)
                 adjustedConfidence *= (1.0 - penalty)
             }
         }

@@ -148,7 +148,7 @@ struct CandleChartView: View {
 }
 
 struct DashboardView: View {
-    @StateObject private var vm = DashboardVM()
+    @StateObject private var vm = RefactoredDashboardVM()
     @StateObject private var strategyManager = StrategyManager.shared
     @StateObject private var riskManager = RiskManager.shared
     
@@ -372,7 +372,7 @@ struct DashboardView: View {
             TradeAmountControl(
                 amountMode: $vm.amountMode,
                 amountValue: $vm.amountValue,
-                quoteCurrency: vm.selectedTradingPair.quote,
+                quoteCurrency: vm.selectedTradingPair.quote.rawValue,
                 currentEquity: vm.currentEquity,
                 currentPrice: vm.price
             )
@@ -855,28 +855,28 @@ struct DashboardView: View {
             ], spacing: Spacing.sm) {
                 PortfolioMetricCard(
                     title: "Total Balance",
-                    value: "$\(vm.totalBalance, specifier: "%.2f")",
+                    value: String(format: "$%.2f", vm.totalBalance),
                     change: vm.totalBalanceChange,
                     changePercent: vm.totalBalanceChangePercent
                 )
                 
                 PortfolioMetricCard(
                     title: "Available",
-                    value: "$\(vm.availableBalance, specifier: "%.2f")",
+                    value: String(format: "$%.2f", vm.availableBalance),
                     change: nil,
                     changePercent: nil
                 )
                 
                 PortfolioMetricCard(
                     title: "Today's P&L",
-                    value: "$\(vm.todayPnL, specifier: "%.2f")",
+                    value: String(format: "$%.2f", vm.todayPnL),
                     change: vm.todayPnL,
                     changePercent: vm.todayPnLPercent
                 )
                 
                 PortfolioMetricCard(
                     title: "Open P&L",
-                    value: "$\(vm.unrealizedPnL, specifier: "%.2f")",
+                    value: String(format: "$%.2f", vm.unrealizedPnL),
                     change: vm.unrealizedPnL,
                     changePercent: vm.unrealizedPnLPercent
                 )
@@ -936,31 +936,39 @@ struct SparklineChart: View {
 
 // MARK: - Position Row
 struct PositionRow: View {
-    let position: TradingPosition
+    let position: Position
     
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: Spacing.xxs) {
-                // Text(String(position.symbol))
-                //     .font(.system(size: 14, weight: .medium))
-                //     .foregroundColor(.primary)
+                Text(position.pair.symbol)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.primary)
                 
-                // Text("\(String(position.side)) • \(String(position.size))")
-                //     .font(.system(size: 12))
-                //     .foregroundColor(.secondary)
+                Text("\(position.isLong ? "LONG" : "SHORT") • \(position.pair.formatQuantity(abs(position.quantity)))")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
             }
             
             Spacer()
             
-            // Text(String(position.pnlString))
-            //     .font(.system(size: 14, weight: .semibold))
-            //     .foregroundColor(position.pnl >= 0 ? .green : .red)
+            VStack(alignment: .trailing, spacing: Spacing.xxs) {
+                Text("$\(String(format: "%.2f", position.averagePrice))")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.primary)
+                
+                Text("Avg. Price")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
         }
         .padding(.vertical, Spacing.xs)
     }
-    
-    // MARK: - Trading Mode Banner
-    private var tradingModeBanner: some View {
+}
+
+// MARK: - Trading Mode Banner
+private extension DashboardView {
+    var tradingModeBanner: some View {
         HStack(spacing: Spacing.md) {
             // Mode indicator
             Circle()
@@ -1164,7 +1172,7 @@ struct PortfolioMetricCard: View {
                         .font(.caption2)
                         .foregroundColor(change >= 0 ? .green : .red)
                     
-                    Text("\(changePercent, specifier: "%.2f")%")
+                    Text(String(format: "%.2f%%", changePercent))
                         .caption2Style()
                         .foregroundColor(change >= 0 ? .green : .red)
                 }

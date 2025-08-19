@@ -18,7 +18,8 @@ public class ConformalGate {
     
     public init(alpha: Double = 0.1, calibrationData: [(Double, Double)] = []) {
         self.alpha = alpha // 90% confidence intervals by default
-        self.calibrationData = calibrationData.isEmpty ? generateSampleCalibrationData() : calibrationData
+        self.calibrationData = calibrationData.isEmpty ? Self.generateSampleCalibrationData() : calibrationData
+        self.conformityScores = []
         self.conformityScores = calculateConformityScores()
     }
     
@@ -172,7 +173,7 @@ public class ConformalGate {
     // MARK: - Calibration Data
     
     /// Generate sample calibration data for initial setup
-    private func generateSampleCalibrationData() -> [(Double, Double)] {
+    private static func generateSampleCalibrationData() -> [(Double, Double)] {
         return [
             (0.55, 0.52), (0.60, 0.58), (0.65, 0.62), (0.70, 0.68),
             (0.75, 0.73), (0.80, 0.77), (0.85, 0.82), (0.90, 0.88),

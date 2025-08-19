@@ -26,7 +26,7 @@ final class RefactoredDashboardVM: ObservableObject {
     var chartPoints: [CGPoint] { marketDataManager.chartPoints }
     var chartData: [CandleData] { marketDataManager.chartData }
     var isLoading: Bool { marketDataManager.isLoading }
-    var timeframe: Timeframe { marketDataManager.timeframe }
+    // timeframe is now @Published property above
     var lastUpdated: Date { marketDataManager.lastUpdated }
     
     // Signal Properties
@@ -56,6 +56,39 @@ final class RefactoredDashboardVM: ObservableObject {
         get { precisionMode }
         set { precisionMode = newValue }
     }
+    
+    // Multi-Asset Trading Properties for 2025
+    @Published var selectedTradingPair: TradingPair = .btcUsd
+    @Published var selectedExchange: Exchange = .binance
+    @Published var selectedQuoteCurrency: QuoteCurrency = .USD
+    @Published var amountMode: AmountMode = .percentOfEquity
+    @Published var amountValue: Double = 5.0
+    @Published var currentEquity: Double = 10_000.0
+    @Published var autoTradingEnabled: Bool = false
+    @Published var timeframe: Timeframe = .m5
+    
+    // Portfolio properties for 2025
+    @Published var totalBalance: Double = 10000.0
+    @Published var availableBalance: Double = 8500.0
+    @Published var totalBalanceChange: Double = 250.0
+    @Published var totalBalanceChangePercent: Double = 2.56
+    @Published var todayPnL: Double = 125.50
+    @Published var todayPnLPercent: Double = 1.28
+    @Published var unrealizedPnL: Double = -45.20
+    @Published var unrealizedPnLPercent: Double = -0.46
+    
+    // P&L HUD live updates
+    @Published var currentPnLSnapshot: PnLSnapshot?
+    
+    // Trade confirmation
+    @Published var showingTradeConfirmation = false
+    @Published var pendingTradeRequest: TradeRequest?
+    @Published var isExecutingTrade = false
+    
+    // Toast notifications
+    @Published var showingToast = false
+    @Published var toastMessage = ""
+    @Published var toastType: ToastType = .success
     
     // MARK: - Private Properties
     private var cancellables = Set<AnyCancellable>()
@@ -156,6 +189,43 @@ final class RefactoredDashboardVM: ObservableObject {
     
     func refreshPredictionAsync() async {
         signalManager.refreshPrediction(candles: candles, timeframe: timeframe)
+    }
+    
+    // MARK: - Trade Execution Methods
+    func confirmTrade() {
+        guard let tradeRequest = pendingTradeRequest else { return }
+        showingTradeConfirmation = false
+        pendingTradeRequest = nil
+        // Execute trade logic would go here
+        showSuccessToast("Order placed successfully")
+    }
+    
+    func cancelTrade() {
+        showingTradeConfirmation = false
+        pendingTradeRequest = nil
+    }
+    
+    // MARK: - Toast Methods
+    func showSuccessToast(_ message: String) {
+        toastMessage = message
+        toastType = .success
+        showingToast = true
+        
+        // Auto-dismiss after 3 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            self.showingToast = false
+        }
+    }
+    
+    func showErrorToast(_ message: String) {
+        toastMessage = message
+        toastType = .error
+        showingToast = true
+        
+        // Auto-dismiss after 4 seconds for errors
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+            self.showingToast = false
+        }
     }
 }
 

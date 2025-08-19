@@ -87,7 +87,7 @@ extension TooltipData {
         formatter.dateStyle = .short
         formatter.timeStyle = .short
         
-        TooltipData(
+        return TooltipData(
             title: "P&L Data",
             values: [
                 TooltipValue(label: "Time", value: formatter.string(from: timestamp)),
