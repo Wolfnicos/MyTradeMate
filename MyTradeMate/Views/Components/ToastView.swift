@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // Using DesignSystem for spacing and corner radius
 
@@ -49,12 +50,19 @@ enum ToastType {
     }
 }
 
-/// A reusable toast notification component
+/// Modern 2025 Toast notification component
 struct ToastView: View {
+    @EnvironmentObject var themeManager: ThemeManager
+    
     let type: ToastType
     let title: String
     let message: String?
     let onDismiss: (() -> Void)?
+    
+    // Modern 2025 UI State
+    @State private var isVisible = false
+    @State private var showGlow = false
+    @State private var isPressed = false
     
     init(
         type: ToastType,
@@ -69,18 +77,33 @@ struct ToastView: View {
     }
     
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: type.icon)
-                .font(.system(size: 20, weight: .medium))
-                .foregroundColor(type.color)
+        HStack(spacing: 16) {
+            // Modern icon with glow effect
+            ZStack {
+                if showGlow {
+                    Image(systemName: type.icon)
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundColor(type.color)
+                        .blur(radius: 2)
+                        .scaleEffect(1.2)
+                        .opacity(0.6)
+                        .animation(themeManager.slowAnimation.repeatForever(autoreverses: true), value: showGlow)
+                }
+                
+                Image(systemName: type.icon)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(type.color)
+            }
             
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(title)
-                    .footnoteMediumStyle()
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundColor(TextColor.primary)
                 
                 if let message = message {
                     Text(message)
-                        .caption1Style()
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(TextColor.secondary)
                         .lineLimit(2)
                 }
             }
@@ -88,26 +111,68 @@ struct ToastView: View {
             Spacer()
             
             if let onDismiss = onDismiss {
-                Button(action: onDismiss) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.secondary)
+                Button(action: {
+                    // Haptic feedback
+                    let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                    impactFeedback.impactOccurred()
+                    
+                    onDismiss()
+                }) {
+                    ZStack {
+                        Circle()
+                            .fill(themeManager.primaryColor.opacity(0.1))
+                            .frame(width: 24, height: 24)
+                        
+                        Image(systemName: "xmark")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(themeManager.primaryColor)
+                    }
                 }
                 .buttonStyle(PlainButtonStyle())
+                .scaleEffect(isPressed ? 0.9 : 1.0)
+                .animation(themeManager.fastAnimation, value: isPressed)
+                .pressEvents {
+                    withAnimation(themeManager.fastAnimation) {
+                        isPressed = true
+                    }
+                } onRelease: {
+                    withAnimation(themeManager.fastAnimation) {
+                        isPressed = false
+                    }
+                }
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(type.backgroundColor)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+        .background(
+            themeManager.neumorphicCardBackground()
+        )
         .overlay(
-            RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: 16)
                 .stroke(type.color.opacity(0.3), lineWidth: 1)
         )
-        .cornerRadius(8)
-        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(
+            color: type.color.opacity(0.2),
+            radius: isVisible ? 8 : 4,
+            x: 0,
+            y: isVisible ? 4 : 2
+        )
+        .opacity(isVisible ? 1 : 0)
+        .offset(y: isVisible ? 0 : 20)
+        .scaleEffect(isVisible ? 1.0 : 0.9)
+        .animation(themeManager.defaultAnimation.delay(0.1), value: isVisible)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityAddTraits(.isButton)
+        .onAppear {
+            withAnimation(themeManager.defaultAnimation.delay(0.1)) {
+                isVisible = true
+            }
+            withAnimation(themeManager.defaultAnimation.delay(0.5)) {
+                showGlow = true
+            }
+        }
     }
     
     private var accessibilityLabel: String {
@@ -122,6 +187,185 @@ struct ToastView: View {
             return "\(typeLabel): \(title). \(message)"
         } else {
             return "\(typeLabel): \(title)"
+        }
+    }
+}
+
+// MARK: - Modern Toast Container
+struct ModernToastContainer: View {
+    @EnvironmentObject var themeManager: ThemeManager
+    @ObservedObject var toastManager: ToastManager
+    
+    var body: some View {
+        ZStack {
+            // Background overlay when toasts are present
+            if !toastManager.toasts.isEmpty {
+                Color.black.opacity(0.1)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        // Dismiss all toasts on background tap
+                        toastManager.dismissAll()
+                    }
+            }
+            
+            // Toast stack
+            VStack {
+                Spacer()
+                
+                VStack(spacing: 12) {
+                    ForEach(Array(toastManager.toasts.enumerated()), id: \.element.id) { index, toast in
+                        ModernToastView(
+                            type: toast.type,
+                            title: toast.title,
+                            message: toast.message
+                        ) {
+                            toastManager.dismiss(toast)
+                        }
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .trailing).combined(with: .opacity),
+                            removal: .move(edge: .leading).combined(with: .opacity)
+                        ))
+                        .zIndex(Double(toastManager.toasts.count - index))
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 100) // Safe area padding
+            }
+        }
+        .animation(themeManager.defaultAnimation, value: toastManager.toasts.count)
+    }
+}
+
+// MARK: - Modern Toast View (Enhanced)
+struct ModernToastView: View {
+    @EnvironmentObject var themeManager: ThemeManager
+    
+    let type: ToastType
+    let title: String
+    let message: String?
+    let onDismiss: () -> Void
+    
+    // Modern 2025 UI State
+    @State private var isVisible = false
+    @State private var showGlow = false
+    @State private var isPressed = false
+    @State private var showProgress = false
+    
+    var body: some View {
+        HStack(spacing: 16) {
+            // Modern icon with glow effect
+            ZStack {
+                if showGlow {
+                    Image(systemName: type.icon)
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundColor(type.color)
+                        .blur(radius: 2)
+                        .scaleEffect(1.2)
+                        .opacity(0.6)
+                        .animation(themeManager.slowAnimation.repeatForever(autoreverses: true), value: showGlow)
+                }
+                
+                Image(systemName: type.icon)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(type.color)
+            }
+            
+            VStack(alignment: .leading, spacing: 6) {
+                Text(title)
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundColor(TextColor.primary)
+                
+                if let message = message {
+                    Text(message)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(TextColor.secondary)
+                        .lineLimit(2)
+                }
+            }
+            
+            Spacer()
+            
+            // Progress indicator
+            if showProgress {
+                ZStack {
+                    Circle()
+                        .stroke(type.color.opacity(0.2), lineWidth: 2)
+                        .frame(width: 16, height: 16)
+                    
+                    Circle()
+                        .trim(from: 0, to: 0.7)
+                        .stroke(
+                            type.color,
+                            style: StrokeStyle(lineWidth: 2, lineCap: .round)
+                        )
+                        .frame(width: 16, height: 16)
+                        .rotationEffect(.degrees(showProgress ? 360 : 0))
+                        .animation(
+                            themeManager.slowAnimation.repeatForever(autoreverses: false),
+                            value: showProgress
+                        )
+                }
+            }
+            
+            // Dismiss button
+            Button(action: {
+                // Haptic feedback
+                let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                impactFeedback.impactOccurred()
+                
+                onDismiss()
+            }) {
+                ZStack {
+                    Circle()
+                        .fill(themeManager.primaryColor.opacity(0.1))
+                        .frame(width: 24, height: 24)
+                    
+                    Image(systemName: "xmark")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(themeManager.primaryColor)
+                }
+            }
+            .buttonStyle(PlainButtonStyle())
+            .scaleEffect(isPressed ? 0.9 : 1.0)
+            .animation(themeManager.fastAnimation, value: isPressed)
+            .pressEvents {
+                withAnimation(themeManager.fastAnimation) {
+                    isPressed = true
+                }
+            } onRelease: {
+                withAnimation(themeManager.fastAnimation) {
+                    isPressed = false
+                }
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+        .background(
+            themeManager.neumorphicCardBackground()
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(type.color.opacity(0.3), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(
+            color: type.color.opacity(0.2),
+            radius: isVisible ? 8 : 4,
+            x: 0,
+            y: isVisible ? 4 : 2
+        )
+        .opacity(isVisible ? 1 : 0)
+        .offset(y: isVisible ? 0 : 20)
+        .scaleEffect(isVisible ? 1.0 : 0.9)
+        .animation(themeManager.defaultAnimation.delay(0.1), value: isVisible)
+        .onAppear {
+            withAnimation(themeManager.defaultAnimation.delay(0.1)) {
+                isVisible = true
+            }
+            withAnimation(themeManager.defaultAnimation.delay(0.5)) {
+                showGlow = true
+                showProgress = true
+            }
         }
     }
 }
@@ -289,8 +533,9 @@ extension ToastView {
     }
 }
 
+// MARK: - Preview
 #Preview {
-    VStack(spacing: 16) {
+    VStack(spacing: 20) {
         ToastView.success(
             title: "Order Submitted Successfully",
             message: "Buy order for BTC/USD has been placed",
@@ -327,4 +572,12 @@ extension ToastView {
         )
     }
     .padding()
+                    .background(
+                    LinearGradient(
+                        colors: [Color.black.opacity(0.8), Color.black.opacity(0.6)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+    .environmentObject(ThemeManager.shared)
 }

@@ -1,16 +1,24 @@
 import SwiftUI
+import UIKit
 
 // Using DesignSystem for spacing and corner radius
 
-// MARK: - Trade Confirmation Dialog
+// MARK: - Modern 2025 Trade Confirmation Dialog
 struct TradeConfirmationDialog: View {
+    @EnvironmentObject var themeManager: ThemeManager
+    
     let trade: TradeRequest
     let onConfirm: () -> Void
     let onCancel: () -> Void
     let onExecutionComplete: (Bool) -> Void // New callback for execution result
     
+    // Modern 2025 UI State
     @State private var isExecuting = false
     @State private var executionError: String?
+    @State private var isVisible = false
+    @State private var showDetails = false
+    @State private var animateValues = false
+    
     @EnvironmentObject private var toastManager: ToastManager
     
     init(
@@ -23,7 +31,6 @@ struct TradeConfirmationDialog: View {
         self.onConfirm = onConfirm
         self.onCancel = onCancel
         self.onExecutionComplete = onExecutionComplete
-        // Initialize state
     }
     
     var body: some View {
@@ -31,9 +38,9 @@ struct TradeConfirmationDialog: View {
             title: "Confirm Trade",
             message: "Please review your order details",
             icon: trade.side == .buy ? "arrow.up.circle.fill" : "arrow.down.circle.fill",
-            iconColor: trade.side == .buy ? .green : .red,
+            iconColor: trade.side == .buy ? themeManager.successColor : themeManager.errorColor,
             confirmButtonText: confirmButtonText,
-            confirmButtonColor: trade.side == .buy ? .green : .red,
+            confirmButtonColor: trade.side == .buy ? themeManager.successColor : themeManager.errorColor,
             cancelButtonText: "Cancel",
             isDestructive: false,
             isExecuting: isExecuting,
@@ -41,26 +48,40 @@ struct TradeConfirmationDialog: View {
             onCancel: onCancel,
             content: {
                 AnyView(
-                    VStack(spacing: 16) {
-                        // Order Summary
-                        orderSummaryView
+                    VStack(spacing: 20) {
+                        // Modern Order Summary
+                        modernOrderSummaryView
                         
-                        // Trading mode warning
-                        tradingModeWarning
+                        // Modern Trading Mode Warning
+                        modernTradingModeWarning
                         
-                        // Order status tracking if available
-                        // Order status tracking would go here
+                        // Expandable Details Section
+                        if showDetails {
+                            modernDetailsSection
+                                .transition(.opacity.combined(with: .move(edge: .top)))
+                        }
                         
                         // Error message if any
                         if let error = executionError {
-                            errorMessageView
+                            modernErrorMessageView(error)
                         }
+                        
+                        // Details Toggle Button
+                        modernDetailsToggleButton
                     }
                 )
             }
         )
+        .opacity(isVisible ? 1 : 0)
+        .scaleEffect(isVisible ? 1.0 : 0.9)
+        .animation(themeManager.defaultAnimation.delay(0.1), value: isVisible)
         .onAppear {
-            // Initialize if needed
+            withAnimation(themeManager.defaultAnimation.delay(0.1)) {
+                isVisible = true
+            }
+            withAnimation(themeManager.defaultAnimation.delay(0.3)) {
+                animateValues = true
+            }
         }
     }
     
@@ -90,65 +111,246 @@ struct TradeConfirmationDialog: View {
         }
     }
     
-    private var orderSummaryView: some View {
-        VStack(spacing: 16) {
-            Text("Order Summary")
-                .headlineStyle()
-                .frame(maxWidth: .infinity, alignment: .leading)
+    // MARK: - Modern Order Summary View
+    private var modernOrderSummaryView: some View {
+        VStack(spacing: 20) {
+            // Modern header with icon
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            trade.side == .buy ? 
+                                themeManager.successColor.opacity(0.1) : 
+                                themeManager.errorColor.opacity(0.1)
+                        )
+                        .frame(width: 40, height: 40)
+                    
+                    Image(systemName: trade.side == .buy ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundColor(
+                            trade.side == .buy ? themeManager.successColor : themeManager.errorColor
+                        )
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Order Summary")
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                        .foregroundColor(TextColor.primary)
+                    
+                    Text("Review your trade details")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(TextColor.secondary)
+                }
+                
+                Spacer()
+            }
             
-            VStack(spacing: 12) {
-                OrderSummaryRow(
-                    label: "Symbol",
+            // Modern order details grid
+            LazyVGrid(columns: [
+                GridItem(.flexible()),
+                GridItem(.flexible())
+            ], spacing: 16) {
+                ModernOrderSummaryCard(
+                    title: "Symbol",
                     value: trade.symbol,
-                    valueColor: .primary
+                    icon: "chart.line.uptrend.xyaxis",
+                    color: themeManager.primaryColor
                 )
                 
-                OrderSummaryRow(
-                    label: "Side",
+                ModernOrderSummaryCard(
+                    title: "Side",
                     value: trade.side.rawValue.uppercased(),
-                    valueColor: trade.side == .buy ? .green : .red,
-                    valueWeight: .semibold
+                    icon: trade.side == .buy ? "arrow.up.circle.fill" : "arrow.down.circle.fill",
+                    color: trade.side == .buy ? themeManager.successColor : themeManager.errorColor
                 )
                 
-                OrderSummaryRow(
-                    label: "Amount",
+                ModernOrderSummaryCard(
+                    title: "Amount",
                     value: formatAmount(trade.amount),
-                    valueColor: .primary
+                    icon: "number.circle.fill",
+                    color: themeManager.accentColor
                 )
                 
-                OrderSummaryRow(
-                    label: "Est. Price",
+                ModernOrderSummaryCard(
+                    title: "Est. Price",
                     value: String(format: "$%.2f", trade.price),
-                    valueColor: .primary
+                    icon: "dollarsign.circle.fill",
+                    color: themeManager.warningColor
                 )
                 
-                OrderSummaryRow(
-                    label: "Order Type",
+                ModernOrderSummaryCard(
+                    title: "Order Type",
                     value: "Market Order",
-                    valueColor: .primary
+                    icon: "list.bullet.circle.fill",
+                    color: themeManager.primaryColor
                 )
                 
-                OrderSummaryRow(
-                    label: "Est. Value",
-                    value: "$\(trade.amount * trade.price)",
-                    valueColor: .primary,
-                    valueWeight: .medium
-                )
-                
-                Divider()
-                
-                OrderSummaryRow(
-                    label: "Trading Mode",
-                    value: tradingModeDisplayText,
-                    valueColor: AppSettings.shared.demoMode ? .orange : .green,
-                    valueWeight: .semibold,
-                    showBadge: true
+                ModernOrderSummaryCard(
+                    title: "Est. Value",
+                    value: String(format: "$%.2f", trade.amount * trade.price),
+                    icon: "chart.pie.fill",
+                    color: themeManager.accentColor
                 )
             }
+            
+            // Trading mode indicator
+            HStack(spacing: 12) {
+                Image(systemName: AppSettings.shared.demoMode ? "dumbbell.fill" : "exclamationmark.triangle.fill")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(AppSettings.shared.demoMode ? themeManager.warningColor : themeManager.errorColor)
+                
+                Text("Trading Mode")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(TextColor.secondary)
+                
+                Spacer()
+                
+                Text(tradingModeDisplayText)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(AppSettings.shared.demoMode ? themeManager.warningColor : themeManager.errorColor)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(
+                        AppSettings.shared.demoMode ? 
+                            themeManager.warningColor.opacity(0.1) : 
+                            themeManager.errorColor.opacity(0.1)
+                    )
+                    .clipShape(Capsule())
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(
+                AppSettings.shared.demoMode ? 
+                    themeManager.warningColor.opacity(0.05) : 
+                    themeManager.errorColor.opacity(0.05)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(
+                        AppSettings.shared.demoMode ? 
+                            themeManager.warningColor.opacity(0.2) : 
+                            themeManager.errorColor.opacity(0.2),
+                        lineWidth: 1
+                    )
+            )
         }
-        .padding(16)
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(12)
+        .padding(20)
+        .background(
+            themeManager.neumorphicCardBackground()
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(
+                    trade.side == .buy ? 
+                        themeManager.successColor.opacity(0.2) : 
+                        themeManager.errorColor.opacity(0.2),
+                    lineWidth: 1
+                )
+        )
+    }
+    
+    // MARK: - Modern Details Toggle Button
+    private var modernDetailsToggleButton: some View {
+        Button(action: {
+            let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+            impactFeedback.impactOccurred()
+            
+            withAnimation(themeManager.defaultAnimation) {
+                showDetails.toggle()
+            }
+        }) {
+            HStack(spacing: 8) {
+                Image(systemName: showDetails ? "chevron.up" : "chevron.down")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(themeManager.accentColor)
+                    .rotationEffect(.degrees(showDetails ? 0 : 0))
+                    .animation(themeManager.defaultAnimation, value: showDetails)
+                
+                Text(showDetails ? "Hide Details" : "Show Details")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(themeManager.accentColor)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(
+                themeManager.accentColor.opacity(0.1)
+            )
+            .clipShape(Capsule())
+        }
+    }
+    
+    // MARK: - Modern Details Section
+    private var modernDetailsSection: some View {
+        VStack(spacing: 16) {
+            Divider()
+                .background(themeManager.primaryColor.opacity(0.2))
+            
+            HStack(spacing: 20) {
+                // Risk assessment
+                VStack(spacing: 8) {
+                    Text("Risk Level")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(TextColor.secondary)
+                    
+                    ZStack {
+                        Circle()
+                            .stroke(themeManager.warningColor.opacity(0.2), lineWidth: 3)
+                            .frame(width: 40, height: 40)
+                        
+                        Circle()
+                            .trim(from: 0, to: 0.7)
+                            .stroke(
+                                themeManager.warningColor,
+                                style: StrokeStyle(lineWidth: 3, lineCap: .round)
+                            )
+                            .frame(width: 40, height: 40)
+                            .rotationEffect(.degrees(-90))
+                    }
+                    
+                    Text("Medium")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(themeManager.warningColor)
+                }
+                
+                Spacer()
+                
+                // Market conditions
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Market Conditions")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(TextColor.secondary)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text("Volatility:")
+                                .font(.system(size: 10, weight: .regular))
+                                .foregroundColor(TextColor.secondary)
+                            
+                            Spacer()
+                            
+                            Text("High")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(themeManager.errorColor)
+                        }
+                        
+                        HStack {
+                            Text("Liquidity:")
+                                .font(.system(size: 10, weight: .regular))
+                                .foregroundColor(TextColor.secondary)
+                            
+                            Spacer()
+                            
+                            Text("Good")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(themeManager.successColor)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(.top, 8)
     }
     
     // MARK: - Action Handlers
@@ -161,10 +363,23 @@ struct TradeConfirmationDialog: View {
     
     private func handleTradeExecution() async {
         isExecuting = true
+        
+        // Haptic feedback for execution start
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.impactOccurred()
+        
         // Simulate trade execution
         try? await Task.sleep(nanoseconds: 1_000_000_000)
         let success = true
         isExecuting = false
+        
+        // Haptic feedback for execution result
+        let notificationFeedback = UINotificationFeedbackGenerator()
+        if success {
+            notificationFeedback.notificationOccurred(.success)
+        } else {
+            notificationFeedback.notificationOccurred(.error)
+        }
         
         // Notify parent of execution result
         onExecutionComplete(success)
@@ -175,73 +390,112 @@ struct TradeConfirmationDialog: View {
         }
     }
     
-    // MARK: - UI Components
+    // MARK: - Modern UI Components
     
-    private var errorMessageView: some View {
+    private func modernErrorMessageView(_ error: String) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundColor(.red)
-                .font(.system(size: 16))
+            ZStack {
+                Circle()
+                    .fill(themeManager.errorColor.opacity(0.2))
+                    .frame(width: 32, height: 32)
+                
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundColor(themeManager.errorColor)
+                    .font(.system(size: 16, weight: .semibold))
+            }
             
             VStack(alignment: .leading, spacing: 4) {
                 Text("Order Failed")
-                    .subheadlineMediumStyle()
-                    .foregroundColor(.red)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(themeManager.errorColor)
                 
-                Text(executionError ?? "")
-                    .caption1Style()
+                Text(error)
+                    .font(.system(size: 12, weight: .regular))
+                    .foregroundColor(TextColor.secondary)
                     .lineLimit(3)
             }
             
             Spacer()
         }
-        .padding(12)
-        .background(.red.opacity(0.1))
-        .cornerRadius(8)
+        .padding(16)
+        .background(
+            themeManager.errorColor.opacity(0.05)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(themeManager.errorColor.opacity(0.2), lineWidth: 1)
+        )
     }
     
-    private var tradingModeWarning: some View {
+    private var modernTradingModeWarning: some View {
         Group {
             if AppSettings.shared.demoMode {
                 HStack(spacing: 12) {
-                    Image(systemName: "info.circle.fill")
-                        .foregroundColor(.orange)
-                        .font(.system(size: 16))
+                    ZStack {
+                        Circle()
+                            .fill(themeManager.warningColor.opacity(0.2))
+                            .frame(width: 32, height: 32)
+                        
+                        Image(systemName: "info.circle.fill")
+                            .foregroundColor(themeManager.warningColor)
+                            .font(.system(size: 16, weight: .semibold))
+                    }
                     
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Demo Mode")
-                            .subheadlineMediumStyle()
-                            .foregroundColor(.orange)
+                        Text("Demo Mode Active")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(themeManager.warningColor)
                         
                         Text("This is a simulated trade - no real funds will be used")
-                            .caption1Style()
+                            .font(.system(size: 12, weight: .regular))
+                            .foregroundColor(TextColor.secondary)
                     }
                     
                     Spacer()
                 }
-                .padding(12)
-                .background(.orange.opacity(0.1))
-                .cornerRadius(8)
+                .padding(16)
+                .background(
+                    themeManager.warningColor.opacity(0.05)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(themeManager.warningColor.opacity(0.2), lineWidth: 1)
+                )
             } else {
                 HStack(spacing: 12) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundColor(.red)
-                        .font(.system(size: 16))
+                    ZStack {
+                        Circle()
+                            .fill(themeManager.errorColor.opacity(0.2))
+                            .frame(width: 32, height: 32)
+                        
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(themeManager.errorColor)
+                            .font(.system(size: 16, weight: .semibold))
+                    }
                     
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Live Trading")
-                            .subheadlineMediumStyle()
-                            .foregroundColor(.red)
+                        Text("Live Trading Mode")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(themeManager.errorColor)
                         
                         Text("This will place a real order with actual funds")
-                            .caption1Style()
+                            .font(.system(size: 12, weight: .regular))
+                            .foregroundColor(TextColor.secondary)
                     }
                     
                     Spacer()
                 }
-                .padding(12)
-                .background(.red.opacity(0.1))
-                .cornerRadius(8)
+                .padding(16)
+                .background(
+                    themeManager.errorColor.opacity(0.05)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(themeManager.errorColor.opacity(0.2), lineWidth: 1)
+                )
             }
         }
     }
@@ -252,25 +506,79 @@ struct TradeConfirmationDialog: View {
         VStack(spacing: 12) {
             HStack {
                 Text("Order Status")
-                    .subheadlineMediumStyle()
+                    .font(.system(size: 14, weight: .semibold))
                 
                 Spacer()
                 
                 Text("ID: \(String(trackedOrder.id.prefix(8)))")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 12, weight: .regular))
+                    .foregroundColor(TextColor.secondary)
             }
             
             CompactOrderStatusView(trackedOrder: trackedOrder)
         }
         .padding(12)
-        .background(Color(.tertiarySystemBackground))
-        .cornerRadius(8)
+        .background(
+            themeManager.primaryColor.opacity(0.05)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 }
 
-// MARK: - Order Summary Row
+// MARK: - Modern Order Summary Card
+struct ModernOrderSummaryCard: View {
+    @EnvironmentObject var themeManager: ThemeManager
+    
+    let title: String
+    let value: String
+    let icon: String
+    let color: Color
+    
+    // Modern 2025 UI State
+    @State private var isVisible = false
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Icon and title
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(color)
+                
+                Text(title)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(TextColor.secondary)
+            }
+            
+            // Value
+            Text(value)
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundColor(TextColor.primary)
+                .scaleEffect(isVisible ? 1.0 : 0.8)
+                .opacity(isVisible ? 1.0 : 0.0)
+                .animation(themeManager.defaultAnimation.delay(0.1), value: isVisible)
+        }
+        .padding(12)
+        .background(
+            color.opacity(0.05)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(color.opacity(0.2), lineWidth: 1)
+        )
+        .onAppear {
+            withAnimation(themeManager.defaultAnimation.delay(0.1)) {
+                isVisible = true
+            }
+        }
+    }
+}
+
+// MARK: - Legacy Order Summary Row (Enhanced)
 struct OrderSummaryRow: View {
+    @EnvironmentObject var themeManager: ThemeManager
+    
     let label: String
     let value: String
     let valueColor: Color
@@ -294,14 +602,14 @@ struct OrderSummaryRow: View {
     var body: some View {
         HStack {
             Text(label)
-                .subheadlineStyle()
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(TextColor.secondary)
             
             Spacer()
             
             if showBadge {
                 Text(value)
-                    .caption1Style()
-                    .fontWeight(valueWeight)
+                    .font(.system(size: 12, weight: valueWeight))
                     .foregroundColor(valueColor)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
@@ -309,8 +617,7 @@ struct OrderSummaryRow: View {
                     .cornerRadius(6)
             } else {
                 Text(value)
-                    .subheadlineStyle()
-                    .fontWeight(valueWeight)
+                    .font(.system(size: 14, weight: valueWeight))
                     .foregroundColor(valueColor)
             }
         }
@@ -353,6 +660,7 @@ struct OrderSummaryRow: View {
             )
         }
         .environmentObject(ToastManager())
+        .environmentObject(ThemeManager.shared)
         .padding()
     }
 }
