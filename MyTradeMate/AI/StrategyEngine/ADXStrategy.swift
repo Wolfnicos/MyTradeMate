@@ -16,10 +16,17 @@ public final class ADXStrategy: BaseStrategy {
     
     public override func signal(candles: [Candle]) -> StrategySignal {
         guard candles.count >= requiredCandles() else {
+            // ✅ FALLBACK: Use basic trend analysis when insufficient data
+            let recentPrices = candles.map(\.close)
+            let trendSlope = recentPrices.count >= 3 ? 
+                (recentPrices.last! - recentPrices.first!) / Double(recentPrices.count - 1) : 0.0
+            let avgPrice = recentPrices.reduce(0, +) / Double(recentPrices.count)
+            let trendStrength = avgPrice > 0 ? abs(trendSlope) / avgPrice : 0.0
+            
             return StrategySignal(
-                direction: .hold,
-                confidence: 0.0,
-                reason: "Insufficient data for ADX",
+                direction: trendSlope > 0 ? .buy : (trendSlope < 0 ? .sell : .hold),
+                confidence: min(0.38, 0.30 + trendStrength * 5.0),
+                reason: "Insufficient data - basic trend fallback",
                 strategyName: name
             )
         }
@@ -28,10 +35,15 @@ public final class ADXStrategy: BaseStrategy {
         guard let currentADX = adxData.adx.last,
               let currentDIPlus = adxData.diPlus.last,
               let currentDIMinus = adxData.diMinus.last else {
+            // ✅ FALLBACK: Use momentum when ADX calculation fails
+            let recentCandles = Array(candles.suffix(5))
+            let momentum = recentCandles.count >= 2 ? 
+                (recentCandles.last!.close - recentCandles.first!.close) / recentCandles.first!.close : 0.0
+            
             return StrategySignal(
-                direction: .hold,
-                confidence: 0.0,
-                reason: "Unable to calculate ADX values",
+                direction: momentum > 0.01 ? .buy : (momentum < -0.01 ? .sell : .hold),
+                confidence: 0.35,
+                reason: "Weak ADX trend - momentum fallback",
                 strategyName: name
             )
         }

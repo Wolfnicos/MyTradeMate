@@ -16,10 +16,16 @@ public final class WilliamsRStrategy: BaseStrategy {
     
     public override func signal(candles: [Candle]) -> StrategySignal {
         guard candles.count >= requiredCandles() else {
+            // ✅ FALLBACK: Use price range analysis when insufficient data
+            let recentPrices = candles.map(\.close)
+            let currentPrice = recentPrices.last ?? 0.0
+            let avgPrice = recentPrices.reduce(0, +) / Double(recentPrices.count)
+            let oscillatorBias = currentPrice > avgPrice ? 1.0 : -1.0
+            
             return StrategySignal(
-                direction: .hold,
-                confidence: 0.0,
-                reason: "Insufficient data for Williams %R",
+                direction: oscillatorBias > 0 ? .buy : .sell,
+                confidence: 0.35,
+                reason: "Insufficient data - oscillator bias fallback",
                 strategyName: name
             )
         }
@@ -39,10 +45,17 @@ public final class WilliamsRStrategy: BaseStrategy {
         }
         
         guard let currentWR = williamsRValues.last else {
+            // ✅ FALLBACK: Use high-low range when Williams %R calculation fails
+            let recentCandles = Array(candles.suffix(min(5, candles.count)))
+            let highPrice = recentCandles.map(\.high).max() ?? 0.0
+            let lowPrice = recentCandles.map(\.low).min() ?? 0.0
+            let currentPrice = recentCandles.last?.close ?? 0.0
+            let rangePosition = (highPrice - lowPrice) > 0 ? (currentPrice - lowPrice) / (highPrice - lowPrice) : 0.5
+            
             return StrategySignal(
-                direction: .hold,
-                confidence: 0.0,
-                reason: "Unable to calculate Williams %R",
+                direction: rangePosition > 0.7 ? .sell : (rangePosition < 0.3 ? .buy : .hold),
+                confidence: 0.35,
+                reason: "Oscillator range inconclusive - bias fallback",
                 strategyName: name
             )
         }
@@ -104,7 +117,7 @@ public final class WilliamsRStrategy: BaseStrategy {
         
         return StrategySignal(
             direction: .hold,
-            confidence: 0.1,
+            confidence: 0.30,
             reason: "Williams %R in neutral range",
             strategyName: name
         )

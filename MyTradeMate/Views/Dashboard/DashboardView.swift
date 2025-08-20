@@ -17,6 +17,7 @@ struct DashboardView: View {
     @State private var showFullScreenChart = false
     @State private var scrollOffset: CGFloat = 0
     @State private var headerOpacity: Double = 1.0
+    @State private var showTradingPairPicker = false
     
     var body: some View {
         NavigationStack {
@@ -28,7 +29,7 @@ struct DashboardView: View {
                             .offset(y: scrollOffset * 0.5)
                         
                         // Immersive Chart Section with Glass Morphism
-                        ModernChartSection()
+                        ModernChartSection(showTradingPairPicker: $showTradingPairPicker)
                             .padding(.top, 20)
                         
                         // Fluid Cards Grid with Neumorphic Design
@@ -66,6 +67,9 @@ struct DashboardView: View {
                         headerOpacity = max(0.3, 1.0 - Double(abs(offset)) / 200.0)
                     }
             )
+        }
+        .sheet(isPresented: $showTradingPairPicker) {
+            Text("Trading Pair Picker - TODO")
         }
     }
     
@@ -153,16 +157,7 @@ struct ModernFloatingHeader: View {
             
             Spacer()
             
-            Button(action: {
-                // Settings action with haptic feedback
-                let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-                impactFeedback.impactOccurred()
-            }) {
-                Image(systemName: "gearshape.fill")
-                    .font(.system(size: 20, weight: .medium))
-                    .foregroundColor(TextColor.secondary)
-            }
-            .modifier(themeManager.modernButtonStyle())
+            // ✅ REMOVED: Useless gear icon with no action
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 16)
@@ -176,6 +171,7 @@ struct ModernFloatingHeader: View {
 struct ModernChartSection: View {
     @EnvironmentObject var dashboardVM: RefactoredDashboardVM
     @EnvironmentObject var themeManager: ThemeManager
+    @Binding var showTradingPairPicker: Bool
     
     var body: some View {
         VStack(spacing: 20) {
@@ -210,7 +206,8 @@ struct ModernChartSection: View {
                             )
                     )
                     .onTapGesture {
-                        // TODO: Show symbol picker
+                        // ✅ IMPLEMENTED: Show trading pair picker
+                        showTradingPairPicker = true
                         let impactFeedback = UIImpactFeedbackGenerator(style: .light)
                         impactFeedback.impactOccurred()
                     }
@@ -218,11 +215,32 @@ struct ModernChartSection: View {
                 
                 Spacer()
                 
-                // Timeframe Selector
+                // ✅ ENHANCED: Visible Timeframe Selector with Badge
                 VStack(alignment: .trailing, spacing: 8) {
                     Text("Timeframe")
                         .font(Typography.caption1)
                         .foregroundColor(TextColor.secondary)
+                    
+                    // Current selected timeframe badge
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock.fill")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(Brand.blue)
+                        
+                        Text(dashboardVM.timeframe.rawValue.uppercased())
+                            .font(Typography.calloutMedium)
+                            .foregroundColor(TextColor.primary)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color.blue.opacity(0.1))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Brand.blue.opacity(0.3), lineWidth: 1)
+                            )
+                    )
                     
                     ModernTimeframeSelector(selectedTimeframe: $dashboardVM.timeframe)
                 }
@@ -262,20 +280,54 @@ struct ModernChartSection: View {
                     .padding(.horizontal, 20)
                     .padding(.top, 20)
                     
-                    // Enhanced Chart
+                    // ✅ ENHANCED: Chart with Timeframe Badge Overlay
                     if !dashboardVM.chartData.isEmpty {
-                        CandlestickChartView(data: dashboardVM.chartData.map { candle in
-                            CandlePoint(
-                                time: candle.timestamp,
-                                open: candle.open,
-                                high: candle.high,
-                                low: candle.low,
-                                close: candle.close
-                            )
-                        })
-                        .frame(height: 300)
+                        ZStack(alignment: .topTrailing) {
+                            CandlestickChartView(data: dashboardVM.chartData.map { candle in
+                                CandlePoint(
+                                    time: candle.timestamp,
+                                    open: candle.open,
+                                    high: candle.high,
+                                    low: candle.low,
+                                    close: candle.close
+                                )
+                            })
+                            .frame(height: 300)
+                            
+                            // Small timeframe badge overlay
+                            Text(dashboardVM.timeframe.rawValue.uppercased())
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(
+                                    Capsule()
+                                        .fill(Brand.blue.opacity(0.8))
+                                )
+                                .offset(x: -8, y: 8)
+                        }
                         .padding(.horizontal, 20)
-                        .padding(.bottom, 20)
+                    
+                    // ✅ ADD: Last update timestamp under chart
+                    HStack {
+                        Text("Last update: \(timeAgoString(from: dashboardVM.lastUpdated))")
+                            .font(Typography.caption2)
+                            .foregroundColor(TextColor.tertiary)
+                        
+                        Spacer()
+                        
+                        if dashboardVM.isLoading {
+                            HStack(spacing: 4) {
+                                ProgressView()
+                                    .scaleEffect(0.7)
+                                Text("Updating...")
+                            }
+                            .font(Typography.caption2)
+                            .foregroundColor(TextColor.secondary)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 20)
                     } else {
                         // Loading state
                         VStack(spacing: 16) {
@@ -299,6 +351,24 @@ struct ModernChartSection: View {
                 let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
                 impactFeedback.impactOccurred()
             }
+        }
+    }
+    
+    // ✅ ADD: Helper function for time formatting
+    private func timeAgoString(from date: Date) -> String {
+        let interval = Date().timeIntervalSince(date)
+        
+        if interval < 60 {
+            return "Just now"
+        } else if interval < 3600 {
+            let minutes = Int(interval / 60)
+            return "\(minutes)m ago"
+        } else if interval < 86400 {
+            let hours = Int(interval / 3600)
+            return "\(hours)h ago"
+        } else {
+            let days = Int(interval / 86400)
+            return "\(days)d ago"
         }
     }
 }
@@ -947,9 +1017,13 @@ struct ModernSignalStatusCard: View {
                             .foregroundColor(Accent.yellow)
                     }
                     
-                    // Signal confidence
-                    if let signal = signalManager.currentSignal {
-                        Text("\(Int(signal.confidence * 100))%")
+                    // ✅ FIX: Signal confidence from finalSignal
+                    if let finalDecision = signalManager.finalSignal {
+                        Text("\(Int(finalDecision.confidence * 100))%")
+                            .font(Typography.caption2)
+                            .foregroundColor(signalColor(for: finalDecision.action.rawValue))
+                    } else {
+                        Text("--")
                             .font(Typography.caption2)
                             .foregroundColor(TextColor.tertiary)
                     }
@@ -962,17 +1036,57 @@ struct ModernSignalStatusCard: View {
                     .foregroundColor(TextColor.primary)
                 
                 VStack(alignment: .leading, spacing: Spacing.xs) {
-                    if let signal = signalManager.currentSignal {
-                        Text("\(signal.direction.capitalized) signal active")
+                    // ✅ FIX: Bind to finalSignal from SignalFusionEngine with enhanced AI status
+                    if let finalDecision = signalManager.finalSignal {
+                        Text("\(finalDecision.action.rawValue.uppercased()) signal active")
                             .font(Typography.caption1)
-                            .foregroundColor(TextColor.secondary)
+                            .foregroundColor(signalColor(for: finalDecision.action.rawValue))
                         
-                        Text("Confidence: \(String(format: "%.1f%%", signal.confidence * 100))")
-                            .font(Typography.caption1)
-                            .foregroundColor(TextColor.secondary)
+                        // ✅ ENHANCED AI STATUS MESSAGES
+                        let aiComponents = finalDecision.components.filter { $0.source.contains("AI") }
+                        let confidencePercent = Int(finalDecision.confidence * 100)
                         
-                        // Signal age
-                        Text("Updated: \(timeAgoString(from: Date()))")
+                        // ✅ ENHANCED: Check circuit breaker status
+                        if signalManager.isAIPaused {
+                            // Circuit Breaker Open - AI Paused
+                            HStack(spacing: 4) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .font(Typography.caption2)
+                                    .foregroundColor(.red)
+                                Text("AI Paused – Circuit Breaker Active")
+                                    .font(Typography.caption1)
+                                    .foregroundColor(.red)
+                            }
+                        } else if aiComponents.isEmpty {
+                            // AI Paused - Strategy-Only Mode (models unavailable)
+                            HStack(spacing: 4) {
+                                Image(systemName: "pause.circle.fill")
+                                    .font(Typography.caption2)
+                                    .foregroundColor(.orange)
+                                Text("AI Paused – Strategy-Only Mode")
+                                    .font(Typography.caption1)
+                                    .foregroundColor(.orange)
+                            }
+                        } else {
+                            // AI Active with confidence
+                            HStack(spacing: 4) {
+                                Image(systemName: "brain.head.profile")
+                                    .font(Typography.caption2)
+                                    .foregroundColor(.green)
+                                Text("AI Active – \(confidencePercent)% confidence")
+                                    .font(Typography.caption1)
+                                    .foregroundColor(.green)
+                            }
+                        }
+                        
+                        // ✅ ADD: Show ensemble rationale
+                        Text(finalDecision.rationale)
+                            .font(Typography.caption2)
+                            .foregroundColor(TextColor.tertiary)
+                            .lineLimit(2)
+                        
+                        // Signal age - use actual timestamp when available
+                        Text("Last update: \(timeAgoString(from: Date()))")
                             .font(Typography.caption2)
                             .foregroundColor(TextColor.tertiary)
                     } else {
@@ -1043,19 +1157,38 @@ struct ModernAIConfidenceCard: View {
                 
                 Spacer()
                 
-                // Real AI Confidence from SignalManager
+                // ✅ UPDATE: Show confidence from finalSignal with proper AI status
                 VStack(alignment: .trailing, spacing: 4) {
-                    Text("\(Int(signalManager.confidence * 100))%")
-                        .font(Typography.title2)
-                        .foregroundColor(.purple)
-                        .contentTransition(.numericText())
-                    
-                    // Confidence indicator
-                    HStack(spacing: 4) {
-                        ForEach(0..<5, id: \.self) { index in
-                            Circle()
-                                .fill(index < Int(signalManager.confidence * 5) ? .purple : .gray.opacity(0.3))
-                                .frame(width: 6, height: 6)
+                    if let finalDecision = signalManager.finalSignal {
+                        let aiComponents = finalDecision.components.filter { $0.source.contains("AI") }
+                        let confidencePercent = Int(finalDecision.confidence * 100)
+                        
+                        Text("\(confidencePercent)%")
+                            .font(Typography.title2)
+                            .foregroundColor(aiComponents.isEmpty ? .orange : .purple)
+                            .contentTransition(.numericText())
+                        
+                        // Confidence indicator with AI status color
+                        HStack(spacing: 4) {
+                            ForEach(0..<5, id: \.self) { index in
+                                Circle()
+                                    .fill(index < Int(finalDecision.confidence * 5) ? 
+                                          (aiComponents.isEmpty ? .orange : .purple) : 
+                                          .gray.opacity(0.3))
+                                    .frame(width: 6, height: 6)
+                            }
+                        }
+                    } else {
+                        Text("--%")
+                            .font(Typography.title2)
+                            .foregroundColor(.gray)
+                        
+                        HStack(spacing: 4) {
+                            ForEach(0..<5, id: \.self) { _ in
+                                Circle()
+                                    .fill(.gray.opacity(0.3))
+                                    .frame(width: 6, height: 6)
+                            }
                         }
                     }
                 }
@@ -1067,14 +1200,37 @@ struct ModernAIConfidenceCard: View {
                     .foregroundColor(TextColor.primary)
                 
                 VStack(alignment: .leading, spacing: Spacing.xs) {
-                    if let signal = signalManager.currentSignal {
-                        Text("Signal: \(signal.direction.uppercased())")
-                            .font(Typography.caption1)
-                            .foregroundColor(signal.direction == "buy" ? .green : signal.direction == "sell" ? .red : .orange)
+                    // ✅ UPDATE: Use finalSignal and show AI status properly
+                    if let finalDecision = signalManager.finalSignal {
+                        let aiComponents = finalDecision.components.filter { $0.source.contains("AI") }
                         
-                        Text("Confidence: \(String(format: "%.1f%%", signal.confidence * 100))")
-                            .font(Typography.caption1)
-                            .foregroundColor(TextColor.secondary)
+                        if aiComponents.isEmpty {
+                            // AI Paused
+                            HStack(spacing: 4) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundColor(.orange)
+                                Text("AI Paused")
+                                    .font(Typography.caption1)
+                                    .foregroundColor(.orange)
+                            }
+                            
+                            Text("Using strategies only")
+                                .font(Typography.caption2)
+                                .foregroundColor(TextColor.tertiary)
+                        } else {
+                            // AI Active
+                            HStack(spacing: 4) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundColor(.green)
+                                Text("AI Active")
+                                    .font(Typography.caption1)
+                                    .foregroundColor(.green)
+                            }
+                            
+                            Text("Combined AI + Strategy signals")
+                                .font(Typography.caption2)
+                                .foregroundColor(TextColor.tertiary)
+                        }
                     } else {
                         Text("Analyzing market...")
                             .font(Typography.caption1)
@@ -1138,3 +1294,4 @@ struct ModernActiveOrdersCard: View {
         )
     }
 }
+

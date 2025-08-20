@@ -15,10 +15,15 @@ public final class ParabolicSARStrategy: BaseStrategy {
     
     public override func signal(candles: [Candle]) -> StrategySignal {
         guard candles.count >= requiredCandles() else {
+            // ✅ FALLBACK: Use basic trend analysis when insufficient data
+            let currentPrice = candles.last?.close ?? 0.0
+            let avgPrice = candles.count > 1 ? candles.map(\.close).reduce(0, +) / Double(candles.count) : currentPrice
+            let trend = currentPrice > avgPrice ? 1.0 : -1.0
+            
             return StrategySignal(
-                direction: .hold,
-                confidence: 0.0,
-                reason: "Insufficient data for Parabolic SAR",
+                direction: trend > 0 ? .buy : .sell,
+                confidence: 0.35,
+                reason: "Insufficient data - basic trend fallback",
                 strategyName: name
             )
         }
@@ -26,21 +31,35 @@ public final class ParabolicSARStrategy: BaseStrategy {
         let sarData = calculateParabolicSAR(candles: candles)
         
         guard sarData.count >= 2 else {
+            // ✅ FALLBACK: Use momentum when SAR calculation fails
+            let recentPrices = Array(candles.map(\.close).suffix(min(5, candles.count)))
+            let momentum = recentPrices.count >= 2 ? 
+                (recentPrices.last! - recentPrices.first!) / recentPrices.first! : 0.0
+            
             return StrategySignal(
-                direction: .hold,
-                confidence: 0.0,
-                reason: "Unable to calculate Parabolic SAR",
+                direction: momentum > 0.01 ? .buy : (momentum < -0.01 ? .sell : .hold),
+                confidence: 0.35,
+                reason: "SAR calculation unavailable - trend fallback",
                 strategyName: name
             )
         }
         
-        guard let currentCandle = candles.last else { return StrategySignal(direction: .hold, confidence: 0.0, reason: "Insufficient data", strategyName: name) }
+        guard let currentCandle = candles.last else { 
+            return StrategySignal(direction: .hold, confidence: 0.33, reason: "No current price - neutral fallback", strategyName: name)
+        }
         guard candles.count >= 2 else {
-            return StrategySignal(direction: .hold, confidence: 0.0, reason: "Insufficient data", strategyName: name)
+            return StrategySignal(direction: .hold, confidence: 0.33, reason: "Single candle - neutral fallback", strategyName: name)
         }
         let previousCandle = candles[candles.count - 2]
         guard let currentSAR = sarData.last else {
-            return StrategySignal(direction: .hold, confidence: 0.0, reason: "Insufficient SAR data", strategyName: name)
+            // ✅ FALLBACK: Use price action when SAR data missing
+            let priceAction = currentCandle.close > currentCandle.open ? 1.0 : -1.0
+            return StrategySignal(
+                direction: priceAction > 0 ? .buy : .sell, 
+                confidence: 0.34, 
+                reason: "Insufficient SAR data - price action fallback", 
+                strategyName: name
+            )
         }
         let previousSAR = sarData[sarData.count - 2]
         

@@ -150,8 +150,8 @@ public class ModeEngine {
         guard !predictions.isEmpty else {
             return ConsensusResult(
                 signal: "HOLD",
-                confidence: 0.0,
-                details: "No qualified predictions available"
+                confidence: 0.5,
+                details: "No qualified predictions available - waiting for market signals"
             )
         }
         
@@ -179,7 +179,7 @@ public class ModeEngine {
             .mapValues { $0.count }
         
         guard let majoritySignal = signalCounts.max(by: { $0.value < $1.value })?.key else {
-            return ConsensusResult(signal: "HOLD", confidence: 0.0, details: "No clear majority")
+            return ConsensusResult(signal: "HOLD", confidence: 0.5, details: "No clear majority - market indecision")
         }
         
         let majorityCount = signalCounts[majoritySignal] ?? 0
@@ -200,7 +200,7 @@ public class ModeEngine {
         } else {
             return ConsensusResult(
                 signal: "HOLD",
-                confidence: 0.0,
+                confidence: 0.5,
                 details: "Insufficient majority: \(String(format: "%.1f%%", majorityRatio * 100)) < \(String(format: "%.1f%%", requiredMajority * 100))"
             )
         }
@@ -224,7 +224,7 @@ public class ModeEngine {
         }
         
         guard let topSignal = signalWeights.max(by: { $0.value < $1.value })?.key else {
-            return ConsensusResult(signal: "HOLD", confidence: 0.0, details: "No weighted consensus")
+            return ConsensusResult(signal: "HOLD", confidence: 0.5, details: "No weighted consensus - analyzing market")
         }
         
         let totalWeight = signalWeights.values.reduce(0, +)
@@ -243,7 +243,7 @@ public class ModeEngine {
         } else {
             return ConsensusResult(
                 signal: "HOLD",
-                confidence: 0.0,
+                confidence: 0.5,
                 details: "Insufficient weighted consensus: \(String(format: "%.1f%%", weightRatio * 100))"
             )
         }
@@ -268,7 +268,7 @@ public class ModeEngine {
         } else {
             return ConsensusResult(
                 signal: "HOLD",
-                confidence: 0.0,
+                confidence: 0.5,
                 details: "No unanimous agreement: \(signals.count) different signals"
             )
         }
@@ -281,7 +281,7 @@ public class ModeEngine {
     ) -> ConsensusResult {
         
         guard let bestPrediction = predictions.max(by: { $0.qualityScore < $1.qualityScore }) else {
-            return ConsensusResult(signal: "HOLD", confidence: 0.0, details: "No quality predictions")
+            return ConsensusResult(signal: "HOLD", confidence: 0.5, details: "No quality predictions - monitoring market")
         }
         
         return ConsensusResult(

@@ -18,7 +18,7 @@ public struct SettingsState: Equatable {
     public let feeBps: Double
     public let slippageBps: Double
     
-    // Strategy Settings
+    // Strategy Settings (All 15 Strategies)
     public let rsiEnabled: Bool
     public let rsiWeight: Double
     public let emaEnabled: Bool
@@ -30,6 +30,28 @@ public struct SettingsState: Equatable {
     public let atrEnabled: Bool
     public let atrWeight: Double
     
+    // ✅ ADD: Missing strategies (10 additional strategies)
+    public let bollingerEnabled: Bool
+    public let bollingerWeight: Double
+    public let ichimokuEnabled: Bool
+    public let ichimokuWeight: Double
+    public let parabolicSAREnabled: Bool
+    public let parabolicSARWeight: Double
+    public let williamsREnabled: Bool
+    public let williamsRWeight: Double
+    public let gridTradingEnabled: Bool
+    public let gridTradingWeight: Double
+    public let swingTradingEnabled: Bool
+    public let swingTradingWeight: Double
+    public let scalpingEnabled: Bool
+    public let scalpingWeight: Double
+    public let volumeEnabled: Bool
+    public let volumeWeight: Double
+    public let adxEnabled: Bool
+    public let adxWeight: Double
+    public let stochasticEnabled: Bool
+    public let stochasticWeight: Double
+    
     // Safety Settings
     public let autoTradingEnabled: Bool
     
@@ -39,7 +61,14 @@ public struct SettingsState: Equatable {
         feeBps: Double, slippageBps: Double,
         rsiEnabled: Bool, rsiWeight: Double, emaEnabled: Bool, emaWeight: Double,
         macdEnabled: Bool, macdWeight: Double, meanRevEnabled: Bool, meanRevWeight: Double,
-        atrEnabled: Bool, atrWeight: Double, autoTradingEnabled: Bool
+        atrEnabled: Bool, atrWeight: Double,
+        // ✅ ADD: All 15 strategies parameters
+        bollingerEnabled: Bool, bollingerWeight: Double,
+        ichimokuEnabled: Bool, ichimokuWeight: Double, parabolicSAREnabled: Bool, parabolicSARWeight: Double,
+        williamsREnabled: Bool, williamsRWeight: Double, gridTradingEnabled: Bool, gridTradingWeight: Double,
+        swingTradingEnabled: Bool, swingTradingWeight: Double, scalpingEnabled: Bool, scalpingWeight: Double,
+        volumeEnabled: Bool, volumeWeight: Double, adxEnabled: Bool, adxWeight: Double,
+        stochasticEnabled: Bool, stochasticWeight: Double, autoTradingEnabled: Bool
     ) {
         self.routingEnabled = routingEnabled
         self.strategyMinConf = strategyMinConf
@@ -59,6 +88,29 @@ public struct SettingsState: Equatable {
         self.meanRevWeight = meanRevWeight
         self.atrEnabled = atrEnabled
         self.atrWeight = atrWeight
+        
+        // ✅ ADD: Assign all new strategy properties
+        self.bollingerEnabled = bollingerEnabled
+        self.bollingerWeight = bollingerWeight
+        self.ichimokuEnabled = ichimokuEnabled
+        self.ichimokuWeight = ichimokuWeight
+        self.parabolicSAREnabled = parabolicSAREnabled
+        self.parabolicSARWeight = parabolicSARWeight
+        self.williamsREnabled = williamsREnabled
+        self.williamsRWeight = williamsRWeight
+        self.gridTradingEnabled = gridTradingEnabled
+        self.gridTradingWeight = gridTradingWeight
+        self.swingTradingEnabled = swingTradingEnabled
+        self.swingTradingWeight = swingTradingWeight
+        self.scalpingEnabled = scalpingEnabled
+        self.scalpingWeight = scalpingWeight
+        self.volumeEnabled = volumeEnabled
+        self.volumeWeight = volumeWeight
+        self.adxEnabled = adxEnabled
+        self.adxWeight = adxWeight
+        self.stochasticEnabled = stochasticEnabled
+        self.stochasticWeight = stochasticWeight
+        
         self.autoTradingEnabled = autoTradingEnabled
     }
     
@@ -82,6 +134,27 @@ public struct SettingsState: Equatable {
                lhs.meanRevWeight == rhs.meanRevWeight &&
                lhs.atrEnabled == rhs.atrEnabled &&
                lhs.atrWeight == rhs.atrWeight &&
+               // ✅ ADD: All 15 strategies equality checks
+               lhs.bollingerEnabled == rhs.bollingerEnabled &&
+               lhs.bollingerWeight == rhs.bollingerWeight &&
+               lhs.ichimokuEnabled == rhs.ichimokuEnabled &&
+               lhs.ichimokuWeight == rhs.ichimokuWeight &&
+               lhs.parabolicSAREnabled == rhs.parabolicSAREnabled &&
+               lhs.parabolicSARWeight == rhs.parabolicSARWeight &&
+               lhs.williamsREnabled == rhs.williamsREnabled &&
+               lhs.williamsRWeight == rhs.williamsRWeight &&
+               lhs.gridTradingEnabled == rhs.gridTradingEnabled &&
+               lhs.gridTradingWeight == rhs.gridTradingWeight &&
+               lhs.swingTradingEnabled == rhs.swingTradingEnabled &&
+               lhs.swingTradingWeight == rhs.swingTradingWeight &&
+               lhs.scalpingEnabled == rhs.scalpingEnabled &&
+               lhs.scalpingWeight == rhs.scalpingWeight &&
+               lhs.volumeEnabled == rhs.volumeEnabled &&
+               lhs.volumeWeight == rhs.volumeWeight &&
+               lhs.adxEnabled == rhs.adxEnabled &&
+               lhs.adxWeight == rhs.adxWeight &&
+               lhs.stochasticEnabled == rhs.stochasticEnabled &&
+               lhs.stochasticWeight == rhs.stochasticWeight &&
                lhs.autoTradingEnabled == rhs.autoTradingEnabled
     }
 }
@@ -249,7 +322,14 @@ public final class SettingsRepository: ObservableObject {
         feeBps: 10.0, slippageBps: 5.0,
         rsiEnabled: true, rsiWeight: 1.0, emaEnabled: true, emaWeight: 1.0,
         macdEnabled: true, macdWeight: 1.0, meanRevEnabled: true, meanRevWeight: 1.0,
-        atrEnabled: true, atrWeight: 1.0, autoTradingEnabled: false
+        atrEnabled: true, atrWeight: 1.0,
+        // ✅ ADD: All 15 strategies with default enabled state
+        bollingerEnabled: true, bollingerWeight: 1.0,
+        ichimokuEnabled: true, ichimokuWeight: 1.0, parabolicSAREnabled: true, parabolicSARWeight: 1.0,
+        williamsREnabled: true, williamsRWeight: 1.0, gridTradingEnabled: true, gridTradingWeight: 1.0,
+        swingTradingEnabled: true, swingTradingWeight: 1.0, scalpingEnabled: true, scalpingWeight: 1.0,
+        volumeEnabled: true, volumeWeight: 1.0, adxEnabled: true, adxWeight: 1.0,
+        stochasticEnabled: true, stochasticWeight: 1.0, autoTradingEnabled: false
     )
     
     // MARK: - Settings Keys
@@ -556,6 +636,27 @@ public final class SettingsRepository: ObservableObject {
                 meanRevWeight: getStrategyWeight("Mean Reversion"),
                 atrEnabled: isStrategyEnabled("ATR Breakout"),
                 atrWeight: getStrategyWeight("ATR Breakout"),
+                // ✅ ADD: All 15 strategies with dynamic enabled/weight values
+                bollingerEnabled: isStrategyEnabled("Bollinger Bands"),
+                bollingerWeight: getStrategyWeight("Bollinger Bands"),
+                ichimokuEnabled: isStrategyEnabled("Ichimoku"),
+                ichimokuWeight: getStrategyWeight("Ichimoku"),
+                parabolicSAREnabled: isStrategyEnabled("Parabolic SAR"),
+                parabolicSARWeight: getStrategyWeight("Parabolic SAR"),
+                williamsREnabled: isStrategyEnabled("Williams %R"),
+                williamsRWeight: getStrategyWeight("Williams %R"),
+                gridTradingEnabled: isStrategyEnabled("Grid Trading"),
+                gridTradingWeight: getStrategyWeight("Grid Trading"),
+                swingTradingEnabled: isStrategyEnabled("Swing Trading"),
+                swingTradingWeight: getStrategyWeight("Swing Trading"),
+                scalpingEnabled: isStrategyEnabled("Scalping"),
+                scalpingWeight: getStrategyWeight("Scalping"),
+                volumeEnabled: isStrategyEnabled("Volume Profile"),
+                volumeWeight: getStrategyWeight("Volume Profile"),
+                adxEnabled: isStrategyEnabled("ADX"),
+                adxWeight: getStrategyWeight("ADX"),
+                stochasticEnabled: isStrategyEnabled("Stochastic"),
+                stochasticWeight: getStrategyWeight("Stochastic"),
                 autoTradingEnabled: autoTradingEnabled
             )
             

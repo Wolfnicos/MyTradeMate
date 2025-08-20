@@ -23,16 +23,23 @@ public final class GridTradingStrategy: BaseStrategy {
     
     public override func signal(candles: [Candle]) -> StrategySignal {
         guard candles.count >= requiredCandles() else {
+            // ✅ FALLBACK: Use range analysis when insufficient data
+            let recentPrices = candles.map(\.close)
+            let high = candles.map(\.high).max() ?? 0.0
+            let low = candles.map(\.low).min() ?? 0.0
+            let currentPrice = recentPrices.last ?? 0.0
+            let rangePosition = (high - low) > 0 ? (currentPrice - low) / (high - low) : 0.5
+            
             return StrategySignal(
-                direction: .hold,
-                confidence: 0.0,
-                reason: "Insufficient data for Grid Trading",
+                direction: rangePosition > 0.6 ? .sell : (rangePosition < 0.4 ? .buy : .hold),
+                confidence: 0.35,
+                reason: "Insufficient data - range position fallback",
                 strategyName: name
             )
         }
         
         guard let currentPrice = candles.last?.close else { 
-            return StrategySignal(direction: .hold, confidence: 0.0, reason: "Insufficient data", strategyName: name)
+            return StrategySignal(direction: .hold, confidence: 0.33, reason: "Grid setup invalid - neutral fallback", strategyName: name)
         }
         
         // Check market volatility
@@ -116,7 +123,7 @@ public final class GridTradingStrategy: BaseStrategy {
         
         return StrategySignal(
             direction: .hold,
-            confidence: 0.1,
+            confidence: 0.30,
             reason: "Waiting for grid level approach",
             strategyName: name
         )

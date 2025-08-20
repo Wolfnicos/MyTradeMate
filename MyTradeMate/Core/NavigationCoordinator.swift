@@ -23,6 +23,9 @@ final class NavigationCoordinator: ObservableObject {
             strategiesPath.append(destination)
         case .settings:
             settingsPath.append(destination)
+        case .debug:
+            // Debug tab doesn't use navigation paths
+            break
         }
     }
     

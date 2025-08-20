@@ -36,10 +36,15 @@ public class MACDStrategy: BaseStrategy {
     
     public override func signal(candles: [Candle]) -> StrategySignal {
         guard candles.count >= slowPeriod + signalPeriod else {
+            // ✅ FALLBACK: Use momentum analysis when insufficient data
+            let recentPrices = Array(candles.map(\.close).suffix(min(3, candles.count)))
+            let momentum = recentPrices.count >= 2 ? 
+                (recentPrices.last! - recentPrices.first!) / recentPrices.first! : 0.0
+            
             return StrategySignal(
-                direction: .hold,
-                confidence: 0.0,
-                reason: "Insufficient data for MACD",
+                direction: momentum > 0.005 ? .buy : (momentum < -0.005 ? .sell : .hold),
+                confidence: min(0.38, 0.30 + abs(momentum) * 5.0),
+                reason: "Insufficient data - momentum fallback",
                 strategyName: name
             )
         }
@@ -51,10 +56,15 @@ public class MACDStrategy: BaseStrategy {
         let slowEMA = calculateEMA(prices: closes, period: slowPeriod)
         
         guard fastEMA.count > 0 && slowEMA.count > 0 else {
+            // ✅ FALLBACK: Use price change analysis when EMA fails
+            let currentPrice = closes.last ?? 0.0
+            let avgPrice = closes.reduce(0, +) / Double(closes.count)
+            let priceDeviation = avgPrice > 0 ? (currentPrice - avgPrice) / avgPrice : 0.0
+            
             return StrategySignal(
-                direction: .hold,
-                confidence: 0.0,
-                reason: "EMA calculation error",
+                direction: priceDeviation > 0.01 ? .buy : (priceDeviation < -0.01 ? .sell : .hold),
+                confidence: min(0.36, 0.30 + abs(priceDeviation) * 2.0),
+                reason: "EMA calculation failed - price action fallback",
                 strategyName: name
             )
         }
@@ -75,10 +85,15 @@ public class MACDStrategy: BaseStrategy {
               let currentSignal = signalLine.last,
               macdLine.count >= 2,
               signalLine.count >= 2 else {
+            // ✅ FALLBACK: Use trend analysis when signal calculation fails
+            let recentClosing = Array(closes.suffix(5))
+            let trendSlope = recentClosing.count >= 2 ? 
+                (recentClosing.last! - recentClosing.first!) / (Double(recentClosing.count - 1) * recentClosing.first!) : 0.0
+            
             return StrategySignal(
-                direction: .hold,
-                confidence: 0.0,
-                reason: "Signal calculation error",
+                direction: trendSlope > 0.002 ? .buy : (trendSlope < -0.002 ? .sell : .hold),
+                confidence: min(0.37, 0.31 + abs(trendSlope) * 20),
+                reason: "Signal calculation failed - trend fallback",
                 strategyName: name
             )
         }

@@ -39,11 +39,8 @@ final class RefactoredDashboardVM: ObservableObject {
     var confidence: Double { signalManager.confidence }
     var isRefreshing: Bool { signalManager.isRefreshing }
     
-    // Trading Properties
-    var tradingMode: TradingMode { 
-        get { tradingManager.tradingMode }
-        set { tradingManager.tradingMode = newValue }
-    }
+    // Trading Properties  
+    var tradingMode: TradingMode { settingsRepository.tradingMode }
     var openPositions: [Position] { tradingManager.openPositions }
     var isConnected: Bool { tradingManager.isConnected }
     var connectionStatus: String { tradingManager.connectionStatus }
@@ -71,6 +68,12 @@ final class RefactoredDashboardVM: ObservableObject {
     @Published var currentEquity: Double = 10_000.0
     @Published var autoTradingEnabled: Bool = false
     @Published var timeframe: Timeframe = .m5
+    
+    // Dashboard Controls Properties
+    @Published var selectedSymbol: String = "BTC"
+    @Published var selectedQuote: String = "USDT"
+    @Published var selectedTimeframe: Timeframe = .m5
+    @Published var isAutoTrading: Bool = false
     
     // MARK: - Real Data Properties Connected to SettingsRepository
     var activeStrategies: [String] {

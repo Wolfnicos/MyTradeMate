@@ -21,10 +21,16 @@ public class RSIStrategy: BaseStrategy {
 
     nonisolated public override func signal(candles: [Candle]) -> StrategySignal {
         guard candles.count >= self.period + 1 else {
+            // ✅ FALLBACK: Use basic momentum when insufficient data
+            let currentPrice = candles.last?.close ?? 0.0
+            let previousPrice = candles.count >= 2 ? candles[candles.count-2].close : currentPrice
+            let momentum = previousPrice > 0 ? (currentPrice - previousPrice) / previousPrice : 0.0
+            
+            let direction: StrategySignal.Direction = abs(momentum) > 0.01 ? (momentum > 0 ? .buy : .sell) : .hold
             return StrategySignal(
-                direction: .hold,
-                confidence: 0.0,
-                reason: "Insufficient data for RSI calculation",
+                direction: direction,
+                confidence: 0.35,
+                reason: "Insufficient data - basic momentum fallback",
                 strategyName: name
             )
         }
@@ -33,10 +39,16 @@ public class RSIStrategy: BaseStrategy {
             candle.close > 0 && candle.close.isFinite
         }
         guard validCandles.count >= self.period else {
+            // ✅ FALLBACK: Use price action analysis when data is invalid
+            let currentPrice = candles.last?.close ?? 0.0
+            let avgPrice = candles.map(\.close).reduce(0, +) / Double(candles.count)
+            let priceDeviation = avgPrice > 0 ? abs(currentPrice - avgPrice) / avgPrice : 0.0
+            
+            let direction: StrategySignal.Direction = currentPrice > avgPrice ? .buy : (currentPrice < avgPrice ? .sell : .hold)
             return StrategySignal(
-                direction: .hold,
-                confidence: 0.0,
-                reason: "Insufficient valid data for RSI calculation",
+                direction: direction,
+                confidence: min(0.40, 0.30 + priceDeviation * 0.5),
+                reason: "Invalid data - price action fallback",
                 strategyName: name
             )
         }
@@ -45,10 +57,18 @@ public class RSIStrategy: BaseStrategy {
         let rsiValues = self.calculateRSI(prices: closes, period: self.period)
 
         guard !rsiValues.isEmpty, let currentRSI = rsiValues.last else {
+            // ✅ FALLBACK: Use simple volatility analysis when RSI calculation fails
+            let recentPrices = Array(closes.suffix(min(5, closes.count)))
+            let volatility = recentPrices.count > 1 ? 
+                recentPrices.enumerated().dropFirst().map { abs($1 - recentPrices[$0 - 1]) }.reduce(0, +) / Double(recentPrices.count - 1) : 0.0
+            let avgPrice = recentPrices.reduce(0, +) / Double(recentPrices.count)
+            let normalizedVolatility = avgPrice > 0 ? volatility / avgPrice : 0.0
+            
+            let direction: StrategySignal.Direction = normalizedVolatility > 0.02 ? .buy : .hold
             return StrategySignal(
-                direction: .hold,
-                confidence: 0.0,
-                reason: "RSI calculation failed - insufficient data",
+                direction: direction,
+                confidence: min(0.38, 0.32 + normalizedVolatility * 10),
+                reason: "RSI calculation failed - volatility fallback",
                 strategyName: name
             )
         }

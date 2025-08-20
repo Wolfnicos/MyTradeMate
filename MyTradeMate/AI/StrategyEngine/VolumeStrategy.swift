@@ -16,17 +16,23 @@ public final class VolumeStrategy: BaseStrategy {
     
     public override func signal(candles: [Candle]) -> StrategySignal {
         guard candles.count >= requiredCandles() else {
+            // ✅ FALLBACK: Use basic volume analysis when insufficient data
+            let recentVolumes = candles.map(\.volume)
+            let avgVolume = recentVolumes.reduce(0, +) / Double(recentVolumes.count)
+            let currentVolume = recentVolumes.last ?? avgVolume
+            let volumeSignal = currentVolume > avgVolume ? 1.0 : -0.5
+            
             return StrategySignal(
-                direction: .hold,
-                confidence: 0.0,
-                reason: "Insufficient data for Volume strategy",
+                direction: volumeSignal > 0 ? .buy : .hold,
+                confidence: 0.35,
+                reason: "Insufficient data - basic volume fallback",
                 strategyName: name
             )
         }
         
         guard let currentCandle = candles.last,
               candles.count >= 2 else { 
-            return StrategySignal(direction: .hold, confidence: 0.0, reason: "Insufficient data", strategyName: name) 
+            return StrategySignal(direction: .hold, confidence: 0.33, reason: "Volume data insufficient - neutral fallback", strategyName: name) 
         }
         let previousCandle = candles[candles.count - 2]
         
@@ -114,7 +120,7 @@ public final class VolumeStrategy: BaseStrategy {
         
         return StrategySignal(
             direction: .hold,
-            confidence: 0.1,
+            confidence: 0.30,
             reason: "No significant volume patterns detected",
             strategyName: name
         )

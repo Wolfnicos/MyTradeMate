@@ -1,5 +1,36 @@
 import Foundation
 
+// ✅ ADD: Prediction error types for proper fallback handling
+public enum PredictionError: Error, CustomStringConvertible {
+    case modelNotFound(String)
+    case modelLoadingFailed(String, Error)
+    case predictionFailed(String, Error) 
+    case insufficientData(String)
+    case timeout(String)
+    
+    public var description: String {
+        switch self {
+        case .modelNotFound(let model):
+            return "Model not found: \(model)"
+        case .modelLoadingFailed(let model, let error):
+            return "Model loading failed for \(model): \(error.localizedDescription)"
+        case .predictionFailed(let model, let error):
+            return "Prediction failed for \(model): \(error.localizedDescription)"
+        case .insufficientData(let model):
+            return "Insufficient data for \(model) prediction"
+        case .timeout(let model):
+            return "Prediction timeout for \(model)"
+        }
+    }
+}
+
+// ✅ ADD: Result type that can handle both success and error cases
+public enum PredictionOutcome {
+    case success(PredictionResult)
+    case failure(PredictionError)
+    case strategyFallback(reason: String)
+}
+
     /// Unified prediction container used by ViewModels/UI.
 public struct PredictionResult: Sendable {
     public let signal: String          // e.g., "BUY", "SELL", "HOLD"

@@ -18,10 +18,17 @@ public final class StochasticStrategy: BaseStrategy {
     
     public override func signal(candles: [Candle]) -> StrategySignal {
         guard candles.count >= requiredCandles() else {
+            // ✅ FALLBACK: Use price range position when insufficient data
+            let recentCandles = Array(candles.suffix(min(5, candles.count)))
+            let high = recentCandles.map(\.high).max() ?? 0.0
+            let low = recentCandles.map(\.low).min() ?? 0.0
+            let currentPrice = recentCandles.last?.close ?? 0.0
+            let oscillatorPosition = (high - low) > 0 ? (currentPrice - low) / (high - low) * 100 : 50.0
+            
             return StrategySignal(
-                direction: .hold,
-                confidence: 0.0,
-                reason: "Insufficient data for Stochastic",
+                direction: oscillatorPosition > 70 ? .sell : (oscillatorPosition < 30 ? .buy : .hold),
+                confidence: 0.35,
+                reason: "Insufficient data - oscillator position fallback",
                 strategyName: name
             )
         }
@@ -41,17 +48,21 @@ public final class StochasticStrategy: BaseStrategy {
         }
         
         guard kValues.count >= dPeriod else {
+            // ✅ FALLBACK: Use basic momentum when K values insufficient
+            let momentum = candles.count >= 2 ? 
+                (candles.last!.close - candles[candles.count-2].close) / candles[candles.count-2].close : 0.0
+            
             return StrategySignal(
-                direction: .hold,
-                confidence: 0.0,
-                reason: "Insufficient K values for Stochastic",
+                direction: momentum > 0.01 ? .buy : (momentum < -0.01 ? .sell : .hold),
+                confidence: 0.35,
+                reason: "K values insufficient - momentum fallback",
                 strategyName: name
             )
         }
         
         // Calculate %D (moving average of %K)
         guard let currentK = kValues.last else {
-            return StrategySignal(direction: .hold, confidence: 0.0, reason: "Insufficient Stochastic data", strategyName: name)
+            return StrategySignal(direction: .hold, confidence: 0.33, reason: "Overbought/oversold inconclusive - neutral fallback", strategyName: name)
         }
         let currentD = kValues.suffix(dPeriod).reduce(0, +) / Double(dPeriod)
         let previousK = kValues.count > 1 ? kValues[kValues.count - 2] : currentK
@@ -97,7 +108,7 @@ public final class StochasticStrategy: BaseStrategy {
         
         return StrategySignal(
             direction: .hold,
-            confidence: 0.1,
+            confidence: 0.30,
             reason: "Stochastic in neutral territory",
             strategyName: name
         )

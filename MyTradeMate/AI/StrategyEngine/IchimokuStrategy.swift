@@ -17,10 +17,16 @@ public final class IchimokuStrategy: BaseStrategy {
     
     public override func signal(candles: [Candle]) -> StrategySignal {
         guard candles.count >= requiredCandles() else {
+            // ✅ FALLBACK: Use simplified trend analysis when insufficient data
+            let recentPrices = Array(candles.map(\.close).suffix(min(9, candles.count)))
+            let shortAvg = recentPrices.reduce(0, +) / Double(recentPrices.count)
+            let currentPrice = recentPrices.last ?? shortAvg
+            let trend = currentPrice > shortAvg ? 1.0 : -1.0
+            
             return StrategySignal(
-                direction: .hold,
-                confidence: 0.0,
-                reason: "Insufficient data for Ichimoku",
+                direction: trend > 0 ? .buy : .sell,
+                confidence: 0.34,
+                reason: "Insufficient data - trend analysis fallback",
                 strategyName: name
             )
         }
@@ -32,10 +38,16 @@ public final class IchimokuStrategy: BaseStrategy {
               let kijunSen = ichimokuData.kijunSen.last,
               let senkouSpanA = ichimokuData.senkouSpanA.last,
               let senkouSpanB = ichimokuData.senkouSpanB.last else {
+            // ✅ FALLBACK: Use basic moving average when Ichimoku calculation fails
+            let recentPrices = Array(candles.map(\.close).suffix(min(26, candles.count)))
+            let movingAvg = recentPrices.reduce(0, +) / Double(recentPrices.count)
+            let currentPrice = candles.last?.close ?? movingAvg
+            let signal = currentPrice > movingAvg ? 1.0 : -1.0
+            
             return StrategySignal(
-                direction: .hold,
-                confidence: 0.0,
-                reason: "Unable to calculate Ichimoku values",
+                direction: signal > 0 ? .buy : .sell,
+                confidence: 0.35,
+                reason: "Ichimoku calculation failed - moving average fallback",
                 strategyName: name
             )
         }

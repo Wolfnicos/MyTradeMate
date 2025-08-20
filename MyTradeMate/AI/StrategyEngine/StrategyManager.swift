@@ -130,6 +130,40 @@ final class StrategyManager: ObservableObject {
         return ensemble
     }
     
+    // ✅ ADD: Generate individual strategy signals for direct fusion
+    func generateIndividualSignals(from candles: [Candle]) async -> [StrategySignal] {
+        isGeneratingSignals = true
+        defer { isGeneratingSignals = false }
+        
+        let performanceLogger = PerformanceLogger("Individual strategy signal generation", category: .ai)
+        
+        var signals: [StrategySignal] = []
+        
+        // Generate signals from all active strategies individually
+        for strategy in activeStrategies {
+            let requiredCandles = strategy.requiredCandles()
+            
+            guard candles.count >= requiredCandles else {
+                Log.aiDebug("Insufficient data for \(strategy.name): need \(requiredCandles), have \(candles.count)")
+                continue
+            }
+            
+            let signal = strategy.signal(candles: candles)
+            signals.append(signal)
+            lastSignals[strategy.name] = signal
+            
+            // ✅ ENHANCED: Verbose logging for individual strategy votes
+            Log.aiDebug("🗳️ Individual Strategy Vote - \(strategy.name): \(signal.direction.description.uppercased()) @\(String(format: "%.2f", signal.confidence)) - \(signal.reason)")
+        }
+        
+        performanceLogger.finish()
+        
+        // ✅ TRANSPARENT LOGGING: Show all individual votes
+        Log.ai.info("🔍 Generated \(signals.count)/15 individual strategy signals for SignalFusion")
+        
+        return signals
+    }
+    
     private func createEnsembleSignal(from signals: [StrategySignal]) -> EnsembleSignal {
         guard !signals.isEmpty else {
             return EnsembleSignal(
@@ -148,6 +182,7 @@ final class StrategyManager: ObservableObject {
         var totalWeight: Double = 0
         
         var contributingStrategies: [String] = []
+        var strategyVotes: [String] = []
         
         for signal in signals {
             let weight = settingsRepo.getStrategyWeight(signal.strategyName)
@@ -164,6 +199,13 @@ final class StrategyManager: ObservableObject {
             
             totalWeight += weight
             contributingStrategies.append(signal.strategyName)
+            strategyVotes.append("\(signal.strategyName): \(signal.direction.description) @\(String(format: "%.2f", signal.confidence))")
+        }
+        
+        // Debug logging for vote transparency
+        Log.ai.debug("🗳️ Strategy Votes (\(signals.count)/15 active):")
+        for vote in strategyVotes {
+            Log.ai.debug("  \(vote)")
         }
         
         // Normalize scores

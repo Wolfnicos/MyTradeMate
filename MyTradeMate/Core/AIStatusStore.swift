@@ -56,7 +56,7 @@ final class AIStatusStore: ObservableObject {
         guard case .error = status.state else { return }
         
         // Log retry event
-        logTelemetryEvent("ai_refresh_retry_started")
+        AnalyticsService.shared.trackAI("ai_refresh_retry_started")
         
         // Use last known parameters or defaults
         await refresh()
@@ -67,14 +67,14 @@ final class AIStatusStore: ObservableObject {
         refreshTask?.cancel()
         status = .paused(lastUpdate: status.lastUpdate)
         
-        logTelemetryEvent("ai_paused")
+        AnalyticsService.shared.trackAI("ai_paused")
     }
     
     /// Resume AI system
     func resume() async {
         guard case .paused = status.state else { return }
         
-        logTelemetryEvent("ai_resumed")
+        AnalyticsService.shared.trackAI("ai_resumed")
         await refresh()
     }
     
@@ -122,10 +122,9 @@ final class AIStatusStore: ObservableObject {
         // Set updating state
         status = .updating()
         
-        // Log start event
-        logTelemetryEvent("ai_refresh_started", metadata: [
-            "symbol": symbol,
-            "timeframe": timeframe.rawValue
+        // Log start event using AI-specific telemetry
+        AnalyticsService.shared.trackAI("ai_refresh_started", timeframe: timeframe.rawValue, metadata: [
+            "symbol": symbol
         ])
         
         do {
@@ -147,16 +146,31 @@ final class AIStatusStore: ObservableObject {
             let latency = Date().timeIntervalSince(startTime)
             let confidence = signalManager.confidence
             
-            // Update to running state
-            status = .running(confidence: confidence, lastUpdate: Date())
-            
-            // Log success event
-            logTelemetryEvent("ai_refresh_succeeded", metadata: [
-                "latency_ms": Int(latency * 1000),
-                "confidence": confidence,
-                "symbol": symbol,
-                "timeframe": timeframe.rawValue
-            ])
+            // Check if signal indicates model unavailable (strategy-only mode)
+            if let currentSignal = signalManager.currentSignal,
+               currentSignal.reason.contains("AI Model Unavailable") {
+                status = .paused(lastUpdate: Date())
+                AnalyticsService.shared.trackAI("ai_model_unavailable", 
+                    timeframe: timeframe.rawValue, 
+                    confidence: confidence, 
+                    latency: Int(latency * 1000), 
+                    metadata: [
+                        "mode": "strategy_only",
+                        "symbol": symbol
+                    ])
+            } else {
+                // Update to running state
+                status = .running(confidence: confidence, lastUpdate: Date())
+                
+                // Log success event
+                AnalyticsService.shared.trackAI("ai_refresh_succeeded",
+                    timeframe: timeframe.rawValue,
+                    confidence: confidence,
+                    latency: Int(latency * 1000),
+                    metadata: [
+                        "symbol": symbol
+                    ])
+            }
             
         } catch {
             let latency = Date().timeIntervalSince(startTime)
@@ -166,9 +180,8 @@ final class AIStatusStore: ObservableObject {
             status = .error(errorMessage, lastUpdate: Date())
             
             // Log failure event
-            logTelemetryEvent("ai_refresh_failed", metadata: [
+            AnalyticsService.shared.trackError("ai_refresh_failed", error: error, context: "AIStatusStore refresh", metadata: [
                 "latency_ms": Int(latency * 1000),
-                "error": errorMessage,
                 "symbol": symbol,
                 "timeframe": timeframe.rawValue
             ])
@@ -206,15 +219,13 @@ final class AIStatusStore: ObservableObject {
     }
     
     private func logTelemetryEvent(_ event: String, metadata: [String: Any] = [:]) {
-        // Log telemetry event
-        var logData = metadata
-        logData["event"] = event
-        logData["timestamp"] = ISO8601DateFormatter().string(from: Date())
+        // ✅ ENABLED: Send to AnalyticsService for persistence
+        var properties = metadata
+        properties["source"] = "AIStatusStore"
+        properties["timestamp"] = ISO8601DateFormatter().string(from: Date())
         
-        print("📊 AIStatusStore Telemetry: \(event) - \(logData)")
-        
-        // In a full implementation, this would send to analytics service
-        // AnalyticsService.shared.track(event, properties: logData)
+        // Send to analytics service for persistence
+        AnalyticsService.shared.track(event, properties: properties)
     }
 }
 
@@ -246,7 +257,7 @@ extension AIStatusStore {
     
     /// Integration point for app lifecycle
     func handleAppDidBecomeActive() async {
-        logTelemetryEvent("ai_app_foreground")
+        AnalyticsService.shared.track("ai_app_foreground", properties: ["source": "AIStatusStore"])
         
         // Refresh if we were running before
         if case .running = status.state {
@@ -256,9 +267,7 @@ extension AIStatusStore {
     
     /// Integration point for timeframe changes
     func handleTimeframeChanged(_ timeframe: Timeframe) async {
-        logTelemetryEvent("ai_timeframe_changed", metadata: [
-            "timeframe": timeframe.rawValue
-        ])
+        AnalyticsService.shared.trackAI("ai_timeframe_changed", timeframe: timeframe.rawValue)
         
         // Only refresh if AI is currently running
         guard case .running = status.state else { return }
@@ -268,7 +277,7 @@ extension AIStatusStore {
     
     /// Integration point for strategy changes
     func handleStrategyUpdated() async {
-        logTelemetryEvent("ai_strategy_updated")
+        AnalyticsService.shared.trackStrategy("ai_strategy_updated", strategyName: "multiple", metadata: ["source": "AIStatusStore"])
         
         // Refresh if running to reflect new strategy weights
         guard case .running = status.state else { return }

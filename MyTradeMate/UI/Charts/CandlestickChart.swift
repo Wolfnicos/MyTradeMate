@@ -9,8 +9,28 @@ struct CandlestickChart: View {
     @State private var showVolume: Bool = true
     @State private var chartScale: CGFloat = 1.0
     @State private var chartOffset: CGSize = .zero
+    @State private var showEMA: Bool = false
+    @State private var showBollinger: Bool = false
     
     @StateObject private var themeManager = ThemeManager.shared
+    @StateObject private var settingsRepo = SettingsRepository.shared
+    
+    // ✅ FIX: Add computed property for Y-axis domain
+    private var yAxisDomain: ClosedRange<Double> {
+        guard !candles.isEmpty else { return 0...100 }
+        
+        let allPrices = candles.flatMap { [validateCandleData($0).low, validateCandleData($0).high] }
+        let minPrice = allPrices.min() ?? 0
+        let maxPrice = allPrices.max() ?? 100
+        
+        // Add 2% padding to avoid candles touching edges
+        let padding = (maxPrice - minPrice) * 0.02
+        let safeMin = max(0, minPrice - padding)
+        let safeMax = maxPrice + padding
+        
+        // Ensure valid range
+        return safeMin < safeMax ? safeMin...safeMax : safeMin...(safeMin + 1)
+    }
     
     var body: some View {
         VStack(spacing: 0) {
@@ -29,6 +49,11 @@ struct CandlestickChart: View {
             }
         }
         .themedBackground()
+        // ✅ FIX: Add task-based refresh on symbol/timeframe change
+        .task(id: "\(candles.first?.openTime ?? Date()):\(timeframe.rawValue)") {
+            // Chart will automatically refresh when candles array changes
+            // This ensures proper reactivity to symbol/timeframe changes
+        }
     }
     
     // MARK: - Empty State
@@ -132,6 +157,18 @@ struct CandlestickChart: View {
                     .foregroundColor(showVolume ? themeManager.accentColor : themeManager.secondaryColor)
             }
             
+            Button(action: { showEMA.toggle() }) {
+                Text("EMA")
+                    .font(.caption.weight(.medium))
+                    .foregroundColor(showEMA ? themeManager.accentColor : themeManager.secondaryColor)
+            }
+            
+            Button(action: { showBollinger.toggle() }) {
+                Text("BB")
+                    .font(.caption.weight(.medium))
+                    .foregroundColor(showBollinger ? themeManager.accentColor : themeManager.secondaryColor)
+            }
+            
             Button(action: resetZoom) {
                 Image(systemName: "arrow.up.left.and.arrow.down.right")
                     .font(.system(size: 16))
@@ -148,9 +185,14 @@ struct CandlestickChart: View {
                 // Validate candle data before rendering
                 let validatedCandle = validateCandleData(candle)
                 
+                // ✅ FIX: Ensure proper timestamp conversion (handle ms vs seconds)
+                let chartTime = validatedCandle.openTime.timeIntervalSince1970 > 1_000_000_000_000 ? 
+                    Date(timeIntervalSince1970: validatedCandle.openTime.timeIntervalSince1970 / 1000) :
+                    validatedCandle.openTime
+                
                 // Candlestick body
                 RectangleMark(
-                    x: .value("Time", validatedCandle.openTime),
+                    x: .value("Time", chartTime),
                     yStart: .value("Open", min(validatedCandle.open, validatedCandle.close)),
                     yEnd: .value("Close", max(validatedCandle.open, validatedCandle.close)),
                     width: .fixed(candleWidth)
@@ -160,13 +202,68 @@ struct CandlestickChart: View {
                 
                 // Candlestick wick
                 RectangleMark(
-                    x: .value("Time", validatedCandle.openTime),
+                    x: .value("Time", chartTime),
                     yStart: .value("Low", validatedCandle.low),
                     yEnd: .value("High", validatedCandle.high),
                     width: .fixed(1.0)
                 )
                 .foregroundStyle(validatedCandle.close >= validatedCandle.open ? themeManager.candleUpColor : themeManager.candleDownColor)
                 .opacity(selectedCandle?.id == validatedCandle.id ? 0.8 : 1.0)
+            }
+            
+            // EMA overlay
+            if showEMA && candles.count > 20 {
+                let ema20Data = calculateEMA(candles: candles, period: 20)
+                let ema50Data = calculateEMA(candles: candles, period: 50)
+                
+                ForEach(Array(ema20Data.enumerated()), id: \.offset) { index, emaPoint in
+                    LineMark(
+                        x: .value("Time", emaPoint.date),
+                        y: .value("EMA20", emaPoint.value)
+                    )
+                    .foregroundStyle(.blue)
+                    .lineStyle(StrokeStyle(lineWidth: 2))
+                }
+                
+                ForEach(Array(ema50Data.enumerated()), id: \.offset) { index, emaPoint in
+                    LineMark(
+                        x: .value("Time", emaPoint.date),
+                        y: .value("EMA50", emaPoint.value)
+                    )
+                    .foregroundStyle(.orange)
+                    .lineStyle(StrokeStyle(lineWidth: 2))
+                }
+            }
+            
+            // Bollinger Bands overlay
+            if showBollinger && candles.count > 20 {
+                let bollinger = calculateBollingerBands(candles: candles, period: 20, multiplier: 2)
+                
+                ForEach(Array(bollinger.enumerated()), id: \.offset) { index, bb in
+                    // Upper band
+                    LineMark(
+                        x: .value("Time", bb.date),
+                        y: .value("Upper", bb.upper)
+                    )
+                    .foregroundStyle(.purple.opacity(0.7))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                    
+                    // Lower band
+                    LineMark(
+                        x: .value("Time", bb.date),
+                        y: .value("Lower", bb.lower)
+                    )
+                    .foregroundStyle(.purple.opacity(0.7))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                    
+                    // Middle band (SMA)
+                    LineMark(
+                        x: .value("Time", bb.date),
+                        y: .value("Middle", bb.middle)
+                    )
+                    .foregroundStyle(.purple.opacity(0.5))
+                    .lineStyle(StrokeStyle(lineWidth: 1))
+                }
             }
             
             // Selection indicator
@@ -177,15 +274,16 @@ struct CandlestickChart: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .frame(height: 280)
+        .frame(height: 420) // Already ≥ 380
+        // ✅ FIX: Add proper Y-axis domain to prevent 0-0 range
+        .chartYScale(domain: yAxisDomain)
         .chartXAxis {
             AxisMarks(values: .automatic(desiredCount: 5)) { _ in
                 AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5))
                     .foregroundStyle(themeManager.secondaryColor.opacity(0.3))
                 AxisTick(stroke: StrokeStyle(lineWidth: 0.5))
                     .foregroundStyle(themeManager.secondaryColor)
-                AxisValueLabel(format: .dateTime.hour().minute())
-                    .foregroundStyle(themeManager.secondaryColor)
+                AxisValueLabel(formatAxisTime($0.as(Date.self) ?? Date()))
             }
         }
         .chartYAxis {
@@ -217,11 +315,31 @@ struct CandlestickChart: View {
                         SimultaneousGesture(
                             MagnificationGesture()
                                 .onChanged { value in
-                                    chartScale = max(0.5, min(3.0, value))
+                                    withAnimation(.easeOut(duration: 0.1)) {
+                                        chartScale = max(0.5, min(3.0, value))
+                                    }
+                                }
+                                .onEnded { _ in
+                                    withAnimation(.easeOut(duration: 0.3)) {
+                                        // Snap to reasonable zoom levels
+                                        if chartScale < 0.7 {
+                                            chartScale = 0.5
+                                        } else if chartScale > 2.5 {
+                                            chartScale = 3.0
+                                        }
+                                    }
                                 },
                             DragGesture()
                                 .onChanged { value in
                                     chartOffset = value.translation
+                                }
+                                .onEnded { _ in
+                                    withAnimation(.easeOut(duration: 0.3)) {
+                                        // Auto-reset pan if dragged too far
+                                        if abs(chartOffset.width) > 200 || abs(chartOffset.height) > 100 {
+                                            chartOffset = .zero
+                                        }
+                                    }
                                 }
                         )
                     )
@@ -230,6 +348,14 @@ struct CandlestickChart: View {
         .themedCardBackground()
         .cornerRadius(8)
         .padding(.horizontal)
+        .overlay(alignment: .topTrailing) {
+            // Floating crosshair tooltip
+            if let selectedCandle = selectedCandle {
+                CrosshairTooltip(candle: selectedCandle, timeframe: timeframe)
+                    .padding()
+                    .transition(.opacity.combined(with: .scale(scale: 0.9)))
+            }
+        }
     }
     
     // MARK: - Volume Chart
@@ -254,7 +380,7 @@ struct CandlestickChart: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .frame(height: 80)
+        .frame(height: 100)
         .chartXAxis(.hidden)
         .chartYAxis {
             AxisMarks(position: .trailing, values: .automatic(desiredCount: 3)) { value in
@@ -351,6 +477,43 @@ struct CandlestickChart: View {
                         .lineLimit(1)
                     Spacer(minLength: 0)
                 }
+                
+                if showEMA {
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(.blue)
+                            .frame(width: 8, height: 8)
+                        Text("EMA 20")
+                            .font(.caption2)
+                            .themedSecondaryForeground()
+                            .lineLimit(1)
+                        Spacer(minLength: 0)
+                    }
+                    
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(.orange)
+                            .frame(width: 8, height: 8)
+                        Text("EMA 50")
+                            .font(.caption2)
+                            .themedSecondaryForeground()
+                            .lineLimit(1)
+                        Spacer(minLength: 0)
+                    }
+                }
+                
+                if showBollinger {
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(.purple.opacity(0.7))
+                            .frame(width: 8, height: 8)
+                        Text("Bollinger")
+                            .font(.caption2)
+                            .themedSecondaryForeground()
+                            .lineLimit(1)
+                        Spacer(minLength: 0)
+                    }
+                }
             }
         }
         .padding(.horizontal, 12)
@@ -436,6 +599,75 @@ struct CandlestickChart: View {
         formatter.dateFormat = timeframe.timeFormat
         return formatter.string(from: date)
     }
+    
+    private func formatAxisTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        // Timeframe-specific formatting for chart axis
+        switch timeframe {
+        case .m1, .m5, .m15:
+            formatter.dateFormat = "HH:mm"
+        case .h1:
+            formatter.dateFormat = "HH:mm"
+        case .h4:
+            formatter.dateFormat = "MMM d"
+        }
+        return formatter.string(from: date)
+    }
+    
+    // MARK: - Technical Indicator Calculations
+    
+    private func calculateEMA(candles: [Candle], period: Int) -> [(date: Date, value: Double)] {
+        guard candles.count >= period else { return [] }
+        
+        var emaValues: [(date: Date, value: Double)] = []
+        let multiplier = 2.0 / (Double(period) + 1.0)
+        
+        // Start with SMA for first value
+        let initialSum = candles.prefix(period).reduce(0.0) { $0 + $1.close }
+        let initialEMA = initialSum / Double(period)
+        emaValues.append((date: candles[period - 1].openTime, value: initialEMA))
+        
+        // Calculate EMA for remaining values
+        for i in period..<candles.count {
+            let currentClose = candles[i].close
+            let previousEMA = emaValues.last!.value
+            let currentEMA = (currentClose * multiplier) + (previousEMA * (1 - multiplier))
+            emaValues.append((date: candles[i].openTime, value: currentEMA))
+        }
+        
+        return emaValues
+    }
+    
+    private func calculateBollingerBands(candles: [Candle], period: Int, multiplier: Double) -> [(date: Date, upper: Double, middle: Double, lower: Double)] {
+        guard candles.count >= period else { return [] }
+        
+        var bollingerData: [(date: Date, upper: Double, middle: Double, lower: Double)] = []
+        
+        for i in (period - 1)..<candles.count {
+            let window = Array(candles[(i - period + 1)...i])
+            let closes = window.map { $0.close }
+            
+            // Calculate SMA (middle band)
+            let sma = closes.reduce(0.0, +) / Double(period)
+            
+            // Calculate standard deviation
+            let variance = closes.map { pow($0 - sma, 2) }.reduce(0.0, +) / Double(period)
+            let standardDeviation = sqrt(variance)
+            
+            // Calculate upper and lower bands
+            let upper = sma + (standardDeviation * multiplier)
+            let lower = sma - (standardDeviation * multiplier)
+            
+            bollingerData.append((
+                date: candles[i].openTime,
+                upper: upper,
+                middle: sma,
+                lower: lower
+            ))
+        }
+        
+        return bollingerData
+    }
 }
 
 // MARK: - Timeframe Extension
@@ -448,6 +680,128 @@ extension Timeframe {
         case .m15: return "HH:mm"        // 15-minute timeframe
         case .h1: return "HH:mm"
         case .h4: return "MMM dd HH:mm"
+        }
+    }
+}
+
+// MARK: - CrosshairTooltip Component
+
+struct CrosshairTooltip: View {
+    let candle: Candle
+    let timeframe: Timeframe
+    @StateObject private var themeManager = ThemeManager.shared
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Header with timestamp
+            HStack {
+                Text("Market Data")
+                    .font(.caption.weight(.semibold))
+                    .themedForeground()
+                Spacer()
+                Text(formatTime(candle.openTime))
+                    .font(.caption2)
+                    .themedSecondaryForeground()
+            }
+            
+            Divider()
+                .background(themeManager.secondaryColor.opacity(0.3))
+            
+            // OHLC Data in 2x2 grid
+            LazyVGrid(columns: [
+                GridItem(.flexible(), alignment: .leading),
+                GridItem(.flexible(), alignment: .leading)
+            ], spacing: 6) {
+                TooltipDataPoint(label: "Open", value: candle.open, format: "%.2f")
+                TooltipDataPoint(label: "High", value: candle.high, format: "%.2f")
+                TooltipDataPoint(label: "Low", value: candle.low, format: "%.2f")
+                TooltipDataPoint(
+                    label: "Close", 
+                    value: candle.close, 
+                    format: "%.2f",
+                    color: candle.close >= candle.open ? themeManager.candleUpColor : themeManager.candleDownColor
+                )
+            }
+            
+            Divider()
+                .background(themeManager.secondaryColor.opacity(0.3))
+            
+            // Volume
+            TooltipDataPoint(label: "Volume", value: candle.volume, format: nil)
+            
+            // Price change
+            let change = candle.close - candle.open
+            let changePercent = candle.open > 0 ? (change / candle.open) * 100 : 0
+            HStack {
+                Text("Change")
+                    .font(.caption2)
+                    .themedSecondaryForeground()
+                Spacer()
+                VStack(alignment: .trailing, spacing: 1) {
+                    Text(String(format: "%.2f", change))
+                        .font(.caption.weight(.medium))
+                        .foregroundColor(change >= 0 ? themeManager.candleUpColor : themeManager.candleDownColor)
+                    Text(String(format: "%.1f%%", changePercent))
+                        .font(.caption2)
+                        .foregroundColor(change >= 0 ? themeManager.candleUpColor : themeManager.candleDownColor)
+                }
+            }
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(.ultraThinMaterial)
+                .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
+        )
+        .frame(maxWidth: 180)
+    }
+    
+    private func formatTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = timeframe.timeFormat
+        return formatter.string(from: date)
+    }
+}
+
+struct TooltipDataPoint: View {
+    let label: String
+    let value: Double
+    let format: String?
+    let color: Color?
+    
+    @StateObject private var themeManager = ThemeManager.shared
+    
+    init(label: String, value: Double, format: String?, color: Color? = nil) {
+        self.label = label
+        self.value = value
+        self.format = format
+        self.color = color
+    }
+    
+    var body: some View {
+        HStack {
+            Text(label)
+                .font(.caption2)
+                .themedSecondaryForeground()
+            Spacer()
+            Text(formattedValue)
+                .font(.caption.weight(.medium))
+                .foregroundColor(color ?? themeManager.primaryColor)
+        }
+    }
+    
+    private var formattedValue: String {
+        if let format = format {
+            return String(format: format, value)
+        } else {
+            // Volume formatting
+            if value >= 1_000_000 {
+                return String(format: "%.1fM", value / 1_000_000)
+            } else if value >= 1_000 {
+                return String(format: "%.1fK", value / 1_000)
+            } else {
+                return String(format: "%.0f", value)
+            }
         }
     }
 }

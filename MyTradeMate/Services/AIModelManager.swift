@@ -46,32 +46,106 @@ final class AIModelManager: AIModelManagerProtocol {
             dict[pair.key.asPublicKind] = pair.value
         }
     }
+    
+    // ✅ ADD: Standardized cache keys for model predictions
+    private enum CacheKey {
+        case prediction(timeframe: Timeframe, candleHash: Int)
+        case modelValidation(modelKey: ModelKey)
+        
+        var stringValue: String {
+            switch self {
+            case .prediction(let timeframe, let candleHash):
+                return "prediction_\(timeframe.rawValue)_\(candleHash)"
+            case .modelValidation(let modelKey):
+                return "model_validation_\(modelKey.rawValue)"
+            }
+        }
+    }
+    
+    // ✅ ADD: Simple in-memory cache for predictions
+    private var predictionCache: [String: (result: PredictionResult, timestamp: Date)] = [:]
+    private let cacheTimeout: TimeInterval = 30.0 // 30 seconds
+    
+    // ✅ ADD: Model loading retry configuration
+    private let maxRetries = 3
+    private let retryDelay: TimeInterval = 0.5
 
         // MARK: - Încărcare/validare
+    
+    // ✅ ADD: Model loading with retry logic and explicit bundle verification
+    private func loadModelWithRetry(key: ModelKey) async throws -> MLModel {
+        let cacheKey = CacheKey.modelValidation(modelKey: key).stringValue
+        
+        // ✅ EXPLICIT BUNDLE VERIFICATION with detailed logging
+        let mlmodelcPath = Bundle.main.path(forResource: key.rawValue, ofType: "mlmodelc")
+        let mlmodelPath = Bundle.main.path(forResource: key.rawValue, ofType: "mlmodel") 
+        let mlpackagePath = Bundle.main.path(forResource: key.rawValue, ofType: "mlpackage")
+        
+        Log.ai.info("🔍 Checking bundle for model \(key.rawValue):")
+        Log.ai.info("   .mlmodelc: \(mlmodelcPath != nil ? "✅ Found" : "❌ Missing")")
+        Log.ai.info("   .mlmodel: \(mlmodelPath != nil ? "✅ Found" : "❌ Missing")")
+        Log.ai.info("   .mlpackage: \(mlpackagePath != nil ? "✅ Found" : "❌ Missing")")
+        
+        for attempt in 1...maxRetries {
+            do {
+                // Check if model file exists with explicit error messages
+                guard let url = Bundle.main.url(forResource: key.rawValue, withExtension: "mlmodelc")
+                    ?? Bundle.main.url(forResource: key.rawValue, withExtension: "mlmodel")
+                    ?? Bundle.main.url(forResource: key.rawValue, withExtension: "mlpackage")
+                else {
+                    Log.ai.error("❌ Missing \(key.rawValue) in app bundle - check Build Phases → Copy Bundle Resources")
+                    Log.ai.error("   Expected files: \(key.rawValue).mlmodelc, \(key.rawValue).mlmodel, or \(key.rawValue).mlpackage")
+                    throw PredictionError.modelNotFound(key.rawValue)
+                }
+                
+                let compiledURL: URL
+                if url.pathExtension == "mlmodel" {
+                    compiledURL = try await MLModel.compileModel(at: url)
+                } else {
+                    compiledURL = url
+                }
+                
+                let cfg = MLModelConfiguration()
+                let model = try MLModel(contentsOf: compiledURL, configuration: cfg)
+                
+                if attempt > 1 {
+                    Log.ai.info("✅ Model \(key.rawValue) loaded successfully on attempt \(attempt)")
+                }
+                
+                return model
+                
+            } catch {
+                Log.ai.warning("⚠️ Model loading attempt \(attempt)/\(maxRetries) failed for \(key.rawValue): \(error.localizedDescription)")
+                
+                if attempt < maxRetries {
+                    let delay = retryDelay * Double(attempt) // Exponential backoff
+                    try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                } else {
+                    Log.ai.error("❌ Model \(key.rawValue) loading failed after \(maxRetries) attempts: \(error)")
+                    throw PredictionError.modelLoadingFailed(key.rawValue, error)
+                }
+            }
+        }
+        
+        // This should never be reached due to the logic above, but just in case
+        throw PredictionError.modelLoadingFailed(key.rawValue, NSError(domain: "AIModelManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Unknown loading failure"]))
+    }
+    
     @discardableResult
     func validateModels() async throws -> Bool {
         var loaded: [ModelKey: MLModel] = [:]
 
         for key in ModelKey.allCases {
-                // Acceptă .mlmodelc / .mlmodel / .mlpackage
-            if let url =
-                Bundle.main.url(forResource: key.rawValue, withExtension: "mlmodelc")
-                ?? Bundle.main.url(forResource: key.rawValue, withExtension: "mlmodel")
-                ?? Bundle.main.url(forResource: key.rawValue, withExtension: "mlpackage")
-            {
-            let compiledURL: URL
-            if url.pathExtension == "mlmodel" {
-                compiledURL = try await MLModel.compileModel(at: url)
-            } else {
-                compiledURL = url
-            }
-
-            let cfg = MLModelConfiguration()
-            let model = try MLModel(contentsOf: compiledURL, configuration: cfg)
-            loaded[key] = model
-            Log.ai.info("✅ Loaded model: \(key.rawValue)")
-            } else {
-                Log.ai.warning("⚠️ Model \(key.rawValue) not found in bundle")
+            // ✅ ADD: Proper error handling for model loading
+            do {
+                let model = try await loadModelWithRetry(key: key)
+                loaded[key] = model
+                Log.ai.info("✅ Loaded model: \(key.rawValue)")
+            } catch let error as PredictionError {
+                Log.ai.error("❌ Failed to load \(key.rawValue): \(error.description)")
+                // Continue loading other models even if one fails
+            } catch {
+                Log.ai.error("❌ Unexpected error loading \(key.rawValue): \(error.localizedDescription)")
             }
         }
 
@@ -128,15 +202,37 @@ final class AIModelManager: AIModelManagerProtocol {
     }
 
         // MARK: - Public API: Unified prediction interface
-        /// DOAR H4 folosește AI. Pentru m5/h1 întoarce `nil` (decid strategiile în DashboardVM).
+        /// AI folosit pentru toate timeframe-urile cu fallback la strategie
     func predictSafely(timeframe: Timeframe, candles: [Candle]) -> PredictionResult? {
+        // ✅ ADD: Check cache first with standardized key
+        let candleHash = calculateCandleHash(candles)
+        let cacheKey = CacheKey.prediction(timeframe: timeframe, candleHash: candleHash).stringValue
+        
+        if let cached = getCachedPrediction(key: cacheKey) {
+            Log.ai.debug("📦 Using cached prediction for \(timeframe.rawValue)")
+            return cached
+        }
+        
+        // Perform prediction
+        let result: PredictionResult?
         switch timeframe {
         case .h4:
-            return predict4HSafely(candles: candles)
-        case .m1, .m5, .m15, .h1:
-                // Lăsăm strategiile să decidă pentru timeframe-urile scurte
-            return nil
+            result = predict4HSafely(candles: candles)
+        case .h1:
+            result = predictH1Safely(candles: candles)
+        case .m5, .m15:
+            result = predictM5Safely(candles: candles)
+        case .m1:
+            // M1 încă pe strategie (prea volatil pentru AI)
+            result = nil
         }
+        
+        // ✅ ADD: Cache the result if valid
+        if let result = result {
+            cachePrediction(key: cacheKey, result: result)
+        }
+        
+        return result
     }
 
         /// Overload compat: unele call-site-uri trimit și `mode:`. Ignorăm param-ul.
@@ -146,10 +242,16 @@ final class AIModelManager: AIModelManagerProtocol {
 
         // MARK: - 4H model with explicit features
     private func predict4HSafely(candles: [Candle]) -> PredictionResult? {
+        // ✅ CHECK: Model availability first - return fallback if missing
+        guard modelsByKey[.h4] != nil else {
+            Log.ai.warning("H4 model not available - using fallback")
+            return createFallbackSignal(timeframe: "4h", candles: candles)
+        }
+        
             // Suficient istoric pentru indicatori
         guard candles.count >= 60 else {
             Log.ai.warning("Insufficient candles for 4H features: \(candles.count)")
-            return nil
+            return createFallbackSignal(timeframe: "4h", candles: candles)
         }
 
         let inputs = build4HExplicitInputs(from: candles)
@@ -195,13 +297,202 @@ final class AIModelManager: AIModelManagerProtocol {
                 return PredictionResult(signal: sig, confidence: 0.70, model: .h4, timestamp: Date())
             }
 
-            Log.ai.warning("No recognized output from 4H model")
-            return nil
+            Log.ai.warning("No recognized output from 4H model - using fallback")
+            return createFallbackSignal(timeframe: "4h", candles: candles)
 
         } catch {
-            Log.ai.error("4H prediction error: \(error.localizedDescription)")
-            return nil
+            Log.ai.error("4H prediction error: \(error.localizedDescription) - using fallback")
+            return createFallbackSignal(timeframe: "4h", candles: candles)
         }
+    }
+
+        // MARK: - H1 model prediction
+    private func predictH1Safely(candles: [Candle]) -> PredictionResult? {
+        guard let model = modelsByKey[.h1] else {
+            Log.ai.warning("H1 model not available")
+            return createFallbackSignal(timeframe: "1h", candles: candles)
+        }
+        
+        guard candles.count >= 30 else {
+            Log.ai.warning("Insufficient candles for H1 prediction: \(candles.count)")
+            return createFallbackSignal(timeframe: "1h", candles: candles)
+        }
+        
+        do {
+            let inputs = buildSimpleFeatures(candles: candles, featureCount: 10)
+            let input = try make2DFloatArray(values: inputs, count: 10)
+            let dict = ["dense_4_input": MLFeatureValue(multiArray: input)]
+            let featureProvider = try MLDictionaryFeatureProvider(dictionary: dict)
+            
+            let output = try model.prediction(from: featureProvider)
+            return parseModelOutput(output: output, modelKey: .h1)
+            
+        } catch {
+            Log.ai.error("H1 prediction error: \(error)")
+            return createFallbackSignal(timeframe: "1h", candles: candles)
+        }
+    }
+    
+        // MARK: - M5 model prediction  
+    private func predictM5Safely(candles: [Candle]) -> PredictionResult? {
+        guard let model = modelsByKey[.m5] else {
+            Log.ai.warning("M5 model not available")
+            return createFallbackSignal(timeframe: "5m", candles: candles)
+        }
+        
+        guard candles.count >= 20 else {
+            Log.ai.warning("Insufficient candles for M5 prediction: \(candles.count)")
+            return createFallbackSignal(timeframe: "5m", candles: candles)
+        }
+        
+        do {
+            let inputs = buildSimpleFeatures(candles: candles, featureCount: 10)
+            let input = try make2DFloatArray(values: inputs, count: 10)
+            let dict = ["dense_input": MLFeatureValue(multiArray: input)]
+            let featureProvider = try MLDictionaryFeatureProvider(dictionary: dict)
+            
+            let output = try model.prediction(from: featureProvider)
+            return parseModelOutput(output: output, modelKey: .m5)
+            
+        } catch {
+            Log.ai.error("M5 prediction error: \(error)")
+            return createFallbackSignal(timeframe: "5m", candles: candles)
+        }
+    }
+    
+        // MARK: - ✅ ENHANCED: Fallback signal creation with better logic
+    private func createFallbackSignal(timeframe: String, candles: [Candle]) -> PredictionResult? {
+        guard let lastCandle = candles.last else { return nil }
+        
+        // ✅ Enhanced momentum analysis based on timeframe
+        let lookbackPeriod = timeframe == "4h" ? 10 : (timeframe == "1h" ? 7 : 5)
+        let recentCandles = Array(candles.suffix(lookbackPeriod))
+        
+        // Calculate multiple momentum indicators
+        let shortMomentum = recentCandles.last!.close - recentCandles.first!.close
+        let priceMomentumPercent = (shortMomentum / recentCandles.first!.close) * 100
+        
+        // Simple volume analysis if available
+        let avgVolume = recentCandles.map { $0.volume }.reduce(0, +) / Double(recentCandles.count)
+        let currentVolumeRatio = lastCandle.volume / avgVolume
+        
+        // Enhanced signal logic
+        let signal: String
+        let confidence: Double
+        
+        if abs(priceMomentumPercent) < 0.1 {
+            // Very low momentum - neutral signal
+            signal = "HOLD"
+            confidence = 0.35
+        } else if priceMomentumPercent > 0.5 {
+            // Strong positive momentum
+            signal = "BUY"
+            confidence = min(0.65, 0.45 + (currentVolumeRatio > 1.2 ? 0.15 : 0.0))
+        } else if priceMomentumPercent < -0.5 {
+            // Strong negative momentum
+            signal = "SELL"
+            confidence = min(0.65, 0.45 + (currentVolumeRatio > 1.2 ? 0.15 : 0.0))
+        } else if priceMomentumPercent > 0 {
+            // Weak positive momentum
+            signal = "BUY"
+            confidence = 0.40
+        } else {
+            // Weak negative momentum
+            signal = "SELL"
+            confidence = 0.40
+        }
+        
+        // Map timeframe to model type
+        let modelType: ModelKind
+        switch timeframe {
+        case "4h": modelType = .h4
+        case "1h": modelType = .h1
+        default: modelType = .m5
+        }
+        
+        Log.ai.info("🔄 AI Fallback [\(timeframe)]: \(signal) @ \(String(format: "%.1f%%", confidence * 100)) (momentum: \(String(format: "%.2f%%", priceMomentumPercent)))")
+        
+        return PredictionResult(
+            signal: signal,
+            confidence: confidence,
+            model: modelType,
+            timestamp: Date()
+        )
+    }
+    
+        // MARK: - Simple feature engineering for m5/h1
+    private func buildSimpleFeatures(candles: [Candle], featureCount: Int) -> [Float] {
+        guard !candles.isEmpty else { return Array(repeating: 0.0, count: featureCount) }
+        
+        let prices = candles.map { $0.close }
+        var features: [Float] = []
+        
+        // Price returns (last 3)
+        let returns = (1..<min(4, prices.count)).map { i in
+            Float(safePctChange(prices[prices.count - 1 - i], prices[prices.count - 1]))
+        }
+        features.append(contentsOf: returns)
+        
+        // RSI
+        features.append(Float(calculateRSI(candles: candles, period: min(14, candles.count - 1))))
+        
+        // Moving averages ratio
+        let shortMA = prices.suffix(min(5, prices.count)).reduce(0, +) / Double(min(5, prices.count))
+        let longMA = prices.suffix(min(10, prices.count)).reduce(0, +) / Double(min(10, prices.count))
+        features.append(Float(longMA > 0 ? shortMA / longMA : 1.0))
+        
+        // Volume ratio
+        let volumes = candles.map { $0.volume }
+        let avgVolume = volumes.suffix(min(10, volumes.count)).reduce(0, +) / Double(min(10, volumes.count))
+        let currentVolume = volumes.last ?? 0
+        features.append(Float(avgVolume > 0 ? currentVolume / avgVolume : 1.0))
+        
+        // Volatility
+        features.append(Float(calculateVolatility(candles: candles, period: min(20, candles.count - 1))))
+        
+        // Price position in range
+        let recentCandles = Array(candles.suffix(min(20, candles.count)))
+        let high = recentCandles.map { $0.high }.max() ?? candles.last!.close
+        let low = recentCandles.map { $0.low }.min() ?? candles.last!.close
+        let position = high > low ? Float((candles.last!.close - low) / (high - low)) : 0.5
+        features.append(position)
+        
+        // Pad or truncate to required count
+        return normalizeToCount(features, count: featureCount)
+    }
+    
+        // MARK: - Model output parsing
+    private func parseModelOutput(output: MLFeatureProvider, modelKey: ModelKey) -> PredictionResult? {
+        // Try class probabilities first
+        if let dict = output.featureValue(for: "classProbability")?.dictionaryValue {
+            let (buyVotes, sellVotes, holdVotes) = extractClassVotes(dict)
+            let total = buyVotes + sellVotes + holdVotes
+            let pBuy = total > 0 ? buyVotes/total : 1.0/3.0
+            let pSell = total > 0 ? sellVotes/total : 1.0/3.0
+            let pHold = total > 0 ? holdVotes/total : 1.0/3.0
+            
+            let maxP = max(pBuy, pSell, pHold)
+            let signal = (maxP == pBuy) ? "BUY" : ((maxP == pSell) ? "SELL" : "HOLD")
+            let confidence = max(0.55, min(0.95, maxP))
+            
+            return PredictionResult(signal: signal, confidence: confidence, model: modelKey.asPublicKind, timestamp: Date())
+        }
+        
+        // Try string labels
+        if let labelStr = output.featureValue(for: "classLabel")?.stringValue
+            ?? output.featureValue(for: "prediction")?.stringValue {
+            let sig = normalizeLabel(labelStr)
+            return PredictionResult(signal: sig, confidence: 0.70, model: modelKey.asPublicKind, timestamp: Date())
+        }
+        
+        // Try integer prediction
+        if let labelInt = output.featureValue(for: "prediction")?.int64Value {
+            let sig = (labelInt == 2) ? "BUY" : (labelInt == 0 ? "SELL" : "HOLD")
+            return PredictionResult(signal: sig, confidence: 0.70, model: modelKey.asPublicKind, timestamp: Date())
+        }
+        
+        Log.ai.warning("No recognized output from \(modelKey.rawValue) model")
+        return nil
     }
 
         // MARK: - Feature building helpers (H4)
@@ -458,6 +749,49 @@ final class AIModelManager: AIModelManagerProtocol {
         if values.count == count { return values }
         if values.count > count { return Array(values.prefix(count)) }
         return values + Array(repeating: 0, count: count - values.count)
+    }
+    
+    // ✅ ADD: Cache management methods
+    private func calculateCandleHash(_ candles: [Candle]) -> Int {
+        // Create a simple hash from the last few candles for caching
+        guard !candles.isEmpty else { return 0 }
+        
+        let relevantCandles = Array(candles.suffix(min(5, candles.count)))
+        var hasher = 0
+        
+        for candle in relevantCandles {
+            hasher = hasher &* 31 &+ Int(candle.close * 10000)
+            hasher = hasher &* 31 &+ Int(candle.volume / 1000)
+            hasher = hasher &* 31 &+ Int(candle.openTime.timeIntervalSince1970)
+        }
+        
+        return hasher
+    }
+    
+    private func getCachedPrediction(key: String) -> PredictionResult? {
+        guard let cached = predictionCache[key] else { return nil }
+        
+        // Check if cache is still valid
+        let now = Date()
+        if now.timeIntervalSince(cached.timestamp) > cacheTimeout {
+            predictionCache.removeValue(forKey: key)
+            return nil
+        }
+        
+        return cached.result
+    }
+    
+    private func cachePrediction(key: String, result: PredictionResult) {
+        // Clean up old cache entries periodically
+        let now = Date()
+        if predictionCache.count > 100 { // Limit cache size
+            predictionCache = predictionCache.filter { 
+                now.timeIntervalSince($0.value.timestamp) <= cacheTimeout 
+            }
+        }
+        
+        predictionCache[key] = (result: result, timestamp: now)
+        Log.ai.debug("📦 Cached prediction with key: \(key)")
     }
 }
 

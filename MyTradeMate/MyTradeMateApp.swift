@@ -13,6 +13,7 @@ struct MyTradeMateApp: App {
     private let marketDataManager = MarketDataManager.shared
     private let signalManager = SignalManager.shared
     private let tradingManager = TradingManager.shared
+    private let tradeManager = TradeManager.shared
     private let strategyManager = StrategyManager.shared
     private let regimeDetectionManager = RegimeDetectionManager()
     private let riskManager = RiskManager.shared
@@ -70,6 +71,7 @@ struct MyTradeMateApp: App {
                 .environmentObject(marketDataManager)
                 .environmentObject(signalManager)
                 .environmentObject(tradingManager)
+                .environmentObject(tradeManager)
                 .environmentObject(strategyManager)
                 .environmentObject(regimeDetectionManager)
                 .environmentObject(riskManager)

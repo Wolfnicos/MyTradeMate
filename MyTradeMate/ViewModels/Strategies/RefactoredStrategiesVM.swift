@@ -80,7 +80,9 @@ final class RefactoredStrategiesVM: ObservableObject {
     private func startRegimeMonitoring() {
         // Update regime detection every 30 seconds
         regimeUpdateTimer = Timer.scheduledTimer(withTimeInterval: 30.0, repeats: true) { [weak self] _ in
-            self?.updateRegimeDetection()
+            Task {
+                await self?.updateRegimeDetection()
+            }
         }
     }
     
@@ -147,7 +149,9 @@ final class RefactoredStrategiesVM: ObservableObject {
     // MARK: - Utility Methods
     func refreshAll() {
         loadStrategies()
-        updateRegimeDetection()
+        Task {
+            await updateRegimeDetection()
+        }
         Log.userAction("Refreshed strategies and regime detection")
     }
     

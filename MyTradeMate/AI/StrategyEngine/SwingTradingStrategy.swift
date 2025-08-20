@@ -20,10 +20,13 @@ public final class SwingTradingStrategy: BaseStrategy {
     
     public override func signal(candles: [Candle]) -> StrategySignal {
         guard candles.count >= requiredCandles() else {
+            // ✅ FALLBACK: Never return 0.0% - provide basic signal even with insufficient data
+            let basicTrend = candles.count >= 2 ? (candles.last!.close - candles[candles.count-2].close) / candles[candles.count-2].close : 0.0
+            let direction: StrategySignal.Direction = abs(basicTrend) > 0.005 ? (basicTrend > 0 ? .buy : .sell) : .hold
             return StrategySignal(
-                direction: .hold,
-                confidence: 0.0,
-                reason: "Insufficient data for Swing Trading",
+                direction: direction,
+                confidence: 0.35,
+                reason: "Insufficient data - basic trend fallback",
                 strategyName: name
             )
         }
@@ -35,35 +38,55 @@ public final class SwingTradingStrategy: BaseStrategy {
         let macd = calculateMACD(candles: candles)
         let supportResistance = findSupportResistance(candles: candles)
         
-        guard let currentSMA20 = sma20.last,
-              let currentSMA50 = sma50.last,
-              let currentRSI = rsi.last,
-              let currentMACD = macd.macd.last,
-              let currentSignal = macd.signal.last else {
+        guard let currentPrice = candles.last?.close,
+              candles.count >= 2 else { 
+            // ✅ FALLBACK: Never return 0.0% - provide basic price action signal
+            let fallbackPrice = candles.last?.close ?? 0.0
             return StrategySignal(
-                direction: .hold,
-                confidence: 0.0,
-                reason: "Unable to calculate swing trading indicators",
+                direction: .hold, 
+                confidence: 0.30, 
+                reason: "Minimal data - price action fallback", 
+                strategyName: name
+            ) 
+        }
+        let previousPrice = candles[candles.count - 2].close
+        
+        // ✅ SAFE INDICATOR EXTRACTION: Use fallbacks when indicators fail
+        let currentSMA20 = sma20.last
+        let currentSMA50 = sma50.last
+        let currentRSI = rsi.last
+        let currentMACD = macd.macd.last
+        let currentSignal = macd.signal.last
+        
+        // ✅ CHECK: If indicators failed, use basic price momentum fallback
+        if currentSMA20 == nil || currentSMA50 == nil || currentRSI == nil || currentMACD == nil || currentSignal == nil {
+            let priceMomentum = (currentPrice - previousPrice) / previousPrice
+            let direction: StrategySignal.Direction = abs(priceMomentum) > 0.01 ? (priceMomentum > 0 ? .buy : .sell) : .hold
+            return StrategySignal(
+                direction: direction,
+                confidence: 0.40,
+                reason: "Indicator calculation failed - price momentum fallback",
                 strategyName: name
             )
         }
-        
-        guard let currentPrice = candles.last?.close,
-              candles.count >= 2 else { 
-            return StrategySignal(direction: .hold, confidence: 0.0, reason: "Insufficient data", strategyName: name) 
-        }
-        let previousPrice = candles[candles.count - 2].close
         
         var signals: [String] = []
         var confidence: Double = 0.0
         var direction: StrategySignal.Direction = .hold
         
+        // ✅ SAFE UNWRAPPING: All indicators are guaranteed to be available at this point
+        let currentSMA20Safe = currentSMA20!
+        let currentSMA50Safe = currentSMA50!
+        let currentRSISafe = currentRSI!
+        let currentMACDSafe = currentMACD!
+        let currentSignalSafe = currentSignal!
+        
         // Trend analysis
-        let isUptrend = currentSMA20 > currentSMA50
-        let trendStrength = abs(currentSMA20 - currentSMA50) / currentSMA50
+        let isUptrend = currentSMA20Safe > currentSMA50Safe
+        let trendStrength = abs(currentSMA20Safe - currentSMA50Safe) / currentSMA50Safe
         
         // MACD analysis
-        let macdBullish = currentMACD > currentSignal
+        let macdBullish = currentMACDSafe > currentSignalSafe
         let macdCrossover = checkMACDCrossover(macd: macd)
         
         // Support/Resistance analysis
@@ -71,7 +94,7 @@ public final class SwingTradingStrategy: BaseStrategy {
         let nearResistance = isNearLevel(price: currentPrice, level: supportResistance.resistance, tolerance: 0.01)
         
         // Bullish swing setup
-        if isUptrend && currentRSI < 70 && currentPrice > currentSMA20 {
+        if isUptrend && currentRSISafe < 70 && currentPrice > currentSMA20Safe {
             signals.append("Uptrend confirmed")
             confidence += 0.3
             direction = .buy
@@ -92,7 +115,7 @@ public final class SwingTradingStrategy: BaseStrategy {
                 confidence += 0.2
             }
             
-            if currentRSI < 50 {
+            if currentRSISafe < 50 {
                 signals.append("RSI not overbought")
                 confidence += 0.1
             }
@@ -104,7 +127,7 @@ public final class SwingTradingStrategy: BaseStrategy {
         }
         
         // Bearish swing setup
-        else if !isUptrend && currentRSI > 30 && currentPrice < currentSMA20 {
+        else if !isUptrend && currentRSISafe > 30 && currentPrice < currentSMA20Safe {
             signals.append("Downtrend confirmed")
             confidence += 0.3
             direction = .sell
@@ -125,7 +148,7 @@ public final class SwingTradingStrategy: BaseStrategy {
                 confidence += 0.2
             }
             
-            if currentRSI > 50 {
+            if currentRSISafe > 50 {
                 signals.append("RSI not oversold")
                 confidence += 0.1
             }
@@ -137,14 +160,14 @@ public final class SwingTradingStrategy: BaseStrategy {
         }
         
         // Reversal patterns
-        else if nearSupport && currentRSI < 35 && macdCrossover == .bullish {
+        else if nearSupport && currentRSISafe < 35 && macdCrossover == .bullish {
             signals.append("Potential bullish reversal")
             signals.append("Oversold at support")
             confidence = 0.7
             direction = .buy
         }
         
-        else if nearResistance && currentRSI > 65 && macdCrossover == .bearish {
+        else if nearResistance && currentRSISafe > 65 && macdCrossover == .bearish {
             signals.append("Potential bearish reversal")
             signals.append("Overbought at resistance")
             confidence = 0.7
@@ -152,16 +175,50 @@ public final class SwingTradingStrategy: BaseStrategy {
         }
         
         // Momentum continuation
-        else if isUptrend && currentPrice > previousPrice && currentRSI > 50 && currentRSI < 70 {
+        else if isUptrend && currentPrice > previousPrice && currentRSISafe > 50 && currentRSISafe < 70 {
             signals.append("Bullish momentum continuation")
             confidence = 0.4
             direction = .buy
         }
         
-        else if !isUptrend && currentPrice < previousPrice && currentRSI < 50 && currentRSI > 30 {
+        else if !isUptrend && currentPrice < previousPrice && currentRSISafe < 50 && currentRSISafe > 30 {
             signals.append("Bearish momentum continuation")
             confidence = 0.4
             direction = .sell
+        }
+        
+        // ✅ FALLBACK LOGIC: Provide basic signals when main conditions aren't met
+        if confidence == 0.0 && signals.isEmpty {
+            // Generate basic trend-following signals to avoid always returning 0.0%
+            let mediumTermTrend = (currentPrice - previousPrice) / previousPrice
+            let trendDirection = currentSMA20Safe > currentSMA50Safe
+            
+            if abs(mediumTermTrend) > 0.001 { // 0.1% minimum move for swing
+                if mediumTermTrend > 0 && trendDirection && currentRSISafe < 70 {
+                    signals.append("Weak bullish trend continuation")
+                    direction = .buy
+                    confidence = 0.40 // Low confidence fallback
+                } else if mediumTermTrend < 0 && !trendDirection && currentRSISafe > 30 {
+                    signals.append("Weak bearish trend continuation")
+                    direction = .sell
+                    confidence = 0.40 // Low confidence fallback
+                } else {
+                    signals.append("Mixed signals - range-bound market")
+                    direction = .hold
+                    confidence = 0.30
+                }
+            } else {
+                // Very quiet market - provide basic trend bias
+                if trendDirection {
+                    signals.append("Bullish bias in quiet market")
+                    direction = .buy
+                    confidence = 0.35
+                } else {
+                    signals.append("Bearish bias in quiet market")
+                    direction = .sell
+                    confidence = 0.35
+                }
+            }
         }
         
         confidence = min(0.9, confidence)

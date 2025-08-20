@@ -30,3 +30,4 @@ swift_referenced_by_xcode.txt
 .claude/settings.local.json
 fix_build_errors.swift
 launch_validation.swift
+.claude/*.local.json

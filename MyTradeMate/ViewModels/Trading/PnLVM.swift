@@ -72,12 +72,14 @@ final class PnLVM: ObservableObject {
                 }
             }
             
-            if settings.pnlDemoMode {
-                // Demo mode: use synthetic data
+            // Use proper trading mode from AppSettings
+            switch settings.tradingMode {
+            case .demo:
                 await refreshDemoData()
-            } else {
-                // Real mode: use actual trading data based on current trading mode
-                await refreshRealData()
+            case .paper:
+                await refreshPaperData()
+            case .live:
+                await refreshLiveData()
             }
         }
     }
@@ -124,7 +126,44 @@ final class PnLVM: ObservableObject {
         }
     }
     
-    private func refreshRealData() async {
+    private func refreshPaperData() async {
+        // Paper trading: use simulated trades with real market data
+        let pos = await TradeManager.shared.getCurrentPosition()
+        let eq = await TradeManager.shared.getCurrentEquity()
+        let lp = await MarketPriceCache.shared.lastPrice
+        await PnLManager.shared.resetIfNeeded()
+        let snap = await PnLManager.shared.snapshot(price: lp, position: pos, equity: eq)
+        
+        // Get fills (TradeManager will return appropriate data based on current mode)
+        let fills = await TradeManager.shared.fillsSnapshot()
+        let filteredFills = applySymbolFilter(to: fills)
+        let metrics = PnLMetricsAggregator.compute(from: filteredFills)
+        
+        // Update available symbols
+        let symbols = Set(fills.map { $0.pair.symbol }).sorted()
+        
+        await MainActor.run {
+            self.today = snap.realizedToday
+            self.unrealized = snap.unrealized
+            self.equity = snap.equity
+            self.performanceMetrics = metrics
+            self.availableSymbols = ["All"] + symbols
+            
+            // Add current equity to history for paper mode
+            let now = Date()
+            self.rawHistory.append((now, snap.equity))
+            
+            // Keep only last 500 points to prevent memory issues
+            if self.rawHistory.count > 500 {
+                self.rawHistory.removeFirst(self.rawHistory.count - 500)
+            }
+            
+            self.aggregateHistory()
+            self.isLoading = false
+        }
+    }
+    
+    private func refreshLiveData() async {
         let pos = await TradeManager.shared.getCurrentPosition()
         let eq = await TradeManager.shared.getCurrentEquity()
         let lp = await MarketPriceCache.shared.lastPrice

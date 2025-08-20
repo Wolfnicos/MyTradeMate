@@ -70,6 +70,7 @@ enum AppTab: String, CaseIterable {
     case pnl = "P&L"
     case strategies = "Strategies"
     case settings = "Settings"
+    case debug = "Debug"
 
     var systemImage: String {
         switch self {
@@ -78,6 +79,7 @@ enum AppTab: String, CaseIterable {
         case .pnl: return "dollarsign.circle"
         case .strategies: return "brain"
         case .settings: return "gearshape"
+        case .debug: return "ladybug"
         }
     }
 }
@@ -136,6 +138,11 @@ struct RootTabs: View {
                 .environmentObject(settingsVM)
                 .tabItem { Label("Settings", systemImage: AppTab.settings.systemImage) }
                 .tag(AppTab.settings)
+
+            // Debug Tab
+            DebugScreen()
+                .tabItem { Label("Debug", systemImage: AppTab.debug.systemImage) }
+                .tag(AppTab.debug)
         }
         .onChange(of: settings.tradingMode) { newMode in
             Log.settings.info("[SETTINGS] Trading mode changed to \(newMode)")

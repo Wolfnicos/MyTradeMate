@@ -60,7 +60,7 @@ final class MarketDataService: ObservableObject, MarketDataServiceProtocol {
     }
     
     func fetchCandles(symbol: String, timeframe: Timeframe) async throws -> [Candle] {
-        let key = "\(symbol)-\(timeframe.rawValue)"
+        let key = "\(symbol.uppercased().replacingOccurrences(of: "/", with: "")):\(timeframe.rawValue.uppercased())"
         let startTime = Date()
         
         // Performance tracking
@@ -420,7 +420,7 @@ final class MarketDataService: ObservableObject, MarketDataServiceProtocol {
         )
     }
     
-    func subscribeToTickers(symbols: [String]) -> AsyncStream<Ticker> {
+    nonisolated func subscribeToTickers(symbols: [String]) -> AsyncStream<Ticker> {
         // Return a simple stream that emits mock data periodically
         return AsyncStream<Ticker> { continuation in
             Task {

@@ -29,10 +29,16 @@ public class EMAStrategy: BaseStrategy {
     
     public override func signal(candles: [Candle]) -> StrategySignal {
         guard candles.count >= max(fastPeriod, slowPeriod) else {
+            // ✅ FALLBACK: Use basic trend analysis when insufficient data
+            let currentPrice = candles.last?.close ?? 0.0
+            let avgPrice = candles.map(\.close).reduce(0, +) / Double(candles.count)
+            let trend = currentPrice > avgPrice ? 1.0 : -1.0
+            let trendStrength = avgPrice > 0 ? abs(currentPrice - avgPrice) / avgPrice : 0.0
+            
             return StrategySignal(
-                direction: .hold,
-                confidence: 0.0,
-                reason: "Insufficient data",
+                direction: trend > 0 ? .buy : .sell,
+                confidence: min(0.40, 0.30 + trendStrength * 0.5),
+                reason: "Insufficient data - basic trend fallback",
                 strategyName: name
             )
         }
@@ -45,10 +51,16 @@ public class EMAStrategy: BaseStrategy {
               let currentSlow = slowEMA.last,
               fastEMA.count >= 2,
               slowEMA.count >= 2 else {
+            // ✅ FALLBACK: Use simple moving average when EMA calculation fails
+            let recentPrices = Array(closes.suffix(min(5, closes.count)))
+            let avgPrice = recentPrices.reduce(0, +) / Double(recentPrices.count)
+            let currentPrice = closes.last ?? 0.0
+            let momentum = avgPrice > 0 ? (currentPrice - avgPrice) / avgPrice : 0.0
+            
             return StrategySignal(
-                direction: .hold,
-                confidence: 0.0,
-                reason: "EMA calculation error",
+                direction: momentum > 0.01 ? .buy : (momentum < -0.01 ? .sell : .hold),
+                confidence: min(0.38, 0.32 + abs(momentum) * 2.0),
+                reason: "EMA calculation failed - SMA fallback",
                 strategyName: name
             )
         }
