@@ -1,13 +1,44 @@
 import SwiftUI
 
-/// Read-only trading mode indicator that reflects SettingsRepository state  
+/// Read-only trading mode indicator that reflects TradingModeStore state
 /// Used throughout the app to show current trading mode without allowing changes
+/// This is the ONLY way to display mode - mode changes must go through TradingModeStore
 struct ReadOnlyModeChip: View {
-    @ObservedObject private var settingsRepository = SettingsRepository.shared
+    @StateObject private var tradingModeStore = TradingModeStore.shared
     
     var body: some View {
-        TradingModeChip(settingsRepository.tradingMode)
-            .accessibilityLabel("Current trading mode: \(settingsRepository.tradingMode.title)")
+        ModernTradingModeChip(mode: tradingModeStore.currentMode)
+            .accessibilityLabel("Current trading mode: \(tradingModeStore.currentMode.title)")
+    }
+}
+
+/// Simple trading mode chip for display purposes
+struct ModernTradingModeChip: View {
+    let mode: TradingMode
+    
+    var body: some View {
+        Text(mode.title.uppercased())
+            .font(.caption.weight(.medium))
+            .foregroundColor(modeColor)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(modeColor.opacity(0.15))
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(modeColor, lineWidth: 1)
+            )
+            .cornerRadius(6)
+    }
+    
+    private var modeColor: Color {
+        switch mode {
+        case .demo:
+            return .blue
+        case .paper:
+            return .green
+        case .live:
+            return .red
+        }
     }
 }
 
