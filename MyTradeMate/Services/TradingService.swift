@@ -1,0 +1,174 @@
+import Foundation
+import Combine
+import OSLog
+
+    // MARK: - Trading Service
+
+@MainActor
+public final class TradingService: ObservableObject {
+    public static let shared = TradingService()
+
+    @Published public var isTrading = false
+    @Published public var positions: [Position] = []
+    @Published public var orders: [Order] = []
+    @Published public var balance: Double = 10000.0 // Demo balance
+
+    private var cancellables = Set<AnyCancellable>()
+    private let logger = os.Logger(subsystem: "com.mytrademate", category: "Trading")
+
+    private init() {}
+
+        // MARK: - Trading Operations
+
+    public func placeOrder(symbol: String, side: OrderSide, amount: Double, price: Double? = nil) async throws -> Order {
+        logger.info("Placing \(side.rawValue) order: \(amount) \(symbol)")
+
+        let order = Order(
+            id: UUID().uuidString,
+            symbol: symbol,
+            side: side,
+            amount: amount,
+            price: price,
+            status: .pending,
+            orderType: .market,
+            createdAt: Date()
+        )
+
+        orders.append(order)
+
+            // Simulate order execution
+        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+
+        if let index = orders.firstIndex(where: { $0.id == order.id }) {
+            let filledOrder = Order(
+                id: orders[index].id,
+                symbol: orders[index].symbol,
+                side: orders[index].side,
+                amount: orders[index].amount,
+                price: orders[index].price,
+                status: .filled,
+                orderType: orders[index].orderType,
+                createdAt: orders[index].createdAt,
+                filledAt: Date()
+            )
+            orders[index] = filledOrder
+
+                // Update balance and positions
+            updatePositions(for: filledOrder)
+        }
+
+        return order
+    }
+
+    public func cancelOrder(orderId: String) async throws {
+        if let index = orders.firstIndex(where: { $0.id == orderId }) {
+            let cancelledOrder = Order(
+                id: orders[index].id,
+                symbol: orders[index].symbol,
+                side: orders[index].side,
+                amount: orders[index].amount,
+                price: orders[index].price,
+                status: .cancelled,
+                orderType: orders[index].orderType,
+                createdAt: orders[index].createdAt,
+                filledAt: orders[index].filledAt
+            )
+            orders[index] = cancelledOrder
+            logger.info("Order cancelled: \(orderId)")
+        }
+    }
+
+    public func closePosition(positionId: String) async throws {
+        if let index = positions.firstIndex(where: { $0.pair.symbol == positionId }) {
+            let position = positions[index]
+
+                // Place opposite order to close position
+            let oppositeSide: OrderSide = position.quantity > 0 ? .sell : .buy
+            _ = try await placeOrder(
+                symbol: position.pair.symbol,
+                side: oppositeSide,
+                amount: abs(position.quantity),
+                price: position.averagePrice
+            )
+
+            positions.remove(at: index)
+            logger.info("Position closed: \(positionId)")
+        }
+    }
+
+        // MARK: - Private Methods
+
+    private func updatePositions(for order: Order) {
+        guard let orderPrice = order.price else { return }
+
+            // Simple position tracking
+        if let existingIndex = positions.firstIndex(where: { $0.pair.symbol == order.symbol }) {
+            var position = positions[existingIndex]
+
+            let orderQuantity = order.side == .buy ? order.amount : -order.amount
+            let newQuantity = position.quantity + orderQuantity
+
+            if newQuantity == 0 {
+                    // Position closed
+                positions.remove(at: existingIndex)
+            } else {
+                    // Update position
+                let totalValue = (position.averagePrice * position.quantity) + (orderPrice * orderQuantity)
+                let newAvgPrice = totalValue / newQuantity
+
+                position.quantity = newQuantity
+                position.averagePrice = newAvgPrice
+                positions[existingIndex] = position
+            }
+        } else {
+                // Create new position
+            let upper = order.symbol.uppercased()
+            let baseLength = upper.count - 4
+            let baseStr = String(upper.prefix(baseLength))
+            let quoteStr = String(upper.suffix(4))
+            
+            // Create Asset and QuoteCurrency with proper initialization
+            let base = Asset(
+                symbol: baseStr,
+                name: baseStr,
+                basePrecision: 8,
+                pricePrecision: 2,
+                minNotional: 10.0,
+                icon: "bitcoinsign.circle"
+            )
+            
+            guard let quote = QuoteCurrency(rawValue: quoteStr) else {
+                logger.error("Invalid quote currency: \(quoteStr)")
+                return
+            }
+            let tradingPair = TradingPair(base: base, quote: quote)
+            let quantity = order.side == .buy ? order.amount : -order.amount
+            let position = Position(
+                pair: tradingPair,
+                quantity: quantity,
+                averagePrice: orderPrice
+            )
+            positions.append(position)
+        }
+
+            // Update balance
+        let cost = order.amount * orderPrice
+        balance -= (order.side == .buy ? cost : -cost)
+    }
+
+    public func updatePositionPrices(symbol: String, currentPrice: Double) {
+            // Position price updates are handled by PnLManager and TradeManager
+            // This is a simplified implementation for compatibility
+        for position in positions {
+            if position.pair.symbol == symbol {
+                _ = position.unrealizedPnL(at: currentPrice)
+                    // PnL is calculated but not stored in Position struct
+            }
+        }
+    }
+}
+
+    // MARK: - Supporting Types
+
+    // Position and Order structs are defined in Models/Position.swift and Models/Order.swift
+    // OrderSide enum is defined in Models/OrderSide.swift

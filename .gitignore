@@ -14,3 +14,19 @@ build/
 
 # Misc
 .DS_Store
+
+# local scan helpers
+_scan.sh
+all_swift_on_disk.txt
+missing_on_disk.txt
+not_in_project.txt
+swift_referenced_by_xcode.txt
+.DS_Store
+**/.DS_Store
+
+# Local & temp
+*.backup
+.grok/
+.claude/settings.local.json
+fix_build_errors.swift
+launch_validation.swift
