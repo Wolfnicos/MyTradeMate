@@ -122,22 +122,9 @@ struct SettingsView: View {
             footer: "Configure trading behavior, market data sources, and strategy settings. Demo Mode is recommended for new users to test strategies safely.",
             items: [
                 SettingsItem(
-                    title: "Current Mode",
-                    description: "Trading mode indicator",
-                    view: AnyView(currentModeView)
-                ),
-                SettingsItem(
-                    title: "Demo Mode",
-                    description: "Use simulated trading environment for testing strategies without real money. All trades will be virtual.",
-                    view: AnyView(
-                        SettingsToggleRow(
-                            title: "Demo Mode",
-                            description: "Use simulated trading environment for testing strategies without real money. All trades will be virtual.",
-                            helpText: "Demo Mode creates a completely simulated trading environment where you can test strategies without any risk. All trades are virtual and no real money is involved. This is perfect for learning and testing new strategies.",
-                            isOn: $appSettings.demoMode,
-                            style: .warning
-                        )
-                    )
+                    title: "Trading Mode",
+                    description: "Select Demo, Paper, or Live trading mode",
+                    view: AnyView(tradingModeSelector)
                 ),
                 SettingsItem(
                     title: "Auto Trading",
@@ -160,20 +147,6 @@ struct SettingsView: View {
                             title: "Confirm Trades",
                             description: "Show confirmation dialog before placing any trade. Recommended for beginners and live trading.",
                             isOn: $appSettings.confirmTrades
-                        )
-                    )
-                ),
-                SettingsItem(
-                    title: "Paper Trading",
-                    description: "Simulate trades with real market data but without actual money. Disabled when Demo Mode is active.",
-                    view: AnyView(
-                        SettingsToggleRow(
-                            title: "Paper Trading",
-                            description: "Simulate trades with real market data but without actual money. Disabled when Demo Mode is active.",
-                            helpText: "Paper Trading simulates real trades using live market data without risking actual money. Unlike Demo Mode, it uses real-time prices and market conditions.\n\nKey differences:\n• Uses live market data\n• Simulates real order execution\n• Tracks realistic performance\n• Disabled when Demo Mode is active",
-                            isOn: $appSettings.paperTrading,
-                            style: .prominent,
-                            isDisabled: appSettings.demoMode
                         )
                     )
                 ),
@@ -545,39 +518,109 @@ struct SettingsView: View {
         )
     }
     
-    private var currentModeView: some View {
-        HStack(alignment: .center, spacing: Spacing.md) {
-            VStack(alignment: .leading, spacing: Spacing.xs) {
-                Text("Current Mode")
-                    .font(.settingsBody)
-                    .fontWeight(.medium)
-                    .foregroundColor(.settingsPrimary)
+    // MARK: - Trading Mode Selector
+    private var tradingModeSelector: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Current Mode Header
+            HStack {
+                Text("Trading Mode")
+                    .font(.headline.weight(.medium))
+                    .foregroundColor(.primary)
                 
-                Text("Active trading environment")
-                    .font(.settingsCaption)
-                    .foregroundColor(.settingsSecondary)
+                Spacer()
+                
+                // Current Mode Indicator
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(tradingModeColor)
+                        .frame(width: 8, height: 8)
+                    
+                    Text(settingsRepo.tradingMode.title.uppercased())
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(tradingModeColor)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(
+                    Capsule()
+                        .fill(tradingModeColor.opacity(0.15))
+                )
             }
             
-            Spacer()
+            // Mode Description
+            Text(settingsRepo.tradingMode.description)
+                .font(.caption)
+                .foregroundColor(.secondary)
             
-            HStack(spacing: Spacing.sm) {
-                Circle()
-                    .fill(appSettings.demoMode ? .orange : .green)
-                    .frame(width: 10, height: 10)
-                
-                Text(appSettings.demoMode ? "DEMO MODE" : "LIVE MODE")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(appSettings.demoMode ? .orange : .green)
+            // Mode Selector
+            HStack(spacing: 0) {
+                ForEach(TradingMode.allCases, id: \.self) { mode in
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            settingsRepo.tradingMode = mode
+                        }
+                    }) {
+                        VStack(spacing: 4) {
+                            Text(mode.title)
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(settingsRepo.tradingMode == mode ? .white : .primary)
+                            
+                            Text(mode.description)
+                                .font(.system(size: 10))
+                                .foregroundColor(settingsRepo.tradingMode == mode ? .white.opacity(0.8) : .secondary)
+                                .lineLimit(2)
+                                .multilineTextAlignment(.center)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .frame(maxWidth: .infinity)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(settingsRepo.tradingMode == mode ? modeButtonColor(mode) : Color.clear)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
             }
-            .padding(.horizontal, Spacing.md)
-            .padding(.vertical, Spacing.sm)
+            .padding(4)
             .background(
-                Capsule()
-                    .fill((appSettings.demoMode ? Color.orange : Color.green).opacity(0.12))
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(.quaternary.opacity(0.5))
             )
+            
+            // API Key Warning for Live Mode
+            if settingsRepo.tradingMode == .live && hasIncompleteAPIKeys {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(.orange)
+                    
+                    Text("API keys required for live trading")
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                }
+                .padding(.top, 4)
+            }
         }
-        .padding(.vertical, Spacing.xs)
     }
+    
+    private var tradingModeColor: Color {
+        modeButtonColor(settingsRepo.tradingMode)
+    }
+    
+    private var hasIncompleteAPIKeys: Bool {
+        // API keys are now managed through ExchangeKeysViewModel
+        // This is a placeholder until we integrate with the proper API key management
+        return false
+    }
+    
+    private func modeButtonColor(_ mode: TradingMode) -> Color {
+        switch mode {
+        case .demo: return .blue
+        case .paper: return .green
+        case .live: return .red
+        }
+    }
+    
     
     // MARK: - Routing & Confidence Configuration View
     private var routingConfidenceView: some View {
@@ -592,11 +635,11 @@ struct SettingsView: View {
                 )
             } header: {
                 Text("Per-Timeframe Routing")
-                    .font(.settingsHeadline)
+                    .font(.headline)
             } footer: {
                 Text("Controls which system handles predictions for different timeframes. Recommended: enabled for optimal performance.")
-                    .font(.settingsFootnote)
-                    .foregroundColor(.settingsTertiary)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
             
             Section {
