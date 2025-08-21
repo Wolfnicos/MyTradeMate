@@ -23,8 +23,8 @@ public final class AppSettings: ObservableObject, AppSettingsProtocol {
     
     // MARK: - Production AI System Settings
     @AppStorage("productionAIEnabled") public var productionAIEnabled = true
-    @AppStorage("calibrationMethod") private var calibrationMethodRaw = "ensemble"
-    @AppStorage("uncertaintyMethod") private var uncertaintyMethodRaw = "ensemble"
+    @AppStorage("calibrationMethod") private var calibrationMethodRaw = "directfusion"
+    @AppStorage("uncertaintyMethod") private var uncertaintyMethodRaw = "directfusion"
     @AppStorage("conformalAlpha") public var conformalAlpha = 0.1
     @AppStorage("normalModeThreshold") public var normalModeThreshold = 0.65
     @AppStorage("precisionModeThreshold") public var precisionModeThreshold = 0.8

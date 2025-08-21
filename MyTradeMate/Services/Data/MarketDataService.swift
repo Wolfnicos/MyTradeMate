@@ -275,6 +275,7 @@ final class MarketDataService: ObservableObject, MarketDataServiceProtocol {
         case .m15: return "15m"
         case .h1: return "1h"
         case .h4: return "4h"
+        case .d1: return "1d"
         }
     }
     
@@ -285,6 +286,7 @@ final class MarketDataService: ObservableObject, MarketDataServiceProtocol {
         case .m15: return 15
         case .h1: return 60
         case .h4: return 240
+        case .d1: return 1440
         }
     }
     
@@ -331,6 +333,7 @@ final class MarketDataService: ObservableObject, MarketDataServiceProtocol {
         case .m15: return 900 // 15 minutes
         case .h1: return 3600 // 1 hour
         case .h4: return 14400 // 4 hours
+        case .d1: return 86400 // 1 day
         }
     }
     
@@ -346,6 +349,7 @@ final class MarketDataService: ObservableObject, MarketDataServiceProtocol {
         case .m15: intervalSeconds = 900
         case .h1: intervalSeconds = 3600
         case .h4: intervalSeconds = 14400
+        case .d1: intervalSeconds = 86400
         }
         
         for i in 0..<count {

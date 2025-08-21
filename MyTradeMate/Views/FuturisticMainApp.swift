@@ -1,114 +1,19 @@
 import SwiftUI
-import Foundation
 
-// MARK: - Navigation Types
-enum NavigationDestination: Hashable {
-    case dashboard
-    case trades
-    case tradeDetail(String)
-    case pnl
-    case strategies
-    case strategyDetail(String)
-    case settings
-    case exchangeKeys
-    case exchangeKeyEdit(Exchange)
-    case about
-    
-    func hash(into hasher: inout Hasher) {
-        switch self {
-        case .dashboard:
-            hasher.combine(0)
-        case .trades:
-            hasher.combine(1)
-        case .tradeDetail(let id):
-            hasher.combine(2)
-            hasher.combine(id)
-        case .pnl:
-            hasher.combine(3)
-        case .strategies:
-            hasher.combine(4)
-        case .strategyDetail(let name):
-            hasher.combine(5)
-            hasher.combine(name)
-        case .settings:
-            hasher.combine(6)
-        case .exchangeKeys:
-            hasher.combine(7)
-        case .exchangeKeyEdit(let exchange):
-            hasher.combine(8)
-            hasher.combine(exchange)
-        case .about:
-            hasher.combine(9)
-        }
-    }
-    
-    static func == (lhs: NavigationDestination, rhs: NavigationDestination) -> Bool {
-        switch (lhs, rhs) {
-        case (.dashboard, .dashboard),
-             (.trades, .trades),
-             (.pnl, .pnl),
-             (.strategies, .strategies),
-             (.settings, .settings),
-             (.exchangeKeys, .exchangeKeys),
-             (.about, .about):
-            return true
-        case (.tradeDetail(let lhsId), .tradeDetail(let rhsId)):
-            return lhsId == rhsId
-        case (.strategyDetail(let lhsName), .strategyDetail(let rhsName)):
-            return lhsName == rhsName
-        case (.exchangeKeyEdit(let lhsExchange), .exchangeKeyEdit(let rhsExchange)):
-            return lhsExchange == rhsExchange
-        default:
-            return false
-        }
-    }
-}
-
-enum AppTab: String, CaseIterable {
-    case dashboard = "Dashboard"
-    case trades = "Trades"
-    case pnl = "P&L"
-    case strategies = "Strategies"
-    case settings = "Settings"
-    case debug = "Debug"
-
-    var systemImage: String {
-        switch self {
-        case .dashboard: return "chart.line.uptrend.xyaxis"
-        case .trades: return "list.bullet.rectangle"
-        case .pnl: return "dollarsign.circle"
-        case .strategies: return "brain"
-        case .settings: return "gearshape"
-        case .debug: return "ladybug"
-        }
-    }
-}
-
-    // NavigationCoordinator moved to Core/NavigationCoordinator.swift
-
-struct RootTabs: View {
-    // Core services
-    @EnvironmentObject var settings: SettingsRepository
-    @EnvironmentObject var themeManager: ThemeManager
-    
-    // Managers
-    @EnvironmentObject var marketDataManager: MarketDataManager
-    @EnvironmentObject var signalManager: SignalManager
-    @EnvironmentObject var tradingManager: TradingManager
-    @EnvironmentObject var strategyManager: StrategyManager
-    @EnvironmentObject var regimeDetectionManager: RegimeDetectionManager
-    @EnvironmentObject var riskManager: RiskManager
-    @EnvironmentObject var pnlManager: PnLManager
-    
-    // View Models
-    @EnvironmentObject var dashboardVM: RefactoredDashboardVM
-    @EnvironmentObject var strategiesVM: RefactoredStrategiesVM
-    @EnvironmentObject var settingsVM: SettingsVM
-    @EnvironmentObject var tradesVM: TradesVM
-    @EnvironmentObject var pnlVM: PnLVM
-    
+struct FuturisticMainApp: View {
     @State private var selectedTab = 0
     @State private var aiPulse = false
+    @State private var showNotifications = false
+    @State private var notifications = 3
+    @State private var autoTradeEnabled = true
+    
+    // Environment objects
+    @EnvironmentObject var dashboardVM: RefactoredDashboardVM
+    @EnvironmentObject var strategiesVM: RefactoredStrategiesVM
+    @EnvironmentObject var tradesVM: TradesVM
+    @EnvironmentObject var pnlVM: PnLVM
+    @EnvironmentObject var settingsVM: SettingsVM
+    @EnvironmentObject var themeManager: ThemeManager
     
     let tabs = [
         (icon: "house.fill", title: "Dashboard", id: 0),
@@ -117,7 +22,7 @@ struct RootTabs: View {
         (icon: "chart.bar.fill", title: "Analytics", id: 3),
         (icon: "gearshape.fill", title: "Settings", id: 4)
     ]
-
+    
     var body: some View {
         ZStack {
             // Neural Background
@@ -131,23 +36,17 @@ struct RootTabs: View {
                 ZStack {
                     switch selectedTab {
                     case 0:
-                        DashboardView()
-                            .environmentObject(dashboardVM)
+                        FuturisticDashboardContent()
                     case 1:
-                        TradesView()
-                            .environmentObject(tradesVM)
+                        FuturisticTradingContent()
                     case 2:
-                        StrategiesView()
-                            .environmentObject(strategiesVM)
+                        FuturisticBotsContent()
                     case 3:
-                        PnLDetailView()
-                            .environmentObject(pnlVM)
+                        FuturisticAnalyticsContent()
                     case 4:
-                        SettingsView()
-                            .environmentObject(settingsVM)
+                        FuturisticSettingsContent()
                     default:
-                        DashboardView()
-                            .environmentObject(dashboardVM)
+                        FuturisticDashboardContent()
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -162,19 +61,7 @@ struct RootTabs: View {
             }
         }
         .ignoresSafeArea()
-        .onAppear {
-            aiPulse = true
-        }
-        .onChange(of: settings.tradingMode) { _, newMode in
-            Log.settings.info("[SETTINGS] Trading mode changed to \(newMode)")
-        }
-        .onChange(of: settings.preferredTheme) { _, newTheme in
-            Log.settings.info("[SETTINGS] Theme changed to \(newTheme)")
-            themeManager.setTheme(newTheme)
-        }
-        .onChange(of: settings.verboseLogging) { _, isVerbose in
-            Log.settings.info("[SETTINGS] Verbose logging \(isVerbose ? "enabled" : "disabled")")
-        }
+        .preferredColorScheme(.dark) // Force dark mode for neural theme
     }
 }
 
@@ -223,6 +110,40 @@ struct NeuralBackgroundView: View {
                         value: animate
                     )
             }
+            
+            // Neural network connection lines
+            Canvas { context, size in
+                for _ in 0..<15 {
+                    let startX = CGFloat.random(in: 0...size.width)
+                    let startY = CGFloat.random(in: 0...size.height)
+                    let endX = CGFloat.random(in: 0...size.width)
+                    let endY = CGFloat.random(in: 0...size.height)
+                    
+                    var path = Path()
+                    path.move(to: CGPoint(x: startX, y: startY))
+                    path.addLine(to: CGPoint(x: endX, y: endY))
+                    
+                    context.stroke(
+                        path,
+                        with: .linearGradient(
+                            Gradient(colors: [
+                                Color(red: 59/255, green: 130/255, blue: 246/255).opacity(0.1),
+                                Color.clear,
+                                Color(red: 147/255, green: 51/255, blue: 234/255).opacity(0.1)
+                            ]),
+                            startPoint: CGPoint(x: startX, y: startY),
+                            endPoint: CGPoint(x: endX, y: endY)
+                        ),
+                        lineWidth: 1
+                    )
+                }
+            }
+            .opacity(animate ? 0.6 : 0.3)
+            .animation(
+                Animation.easeInOut(duration: 6)
+                    .repeatForever(autoreverses: true),
+                value: animate
+            )
         }
         .onAppear {
             animate = true
@@ -363,6 +284,90 @@ struct FuturisticHeaderView: View {
             .padding(.horizontal, 20)
             .padding(.top, 16)
             .padding(.bottom, 12)
+            
+            // AI Status Bar
+            HStack(spacing: 20) {
+                // AI Systems Status
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(Color(red: 34/255, green: 197/255, blue: 94/255))
+                        .frame(width: 8, height: 8)
+                        .scaleEffect(aiPulse ? 1.3 : 1.0)
+                        .animation(
+                            Animation.easeInOut(duration: 1.0)
+                                .repeatForever(autoreverses: true),
+                            value: aiPulse
+                        )
+                    
+                    Text("AI Systems:")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.white.opacity(0.8))
+                    
+                    Text("Online")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(Color(red: 34/255, green: 197/255, blue: 94/255))
+                }
+                
+                // Neural Processing
+                HStack(spacing: 6) {
+                    Image(systemName: "cpu")
+                        .font(.system(size: 12))
+                        .foregroundColor(Color(red: 59/255, green: 130/255, blue: 246/255))
+                    
+                    Text("Neural: 94.2%")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.white)
+                }
+                
+                // Processing Speed
+                HStack(spacing: 6) {
+                    Image(systemName: "bolt.fill")
+                        .font(.system(size: 12))
+                        .foregroundColor(Color(red: 245/255, green: 158/255, blue: 11/255))
+                    
+                    Text("0.003ms")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.white)
+                }
+                
+                Spacer()
+                
+                // Auto Trade Toggle
+                HStack(spacing: 8) {
+                    Text("Auto Trade")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.white.opacity(0.8))
+                    
+                    Button(action: { 
+                        withAnimation(.spring()) {
+                            autoTradeEnabled.toggle()
+                        }
+                    }) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(autoTradeEnabled ? Color(red: 34/255, green: 197/255, blue: 94/255) : Color.gray.opacity(0.5))
+                                .frame(width: 48, height: 24)
+                            
+                            Circle()
+                                .fill(.white)
+                                .frame(width: 20, height: 20)
+                                .offset(x: autoTradeEnabled ? 12 : -12)
+                                .animation(.spring(), value: autoTradeEnabled)
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 10)
+            .background(
+                Rectangle()
+                    .fill(Color.black.opacity(0.2))
+                    .background(.ultraThinMaterial)
+                    .overlay(
+                        Rectangle()
+                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                    )
+            )
         }
         .background(
             Rectangle()
@@ -489,8 +494,52 @@ struct FuturisticTabItem: View {
     }
 }
 
-struct RootTabs_Previews: PreviewProvider {
-    static var previews: some View {
-        RootTabs()
+// MARK: - Content Views (Placeholder implementations using existing views)
+struct FuturisticDashboardContent: View {
+    @EnvironmentObject var dashboardVM: RefactoredDashboardVM
+    
+    var body: some View {
+        DashboardView()
+            .environmentObject(dashboardVM)
     }
+}
+
+struct FuturisticTradingContent: View {
+    @EnvironmentObject var tradesVM: TradesVM
+    
+    var body: some View {
+        TradesView()
+            .environmentObject(tradesVM)
+    }
+}
+
+struct FuturisticBotsContent: View {
+    @EnvironmentObject var strategiesVM: RefactoredStrategiesVM
+    
+    var body: some View {
+        StrategiesView()
+            .environmentObject(strategiesVM)
+    }
+}
+
+struct FuturisticAnalyticsContent: View {
+    @EnvironmentObject var pnlVM: PnLVM
+    
+    var body: some View {
+        PnLDetailView()
+            .environmentObject(pnlVM)
+    }
+}
+
+struct FuturisticSettingsContent: View {
+    @EnvironmentObject var settingsVM: SettingsVM
+    
+    var body: some View {
+        SettingsView()
+            .environmentObject(settingsVM)
+    }
+}
+
+#Preview {
+    FuturisticMainApp()
 }

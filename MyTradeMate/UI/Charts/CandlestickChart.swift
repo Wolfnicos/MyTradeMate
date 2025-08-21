@@ -319,7 +319,15 @@ struct CandlestickChart: View {
                                         chartScale = max(0.5, min(3.0, value))
                                     }
                                 }
-                                .onEnded { _ in
+                                .onEnded { value in
+                                    // Track telemetry for zoom interactions
+                                    AnalyticsService.shared.track("chart_zoom", properties: [
+                                        "category": "chart_interaction",
+                                        "timeframe": timeframe.displayName,
+                                        "final_scale": value,
+                                        "gesture_type": "pinch"
+                                    ])
+                                    
                                     withAnimation(.easeOut(duration: 0.3)) {
                                         // Snap to reasonable zoom levels
                                         if chartScale < 0.7 {
@@ -569,6 +577,14 @@ struct CandlestickChart: View {
             let clampedIndex = max(0, min(candles.count - 1, index))
             selectedCandle = candles[clampedIndex]
             
+            // Track telemetry for chart interactions
+            AnalyticsService.shared.track("chart_candle_selected", properties: [
+                "category": "chart_interaction",
+                "timeframe": timeframe.displayName,
+                "candle_index": clampedIndex,
+                "total_candles": candles.count
+            ])
+            
             // Haptic feedback
             if AppSettings.shared.haptics {
                 Haptics.playSelection()
@@ -609,6 +625,8 @@ struct CandlestickChart: View {
         case .h1:
             formatter.dateFormat = "HH:mm"
         case .h4:
+            formatter.dateFormat = "MMM d"
+        case .d1:
             formatter.dateFormat = "MMM d"
         }
         return formatter.string(from: date)
@@ -680,6 +698,7 @@ extension Timeframe {
         case .m15: return "HH:mm"        // 15-minute timeframe
         case .h1: return "HH:mm"
         case .h4: return "MMM dd HH:mm"
+        case .d1: return "MMM dd"        // Daily timeframe
         }
     }
 }

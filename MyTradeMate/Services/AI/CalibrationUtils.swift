@@ -176,14 +176,14 @@ public class AICalibrationEvaluator {
         )
     }
     
-    /// Calibrate raw model confidence using both methods and return ensemble
-    public func calibrate(rawConfidence: Double, method: CalibrationMethod = .ensemble) -> Double {
+    /// Calibrate raw model confidence using both methods and return Direct Fusion result
+    public func calibrate(rawConfidence: Double, method: CalibrationMethod = .directFusion) -> Double {
         switch method {
         case .temperature:
             return temperatureScaler(rawConfidence)
         case .isotonic:
             return isotonicCalibrator(rawConfidence)
-        case .ensemble:
+        case .directFusion:
             // Weighted combination of both methods
             let tempScore = temperatureScaler(rawConfidence)
             let isoScore = isotonicCalibrator(rawConfidence)
@@ -197,5 +197,5 @@ public class AICalibrationEvaluator {
 public enum CalibrationMethod: String, CaseIterable {
     case temperature = "temperature"
     case isotonic = "isotonic"
-    case ensemble = "ensemble"
+    case directFusion = "directfusion"
 }

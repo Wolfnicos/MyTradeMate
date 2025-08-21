@@ -79,6 +79,15 @@ public final class TradingEngine: ObservableObject {
             // Update P&L
             await updatePnL(result)
             
+            // Track telemetry for manual trades
+            AnalyticsService.shared.track("manual_trade_executed", properties: [
+                "category": "trading",
+                "side": orderRequest.side.rawValue,
+                "amount": actualAmount,
+                "trading_mode": getCurrentTradingMode().rawValue,
+                "success": true
+            ])
+            
             lastOrderResult = result
             logger.info("Order placed successfully: \(result.orderId)")
             
@@ -87,6 +96,17 @@ public final class TradingEngine: ObservableObject {
         } catch {
             logger.error("Order placement failed: \(error)")
             errorManager.handle(error, context: "TradingEngine.placeOrder")
+            
+            // Track telemetry for failed trades
+            AnalyticsService.shared.track("manual_trade_failed", properties: [
+                "category": "trading",
+                "side": orderRequest.side.rawValue,
+                "amount": actualAmount,
+                "trading_mode": getCurrentTradingMode().rawValue,
+                "error": error.localizedDescription,
+                "success": false
+            ])
+            
             throw error
         }
     }
@@ -130,13 +150,45 @@ public final class TradingEngine: ObservableObject {
         let orderId = UUID().uuidString
         let fillPrice = getSimulatedPrice(request.pair.symbol)
         
-        return OrderResult(
+        // Emit order placed event
+        NotificationCenter.default.post(
+            name: .orderPlaced,
+            object: nil,
+            userInfo: [
+                "orderId": orderId,
+                "pair": request.pair.symbol,
+                "side": request.side.rawValue,
+                "amount": request.amountValue,
+                "timestamp": Date()
+            ]
+        )
+        
+        // Simulate order fill after a short delay
+        try await Task.sleep(nanoseconds: 100_000_000) // 0.1 second
+        
+        let result = OrderResult(
             orderId: orderId,
             status: .filled,
             filledQuantity: request.amountValue,
             filledPrice: fillPrice,
             timestamp: Date()
         )
+        
+        // Emit order filled event
+        NotificationCenter.default.post(
+            name: .orderFilled,
+            object: nil,
+            userInfo: [
+                "orderId": orderId,
+                "pair": request.pair.symbol,
+                "side": request.side.rawValue,
+                "filledQuantity": result.filledQuantity,
+                "filledPrice": result.filledPrice,
+                "timestamp": result.timestamp
+            ]
+        )
+        
+        return result
     }
     
     private func placePaperOrder(_ request: OrderRequest) async throws -> OrderResult {
@@ -144,15 +196,46 @@ public final class TradingEngine: ObservableObject {
             throw TradingError.invalidOrderParameters
         }
         
+        let orderId = UUID().uuidString
+        
+        // Emit order placed event
+        NotificationCenter.default.post(
+            name: .orderPlaced,
+            object: nil,
+            userInfo: [
+                "orderId": orderId,
+                "pair": request.pair.symbol,
+                "side": request.side.rawValue,
+                "amount": request.amountValue,
+                "timestamp": Date()
+            ]
+        )
+        
         let orderFill = try await paperClient.placeMarketOrder(request)
         
-        return OrderResult(
+        let result = OrderResult(
             orderId: orderFill.id.uuidString,
             status: .filled,
             filledQuantity: orderFill.quantity,
             filledPrice: orderFill.price,
             timestamp: orderFill.timestamp
         )
+        
+        // Emit order filled event
+        NotificationCenter.default.post(
+            name: .orderFilled,
+            object: nil,
+            userInfo: [
+                "orderId": result.orderId,
+                "pair": request.pair.symbol,
+                "side": request.side.rawValue,
+                "filledQuantity": result.filledQuantity,
+                "filledPrice": result.filledPrice,
+                "timestamp": result.timestamp
+            ]
+        )
+        
+        return result
     }
     
     private func placeLiveOrder(_ request: OrderRequest) async throws -> OrderResult {
@@ -172,6 +255,32 @@ public final class TradingEngine: ObservableObject {
         )
         
         await tradeStore.append(trade)
+        
+        // Emit trade executed event
+        NotificationCenter.default.post(
+            name: .tradeExecuted,
+            object: nil,
+            userInfo: [
+                "trade": trade,
+                "symbol": trade.symbol,
+                "side": trade.side.rawValue,
+                "quantity": trade.qty,
+                "price": trade.price,
+                "timestamp": trade.date
+            ]
+        )
+        
+        // Emit position updated event
+        NotificationCenter.default.post(
+            name: .positionUpdated,
+            object: nil,
+            userInfo: [
+                "symbol": request.pair.symbol,
+                "side": request.side.rawValue,
+                "quantity": result.filledQuantity,
+                "price": result.filledPrice
+            ]
+        )
     }
     
     private func updatePnL(_ result: OrderResult) async {
@@ -179,6 +288,16 @@ public final class TradingEngine: ObservableObject {
         // For now, use a simple PnL calculation
         let pnl = 0.0 // This would be calculated based on the trade
         await pnlManager.recordTrade(pnl: pnl)
+        
+        // Emit PnL updated event
+        NotificationCenter.default.post(
+            name: .pnlUpdated,
+            object: nil,
+            userInfo: [
+                "pnl": pnl,
+                "timestamp": Date()
+            ]
+        )
     }
     
     private func getSimulatedPrice(_ symbol: String) -> Double {
@@ -212,4 +331,14 @@ public struct OrderResult {
         self.filledPrice = filledPrice
         self.timestamp = timestamp
     }
+}
+
+// MARK: - Notification Names
+
+extension Notification.Name {
+    static let orderPlaced = Notification.Name("com.mytrademate.orderPlaced")
+    static let orderFilled = Notification.Name("com.mytrademate.orderFilled")
+    static let positionUpdated = Notification.Name("com.mytrademate.positionUpdated")
+    static let pnlUpdated = Notification.Name("com.mytrademate.pnlUpdated")
+    static let tradeExecuted = Notification.Name("com.mytrademate.tradeExecuted")
 }

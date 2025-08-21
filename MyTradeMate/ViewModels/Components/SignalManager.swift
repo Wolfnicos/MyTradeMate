@@ -126,7 +126,7 @@ final class SignalManager: ObservableObject {
                 maxRetries: 3
             )
             
-            // ✅ FIX: Get individual strategy signals instead of ensemble
+            // ✅ FIX: Get individual strategy signals for Direct Fusion
             let individualStrategySignals = await strategyManager.generateIndividualSignals(from: candles)
             
             // ✅ FIX: Use direct strategy signals for proper fusion

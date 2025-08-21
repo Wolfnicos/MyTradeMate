@@ -114,9 +114,9 @@ final class MarketDataManager: ObservableObject {
                 generateMockData()
                 Log.data.info("[MARKET] Loaded demo market data")
             } else {
-                // Load real market data
+                // Load real market data using MarketDataService
                 let marketData = try await marketDataService.fetchCandles(
-                    symbol: settings.selectedTradingPair.base.symbol,
+                    symbol: settings.selectedTradingPair.symbol,
                     timeframe: timeframe
                 )
                 

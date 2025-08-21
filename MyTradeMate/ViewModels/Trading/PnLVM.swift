@@ -19,6 +19,7 @@ final class PnLVM: ObservableObject {
     private var timer: AnyCancellable?
     private var rawHistory: [(Date, Double)] = []
     private let settings = AppSettings.shared
+    private var cancellables = Set<AnyCancellable>()
     
     var timeframeHours: Int {
         max(1, Int(timeframe.seconds / 3600))
@@ -29,6 +30,9 @@ final class PnLVM: ObservableObject {
         
         // Show loading state initially
         isLoading = true
+        
+        // Subscribe to trading events
+        subscribeToTradingEvents()
         
         // Initialize with some baseline data if history is empty
         if rawHistory.isEmpty {
@@ -294,5 +298,51 @@ final class PnLVM: ObservableObject {
             
             WidgetDataManager.shared.updateWidgetData(widgetData)
         }
+    }
+    
+    // MARK: - Event Subscriptions
+    
+    private func subscribeToTradingEvents() {
+        // Subscribe to order filled events
+        NotificationCenter.default.publisher(for: .orderFilled)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] notification in
+                // Refresh PnL when an order is filled
+                self?.refresh()
+            }
+            .store(in: &cancellables)
+        
+        // Subscribe to position updated events
+        NotificationCenter.default.publisher(for: .positionUpdated)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] notification in
+                // Refresh PnL when position changes
+                self?.refresh()
+            }
+            .store(in: &cancellables)
+        
+        // Subscribe to PnL updated events
+        NotificationCenter.default.publisher(for: .pnlUpdated)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] notification in
+                // Refresh display when PnL is updated
+                self?.refresh()
+            }
+            .store(in: &cancellables)
+        
+        // Subscribe to trade executed events
+        NotificationCenter.default.publisher(for: .tradeExecuted)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] notification in
+                // Update available symbols if needed
+                if let userInfo = notification.userInfo,
+                   let symbol = userInfo["symbol"] as? String {
+                    if !(self?.availableSymbols.contains(symbol) ?? true) {
+                        self?.availableSymbols.append(symbol)
+                    }
+                }
+                self?.refresh()
+            }
+            .store(in: &cancellables)
     }
 }

@@ -206,6 +206,4 @@ public enum PriceDirection {
 
 // MARK: - Notification Extensions
 
-extension Notification.Name {
-    static let tradeExecuted = Notification.Name("tradeExecuted")
-}
+// Notification extensions removed - using TradingEngine notifications instead

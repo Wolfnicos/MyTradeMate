@@ -474,7 +474,7 @@ struct SignalContentView: View {
         switch timeframe {
         case .h4:
             source = "4h Model"
-        case .m1, .m5, .m15, .h1:
+        case .m1, .m5, .m15, .h1, .d1:
             source = "Strategies"
         }
         

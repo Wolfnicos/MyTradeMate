@@ -4,7 +4,7 @@ import OSLog
 private let logger = os.Logger(subsystem: "com.mytrademate", category: "StrategyEngine")
 
 @MainActor
-public class EnsembleDecider {
+public class DirectFusionDecider {
     private var strategies: [Strategy] = []
     private let regimeDetector = RegimeDetector()
     
@@ -22,14 +22,14 @@ public class EnsembleDecider {
         ]
     }
     
-    public func decide(candles: [Candle], verboseLogging: Bool = false) -> EnsembleDecision {
+    public func decide(candles: [Candle], verboseLogging: Bool = false) -> DirectFusionDecision {
         guard candles.count >= 50 else {
-            return EnsembleDecision(
+            return DirectFusionDecision(
                 direction: .hold,
                 confidence: 0.0,
                 signals: [],
                 regime: .ranging,
-                reasoning: "Insufficient data for ensemble decision"
+                reasoning: "Insufficient data for Direct Fusion decision"
             )
         }
         
@@ -61,7 +61,7 @@ public class EnsembleDecider {
         }
         
         guard !signals.isEmpty && totalWeight > 0 else {
-            return EnsembleDecision(
+            return DirectFusionDecision(
                 direction: .hold,
                 confidence: 0.0,
                 signals: [],
@@ -112,11 +112,11 @@ public class EnsembleDecider {
         }
         
         if verboseLogging {
-            logger.info("Ensemble decision: \(String(describing: direction)) @ \(String(format: "%.2f", confidence * 100))%")
+            logger.info("Direct Fusion decision: \(String(describing: direction)) @ \(String(format: "%.2f", confidence * 100))%")
             logger.info("Scores - Buy: \(String(format: "%.2f", buyScore)), Sell: \(String(format: "%.2f", sellScore)), Hold: \(String(format: "%.2f", holdScore))")
         }
         
-        return EnsembleDecision(
+        return DirectFusionDecision(
             direction: direction,
             confidence: confidence,
             signals: signals,
@@ -161,8 +161,8 @@ public class EnsembleDecider {
     }
 }
 
-// MARK: - Ensemble Decision
-public struct EnsembleDecision {
+// MARK: - Direct Fusion Decision
+public struct DirectFusionDecision {
     public let direction: StrategySignal.Direction
     public let confidence: Double
     public let signals: [StrategySignal]

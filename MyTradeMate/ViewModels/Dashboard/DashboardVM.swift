@@ -116,7 +116,7 @@ final class DashboardVM: ObservableObject {
     private var refreshTimer: Timer?
     private var lastPredictionTime: Date = .distantPast
     private var lastThrottleLog: Date = .distantPast
-    private var lastStrategySignal: EnsembleSignal?
+    private var lastStrategySignal: DirectFusionSignal?
     
     // Manual trading debounce (>=500ms as specified)
     private var lastManualTradeTime: Date = .distantPast
@@ -740,7 +740,7 @@ final class DashboardVM: ObservableObject {
             switch timeframe {
             case .h4:
                 source = "4h Model"
-            case .m1, .m5, .m15, .h1:
+            case .m1, .m5, .m15, .h1, .d1:
                 source = "Strategies"
             }
             
@@ -910,7 +910,7 @@ final class DashboardVM: ObservableObject {
                 return getStrategySignal(source: "4h Model (fallback)")
             }
             
-        case .m1, .m5, .m15, .h1:
+        case .m1, .m5, .m15, .h1, .d1:
             // Short timeframes always use strategies (per specification)
             Log.routing.info("[ROUTING] timeframe=\(timeframe.rawValue) pair=\(selectedTradingPair.symbol) source=Strategies")
             return getStrategySignal(source: "Strategies")
@@ -981,6 +981,7 @@ final class DashboardVM: ObservableObject {
         case .m15: return .h1  // Use h1 model for m15
         case .h1: return .h1
         case .h4: return .h4
+        case .d1: return .h4  // Use h4 model for d1
         }
     }
     

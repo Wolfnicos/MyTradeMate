@@ -98,6 +98,50 @@ final class TradingManager: ObservableObject {
         }
     }
     
+    /// Execute trade with proper parameters
+    func executeTrade(
+        side: TradeSide,
+        amount: Double,
+        price: Double,
+        orderType: OrderType,
+        tradingPair: TradingPair
+    ) async {
+        do {
+            // Use TradingEngine for order placement
+            let result = try await TradingEngine.shared.placeOrder(
+                symbol: tradingPair.symbol,
+                side: side == .buy ? .buy : .sell,
+                amount: amount,
+                amountMode: .fixedNotional,
+                quoteCurrency: .USD
+            )
+            
+            // Show success toast
+            await MainActor.run {
+                if let toastManager = getToastManager() {
+                    toastManager.showTradeExecuted(
+                        symbol: tradingPair.symbol,
+                        side: side.rawValue
+                    )
+                }
+            }
+            
+            logger.info("✅ Order executed: \(side.rawValue) \(amount) \(tradingPair.symbol) at \(result.filledPrice)")
+            
+        } catch {
+            // Handle error
+            await MainActor.run {
+                errorManager.handle(error, context: "Trade execution")
+                
+                if let toastManager = getToastManager() {
+                    toastManager.showTradeExecutionFailed(error: error.localizedDescription)
+                }
+            }
+            
+            logger.error("❌ Order execution failed: \(error.localizedDescription)")
+        }
+    }
+    
     /// Execute a trade order with proper error handling
     func executeTradeOrder(_ request: TradeRequest) async {
         do {

@@ -1,42 +1,18 @@
 import SwiftUI
-
-// MARK: - Settings Toggle Styles (using standardized components from DesignSystem)
-
-// MARK: - Design System Extensions (Deprecated - use Typography from DesignSystem)
-@available(*, deprecated, message: "Use Typography from DesignSystem instead")
-extension Font {
-    static let settingsTitle = Typography.title2
-    static let settingsHeadline = Typography.headline
-    static let settingsBody = Typography.body
-    static let settingsCaption = Typography.caption1Medium
-    static let settingsFootnote = Typography.footnote
-}
-
-@available(*, deprecated, message: "Use TextColor from DesignSystem instead")
-extension Color {
-    static let settingsPrimary = Color.primary
-    static let settingsSecondary = Color.secondary
-    static let settingsTertiary = Color(.tertiaryLabel)
-    static let settingsBackground = Color(.systemBackground)
-    static let settingsGroupedBackground = Color(.systemGroupedBackground)
-    static let settingsSecondaryBackground = Color(.secondarySystemBackground)
-}
-
-// Using Spacing from DesignSystem.swift
-
-// HelpIconView is defined in Views/Components/HelpIconView.swift
+import UIKit
 
 struct SettingsView: View {
     @StateObject private var appSettings = AppSettings.shared
     @ObservedObject private var settingsRepo = SettingsRepository.shared
     @EnvironmentObject private var navigationCoordinator: NavigationCoordinator
     @EnvironmentObject private var toastManager: ToastManager
+    @EnvironmentObject private var themeManager: ThemeManager
     @State private var searchText = ""
     @State private var isExporting = false
     @State private var showShareSheet = false
     @State private var exportedLogURL: URL?
     @State private var showWidgetConfiguration = false
-    @State private var widgetRefreshStats: (lastRefresh: Date?, canRefresh: Bool, status: WidgetRefreshStatus) = (nil, true, .idle)
+    @State private var widgetRefreshStats: (lastRefresh: Date?, canRefresh: Bool, status: SettingsWidgetRefreshStatus) = (nil, true, .idle)
     
     // MARK: - Computed Properties
     private var filteredSections: [SettingsSection] {
@@ -67,220 +43,380 @@ struct SettingsView: View {
     
     var body: some View {
         NavigationStack {
-            List {
-                ForEach(filteredSections, id: \.title) { section in
-                    Section {
-                        ForEach(section.items, id: \.title) { item in
-                            SettingsRowView(item: item)
+            ZStack {
+                // Premium animated background
+                themeManager.backgroundGradient
+                    .ignoresSafeArea()
+                
+                ScrollView {
+                    LazyVStack(spacing: Spacing.xl) {
+                        
+                        // Modern Header
+                        headerSection()
+                        
+                        // Search Bar
+                        searchSection()
+                        
+                        // Settings Sections
+                        ForEach(filteredSections) { section in
+                            settingsSection(section)
                         }
-                    } header: {
-                        HStack(spacing: Spacing.sm) {
-                            Image(systemName: section.icon)
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(.accentColor)
-                                .frame(width: 20)
-                            
-                            Text(section.title)
-                                .font(Typography.headline)
-                                .foregroundColor(TextColor.primary)
-                        }
-                        .padding(.top, Spacing.xs)
-                    } footer: {
-                        if !section.footer.isEmpty {
-                            Text(section.footer)
-                                .font(Typography.footnote)
-                                .foregroundColor(TextColor.tertiary)
-                                .padding(.horizontal, Spacing.xs)
-                        }
+                        
+                        // Trading Mode Section
+                        tradingModeSection()
+                        
+                        // App Info Footer
+                        appInfoSection()
+                        
+                        // Bottom padding for tab bar
+                        Color.clear
+                            .frame(height: 100)
                     }
+                    .padding(.horizontal, Spacing.xl)
                 }
+                .scrollIndicators(.hidden)
             }
-            .listStyle(.insetGrouped)
-            .searchable(text: $searchText, prompt: "Search settings...")
-            .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarHidden(true)
         }
-        .preferredColorScheme(appSettings.darkMode ? .dark : .light)
         .sheet(isPresented: $showShareSheet) {
             if let url = exportedLogURL {
                 ShareSheet(items: [url])
             }
         }
-        .sheet(isPresented: $showWidgetConfiguration) {
-            WidgetConfigurationView()
-        }
-        .onAppear {
+        .refreshable {
             updateWidgetRefreshStats()
         }
     }
     
-    // MARK: - Settings Sections
+    // MARK: - Header Section
+    @ViewBuilder
+    private func headerSection() -> some View {
+        VStack(spacing: Spacing.lg) {
+            HStack {
+                VStack(alignment: .leading, spacing: Spacing.xs) {
+                    Text("Settings")
+                        .font(Typography.title1)
+                        .foregroundColor(TextColor.primary)
+                    
+                    Text("Configure MyTradeMate")
+                        .font(Typography.subheadline)
+                        .foregroundColor(TextColor.secondary)
+                }
+                
+                Spacer()
+                
+                // Trading Mode Indicator
+                tradingModeIndicator()
+            }
+            .padding(.top, 60) // Safe area compensation
+        }
+    }
+    
+    // MARK: - Search Section
+    @ViewBuilder
+    private func searchSection() -> some View {
+        HStack {
+            Image(systemName: "magnifyingglass")
+                .foregroundColor(TextColor.secondary)
+            
+            TextField("Search settings...", text: $searchText)
+                .font(Typography.body)
+                .foregroundColor(TextColor.primary)
+            
+            if !searchText.isEmpty {
+                Button(action: { searchText = "" }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(TextColor.secondary)
+                }
+            }
+        }
+        .padding(.horizontal, Spacing.md)
+        .padding(.vertical, Spacing.sm)
+        .background(
+            RoundedRectangle(cornerRadius: CornerRadius.md)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: CornerRadius.md)
+                        .stroke(Brand.blue.opacity(0.2), lineWidth: 1)
+                )
+        )
+    }
+    
+    // MARK: - Settings Section
+    @ViewBuilder
+    private func settingsSection(_ section: SettingsSection) -> some View {
+        VStack(alignment: .leading, spacing: Spacing.md) {
+            // Section Header
+            HStack {
+                Image(systemName: section.icon)
+                    .font(Typography.headline)
+                    .foregroundColor(Brand.blue)
+                
+                Text(section.title)
+                    .font(Typography.headline)
+                    .foregroundColor(TextColor.primary)
+                
+                Spacer()
+            }
+            .padding(.horizontal, Spacing.lg)
+            .padding(.top, Spacing.md)
+            
+            // Section Items
+            VStack(spacing: 0) {
+                ForEach(section.items) { item in
+                    settingsItem(item)
+                    
+                    if item.id != section.items.last?.id {
+                        Divider()
+                            .padding(.leading, Spacing.xl)
+                    }
+                }
+            }
+            .background(.ultraThinMaterial)
+            .cornerRadius(CornerRadius.lg)
+            
+            // Section Footer
+            if !section.footer.isEmpty {
+                Text(section.footer)
+                    .font(Typography.caption1)
+                    .foregroundColor(TextColor.tertiary)
+                    .padding(.horizontal, Spacing.lg)
+            }
+        }
+    }
+    
+    // MARK: - Settings Item
+    @ViewBuilder
+    private func settingsItem(_ item: SettingsItem) -> some View {
+        HStack(spacing: Spacing.md) {
+            VStack(alignment: .leading, spacing: Spacing.xs) {
+                Text(item.title)
+                    .font(Typography.body)
+                    .foregroundColor(TextColor.primary)
+                
+                if !item.description.isEmpty {
+                    Text(item.description)
+                        .font(Typography.caption1)
+                        .foregroundColor(TextColor.secondary)
+                }
+            }
+            
+            Spacer()
+            
+            // Control
+            settingsControl(for: item)
+        }
+        .padding(.horizontal, Spacing.lg)
+        .padding(.vertical, Spacing.sm)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            handleItemTap(item)
+        }
+    }
+    
+    // MARK: - Settings Control
+    @ViewBuilder
+    private func settingsControl(for item: SettingsItem) -> some View {
+        switch item.type {
+        case .toggle(let binding):
+            Toggle("", isOn: binding)
+                .toggleStyle(ModernToggleStyle())
+        
+        case .button(let action):
+            Button(action: action) {
+                Image(systemName: "chevron.right")
+                    .font(Typography.caption1)
+                    .foregroundColor(TextColor.secondary)
+            }
+        
+        case .picker(let options, let selection):
+            Picker("", selection: selection) {
+                ForEach(options, id: \.self) { option in
+                    Text(option).tag(option)
+                }
+            }
+            .pickerStyle(MenuPickerStyle())
+        
+        case .slider(let binding, let range):
+            Slider(value: binding, in: range)
+                .accentColor(Brand.blue)
+                .frame(width: 100)
+        
+        case .info(let text):
+            Text(text)
+                .font(Typography.caption1)
+                .foregroundColor(TextColor.secondary)
+        }
+    }
+    
+    // MARK: - Trading Mode Section
+    @ViewBuilder
+    private func tradingModeSection() -> some View {
+        VStack(alignment: .leading, spacing: Spacing.md) {
+            HStack {
+                Image(systemName: "chart.line.uptrend.xyaxis")
+                    .font(Typography.headline)
+                    .foregroundColor(Brand.blue)
+                
+                Text("Trading Mode")
+                    .font(Typography.headline)
+                    .foregroundColor(TextColor.primary)
+                
+                Spacer()
+            }
+            .padding(.horizontal, Spacing.lg)
+            
+            HStack(spacing: Spacing.sm) {
+                ForEach(TradingMode.allCases, id: \.self) { mode in
+                    tradingModeCard(mode)
+                }
+            }
+            .padding(.horizontal, Spacing.lg)
+        }
+        .padding(.vertical, Spacing.md)
+        .background(.ultraThinMaterial)
+        .cornerRadius(CornerRadius.lg)
+    }
+    
+    // MARK: - Trading Mode Card
+    @ViewBuilder
+    private func tradingModeCard(_ mode: TradingMode) -> some View {
+        let isSelected = settingsRepo.tradingMode == mode
+        let titleColor: Color = isSelected ? .white : TextColor.primary
+        let descriptionColor: Color = isSelected ? .white.opacity(0.8) : TextColor.secondary
+        let backgroundColor: LinearGradient = isSelected ? themeManager.primaryGradient : LinearGradient(colors: [Color.clear], startPoint: .top, endPoint: .bottom)
+        let borderColor = isSelected ? Color.clear : Brand.blue.opacity(0.2)
+        
+        VStack(spacing: Spacing.xs) {
+            Text(mode.title)
+                .font(Typography.callout)
+                .fontWeight(isSelected ? .semibold : .regular)
+                .foregroundColor(titleColor)
+            
+            Text(mode.description)
+                .font(Typography.caption1)
+                .foregroundColor(descriptionColor)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, Spacing.sm)
+        .padding(.vertical, Spacing.md)
+        .background(
+            RoundedRectangle(cornerRadius: CornerRadius.md)
+                .fill(backgroundColor)
+                .overlay(
+                    RoundedRectangle(cornerRadius: CornerRadius.md)
+                        .stroke(borderColor, lineWidth: 1)
+                )
+        )
+        .onTapGesture {
+            withAnimation(.spring()) {
+                settingsRepo.tradingMode = mode
+            }
+        }
+    }
+    
+    // MARK: - App Info Section
+    @ViewBuilder
+    private func appInfoSection() -> some View {
+        VStack(spacing: Spacing.sm) {
+            Text("MyTradeMate Pro")
+                .font(Typography.headline)
+                .foregroundColor(TextColor.primary)
+            
+            Text("Version \(appVersion)")
+                .font(Typography.caption1)
+                .foregroundColor(TextColor.secondary)
+        }
+        .padding(Spacing.lg)
+        .background(.ultraThinMaterial)
+        .cornerRadius(CornerRadius.md)
+    }
+    
+    // MARK: - Trading Mode Indicator
+    @ViewBuilder
+    private func tradingModeIndicator() -> some View {
+        HStack(spacing: Spacing.xs) {
+            Circle()
+                .fill(tradingModeColor)
+                .frame(width: 8, height: 8)
+            
+            Text(settingsRepo.tradingMode.title.uppercased())
+                .font(Typography.caption1)
+                .fontWeight(.medium)
+                .foregroundColor(tradingModeColor)
+        }
+        .padding(.horizontal, Spacing.sm)
+        .padding(.vertical, Spacing.xs)
+        .background(
+            Capsule()
+                .fill(.ultraThinMaterial)
+        )
+    }
+    
+    // MARK: - Helper Properties
+    private var appVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
+    }
+    
+    private var tradingModeColor: Color {
+        switch settingsRepo.tradingMode {
+        case .live: return Accent.green
+        case .paper: return Accent.yellow
+        case .demo: return Brand.blue
+        }
+    }
+    
+    // MARK: - Helper Methods
+    private func handleItemTap(_ item: SettingsItem) {
+        switch item.type {
+        case .button(let action):
+            action()
+        default:
+            break
+        }
+    }
+    
+    private func updateWidgetRefreshStats() {
+        // Update widget refresh statistics
+        widgetRefreshStats.lastRefresh = Date()
+        widgetRefreshStats.status = .refreshing
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            widgetRefreshStats.status = .success
+        }
+    }
+}
+
+// MARK: - Settings Section Data
+extension SettingsView {
     private var tradingSection: SettingsSection {
         SettingsSection(
             title: "Trading",
             icon: "chart.line.uptrend.xyaxis",
-            footer: "Configure trading behavior, market data sources, and strategy settings. Demo Mode is recommended for new users to test strategies safely.",
+            footer: "Configure trading parameters and risk management",
             items: [
                 SettingsItem(
-                    title: "Trading Mode",
-                    description: "Select Demo, Paper, or Live trading mode",
-                    view: AnyView(tradingModeSelector)
-                ),
-                SettingsItem(
                     title: "Auto Trading",
-                    description: "Allow AI strategies to automatically place trades when conditions are met. Requires valid API keys and live mode.",
-                    view: AnyView(
-                        SettingsToggleRow(
-                            title: "Auto Trading",
-                            description: "Allow AI strategies to automatically place trades when conditions are met. Requires valid API keys and live mode.",
-                            helpText: "Auto Trading allows the AI to execute trades automatically based on strategy signals. This requires:\n\n• Valid exchange API keys\n• Live trading mode enabled\n• Sufficient account balance\n\nThe AI will place buy/sell orders when conditions are met. Always monitor your positions when auto trading is enabled.",
-                            isOn: $appSettings.autoTrading,
-                            style: .success
-                        )
-                    )
+                    description: "Enable automatic trade execution",
+                    type: .toggle($settingsRepo.autoTradingEnabled)
                 ),
                 SettingsItem(
                     title: "Confirm Trades",
-                    description: "Show confirmation dialog before placing any trade. Recommended for beginners and live trading.",
-                    view: AnyView(
-                        SettingsToggleRow(
-                            title: "Confirm Trades",
-                            description: "Show confirmation dialog before placing any trade. Recommended for beginners and live trading.",
-                            isOn: $appSettings.confirmTrades
-                        )
-                    )
+                    description: "Show confirmation dialog before executing trades",
+                    type: .toggle($settingsRepo.confirmTrades)
                 ),
                 SettingsItem(
-                    title: "Live Market Data",
-                    description: "Connect to real-time exchange data feeds. Disable to use cached data and reduce API usage.",
-                    view: AnyView(
-                        SettingsToggleRow(
-                            title: "Live Market Data",
-                            description: "Connect to real-time exchange data feeds. Disable to use cached data and reduce API usage.",
-                            helpText: "Live Market Data connects to real-time exchange feeds for the most current prices and market information.\n\nWhen enabled:\n• Real-time price updates\n• Current market conditions\n• Higher API usage\n\nWhen disabled:\n• Uses cached/historical data\n• Reduced API calls\n• May affect trading accuracy",
-                            isOn: $appSettings.liveMarketData,
-                            style: .default
-                        )
-                    )
+                    title: "Paper Trading",
+                    description: "Use simulated trading instead of real money",
+                    type: .toggle($settingsRepo.paperTrading)
                 ),
                 SettingsItem(
-                    title: "Trading Pairs",
-                    description: "Manage available trading pairs and set defaults. Now includes DOGE, SOL, and AVAX.",
-                    view: AnyView(
-                        VStack(alignment: .leading, spacing: Spacing.sm) {
-                            HStack {
-                                Text("Available Trading Pairs")
-                                    .font(Typography.body)
-                                    .fontWeight(.medium)
-                                    .foregroundColor(TextColor.primary)
-                                
-                                Spacer()
-                                
-                                Text("\(TradingPair.popular.count) pairs")
-                                    .font(Typography.caption1)
-                                    .foregroundColor(TextColor.secondary)
-                            }
-                            
-                            LazyVGrid(columns: [
-                                GridItem(.flexible()),
-                                GridItem(.flexible()),
-                                GridItem(.flexible())
-                            ], spacing: Spacing.xs) {
-                                ForEach(TradingPair.popular, id: \.symbol) { pair in
-                                    HStack(spacing: Spacing.xs) {
-                                        Text(pair.base.symbol)
-                                            .font(.system(size: 11, weight: .semibold))
-                                            .foregroundColor(.primary)
-                                        
-                                        Text("/")
-                                            .font(.system(size: 10))
-                                            .foregroundColor(.secondary)
-                                        
-                                        Text(pair.quote.rawValue)
-                                            .font(.system(size: 10))
-                                            .foregroundColor(.secondary)
-                                    }
-                                    .padding(.horizontal, Spacing.xs)
-                                    .padding(.vertical, 2)
-                                    .background(Color(.quaternarySystemFill))
-                                    .cornerRadius(4)
-                                }
-                            }
-                        }
-                        .padding(.vertical, Spacing.xs)
-                    )
-                ),
-                SettingsItem(
-                    title: "Timeframe Support", 
-                    description: "Now supports 1m, 5m, 15m, 1h, and 4h timeframes for comprehensive market analysis",
-                    view: AnyView(
-                        VStack(alignment: .leading, spacing: Spacing.sm) {
-                            HStack {
-                                Text("Available Timeframes")
-                                    .font(Typography.body)
-                                    .fontWeight(.medium)
-                                    .foregroundColor(TextColor.primary)
-                                
-                                Spacer()
-                                
-                                Text("\(Timeframe.allCases.count) timeframes")
-                                    .font(Typography.caption1)
-                                    .foregroundColor(TextColor.secondary)
-                            }
-                            
-                            HStack(spacing: Spacing.sm) {
-                                ForEach(Timeframe.allCases, id: \.rawValue) { timeframe in
-                                    Text(timeframe.displayName)
-                                        .font(.system(size: 11, weight: .medium))
-                                        .foregroundColor(.primary)
-                                        .padding(.horizontal, Spacing.sm)
-                                        .padding(.vertical, 4)
-                                        .background(Color(.quaternarySystemFill))
-                                        .cornerRadius(6)
-                                }
-                            }
-                        }
-                        .padding(.vertical, Spacing.xs)
-                    )
-                ),
-                SettingsItem(
-                    title: "Strategy Configuration",
-                    description: "Configure and manage trading strategies with detailed information",
-                    view: AnyView(
-                        SettingsNavigationRow(
-                            title: "Strategy Configuration",
-                            description: "Configure and manage trading strategies with detailed information",
-                            destination: AnyView(StrategyConfigurationView())
-                        )
-                    )
-                ),
-                SettingsItem(
-                    title: "Routing & Confidence",
-                    description: "Configure per-timeframe routing and confidence controls for AI vs Strategy systems",
-                    view: AnyView(
-                        SettingsNavigationRow(
-                            title: "Routing & Confidence",
-                            description: "Configure per-timeframe routing and confidence controls for AI vs Strategy systems",
-                            destination: AnyView(routingConfidenceView)
-                        )
-                    )
-                ),
-                SettingsItem(
-                    title: "Reset Paper Account",
-                    description: "Reset paper trading account to initial state with default balance",
-                    view: AnyView(
-                        SettingsButtonRow(
-                            title: "Reset Paper Account",
-                            description: "Reset paper trading account to $10,000 and clear all trades and positions",
-                            action: {
-                                Task {
-                                    await settingsRepo.resetPaperAccount()
-                                    toastManager.showSuccess(title: "Paper account reset to $10,000")
-                                }
-                            },
-                            style: .destructive
-                        )
-                    )
+                    title: "Trading Strategies",
+                    description: "Configure and manage trading strategies",
+                    type: .button {
+                        // Navigate to strategies
+                    }
                 )
             ]
         )
@@ -289,66 +425,18 @@ struct SettingsView: View {
     private var interfaceSection: SettingsSection {
         SettingsSection(
             title: "Interface",
-            icon: "rectangle.3.group",
-            footer: "Customize the app interface, theme, and widget appearance to match your preferences.",
+            icon: "paintbrush",
+            footer: "Customize the app appearance and behavior",
             items: [
                 SettingsItem(
-                    title: "Theme",
-                    description: "Choose between Light, Dark, or System theme",
-                    view: AnyView(
-                        VStack(alignment: .leading, spacing: Spacing.sm) {
-                            Picker("Theme", selection: $settingsRepo.preferredTheme) {
-                                Text("System").tag(AppTheme.system)
-                                Text("Light").tag(AppTheme.light)
-                                Text("Dark").tag(AppTheme.dark)
-                            }
-                            .pickerStyle(.segmented)
-                            
-                            Text("Theme will be applied immediately across the entire app")
-                                .font(Typography.caption1)
-                                .foregroundColor(TextColor.secondary)
-                        }
-                        .padding(Spacing.sm)
-                    )
+                    title: "Dark Mode",
+                    description: "Use dark theme throughout the app",
+                    type: .toggle($settingsRepo.darkMode)
                 ),
                 SettingsItem(
-                    title: "Widget Configuration",
-                    description: "Customize your home screen widget display options, colors, and update frequency",
-                    view: AnyView(
-                        Button(action: {
-                            showWidgetConfiguration = true
-                        }) {
-                            HStack {
-                                VStack(alignment: .leading, spacing: Spacing.xs) {
-                                    Text("Widget Configuration")
-                                        .font(Typography.body)
-                                        .foregroundColor(.primary)
-                                    
-                                    Text("Customize your home screen widget display options, colors, and update frequency")
-                                        .font(Typography.caption1)
-                                        .foregroundColor(.secondary)
-                                        .fixedSize(horizontal: false, vertical: true)
-                                    
-                                    if let lastRefresh = widgetRefreshStats.lastRefresh {
-                                        Text("Last updated: \(lastRefresh, formatter: widgetRefreshDateFormatter)")
-                                            .font(Typography.caption2)
-                                            .foregroundColor(.secondary)
-                                    }
-                                }
-                                
-                                Spacer()
-                                
-                                VStack(spacing: 4) {
-                                    widgetRefreshStatusIcon
-                                    
-                                    Image(systemName: "chevron.right")
-                                        .font(.system(size: 14, weight: .medium))
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                    )
+                    title: "Haptic Feedback",
+                    description: "Enable vibration feedback for interactions",
+                    type: .toggle($settingsRepo.hapticsEnabled)
                 )
             ]
         )
@@ -357,76 +445,13 @@ struct SettingsView: View {
     private var securitySection: SettingsSection {
         SettingsSection(
             title: "Security",
-            icon: "key",
-            footer: "Manage exchange API credentials and app security settings. API keys are required for live trading and real-time data.",
+            icon: "shield",
+            footer: "Protect your account and trading data",
             items: [
                 SettingsItem(
-                    title: "Manage API Keys",
-                    description: "Configure exchange API credentials for live trading. Keys are stored securely in Keychain.",
-                    view: AnyView(
-                        SettingsButtonRow(
-                            title: "Manage API Keys",
-                            description: "Configure exchange API credentials for live trading. Keys are stored securely in Keychain.",
-                            action: {
-                                navigationCoordinator.navigate(to: .exchangeKeys, in: .settings)
-                            },
-                            style: .primary
-                        )
-                    )
-                ),
-                SettingsItem(
-                    title: "Binance Configuration",
-                    description: "Set up Binance API keys for trading and market data access.",
-                    view: AnyView(
-                        SettingsNavigationRow(
-                            title: "Binance Configuration",
-                            description: "Set up Binance API keys for trading and market data access.",
-                            destination: AnyView(
-                                BinanceKeysView()
-                                    .navigationTitle("Binance Configuration")
-                                    .navigationBarTitleDisplayMode(.inline)
-                            )
-                        )
-                    )
-                ),
-                SettingsItem(
-                    title: "Kraken Configuration",
-                    description: "Set up Kraken API keys for trading and market data access.",
-                    view: AnyView(
-                        SettingsNavigationRow(
-                            title: "Kraken Configuration",
-                            description: "Set up Kraken API keys for trading and market data access.",
-                            destination: AnyView(
-                                KrakenKeysView()
-                                    .navigationTitle("Kraken Configuration")
-                                    .navigationBarTitleDisplayMode(.inline)
-                            )
-                        )
-                    )
-                ),
-                SettingsItem(
-                    title: "Dark Mode",
-                    description: "Use dark color scheme throughout the app. Follows system setting when disabled.",
-                    view: AnyView(
-                        SettingsToggleRow(
-                            title: "Dark Mode",
-                            description: "Use dark color scheme throughout the app. Follows system setting when disabled.",
-                            isOn: $appSettings.darkMode,
-                            style: .minimal
-                        )
-                    )
-                ),
-                SettingsItem(
-                    title: "Haptic Feedback",
-                    description: "Enable tactile feedback for button presses, trade confirmations, and other interactions.",
-                    view: AnyView(
-                        SettingsToggleRow(
-                            title: "Haptic Feedback",
-                            description: "Enable tactile feedback for button presses, trade confirmations, and other interactions.",
-                            isOn: $appSettings.haptics,
-                            style: .default
-                        )
-                    )
+                    title: "Face ID / Touch ID",
+                    description: "Use biometric authentication",
+                    type: .toggle(.constant(false))
                 )
             ]
         )
@@ -435,638 +460,101 @@ struct SettingsView: View {
     private var diagnosticsSection: SettingsSection {
         SettingsSection(
             title: "Diagnostics",
-            icon: "stethoscope",
-            footer: "Debug settings, system information, and diagnostic tools for troubleshooting. Enable verbose logging only when needed as it may impact performance.",
+            icon: "wrench.and.screwdriver",
+            footer: "Debug and troubleshooting tools",
             items: [
                 SettingsItem(
-                    title: "App Version",
-                    description: "Current app version",
-                    view: AnyView(
-                        SettingsInfoRow(title: "App Version", value: Bundle.main.appVersion)
-                    )
-                ),
-                SettingsItem(
-                    title: "Build Number",
-                    description: "Current build number",
-                    view: AnyView(
-                        SettingsInfoRow(title: "Build Number", value: Bundle.main.buildNumber)
-                    )
-                ),
-                SettingsItem(
-                    title: "AI Debug Mode",
-                    description: "Enable additional AI diagnostics and debugging information. May impact performance.",
-                    view: AnyView(
-                        SettingsToggleRow(
-                            title: "AI Debug Mode",
-                            description: "Enable additional AI diagnostics and debugging information. May impact performance.",
-                            helpText: "AI Debug Mode provides detailed information about AI decision-making processes:\n\n• Model input/output data\n• Confidence scores\n• Processing times\n• Strategy reasoning\n\nWarning: This may impact app performance and should only be enabled when troubleshooting AI behavior.",
-                            isOn: $appSettings.aiDebugMode,
-                            style: .warning
-                        )
-                    )
-                ),
-                SettingsItem(
-                    title: "Verbose AI Logs",
-                    description: "Show detailed AI processing logs including model inputs, outputs, and decision reasoning.",
-                    view: AnyView(
-                        SettingsToggleRow(
-                            title: "Verbose AI Logs",
-                            description: "Show detailed AI processing logs including model inputs, outputs, and decision reasoning.",
-                            helpText: "Verbose AI Logs capture extensive details about AI processing:\n\n• Raw market data inputs\n• Feature calculations\n• Model predictions\n• Decision trees\n• Execution timing\n\nThis generates large log files and may significantly impact performance. Only enable for detailed troubleshooting.",
-                            isOn: $appSettings.verboseAILogs,
-                            style: .danger
-                        )
-                    )
-                ),
-                SettingsItem(
-                    title: "PnL Demo Mode",
-                    description: "Use synthetic profit/loss data for testing charts and calculations without real trading history.",
-                    view: AnyView(
-                        SettingsToggleRow(
-                            title: "PnL Demo Mode",
-                            description: "Use synthetic profit/loss data for testing charts and calculations without real trading history.",
-                            isOn: $appSettings.pnlDemoMode,
-                            style: .minimal
-                        )
-                    )
+                    title: "Verbose Logging",
+                    description: "Enable detailed debug logs",
+                    type: .toggle($settingsRepo.verboseLogging)
                 ),
                 SettingsItem(
                     title: "Export Logs",
-                    description: "Export diagnostic logs for troubleshooting",
-                    view: AnyView(
-                        SettingsExportButtonRow(
-                            title: "Export Logs",
-                            description: "Export diagnostic logs for troubleshooting and support. Includes system logs, app settings, and device information.",
-                            action: exportDiagnosticLogs,
-                            isLoading: isExporting
-                        )
-                    )
-                ),
-                SettingsItem(
-                    title: "Run System Check",
-                    description: "Run system diagnostics",
-                    view: AnyView(
-                        SettingsButtonRow(
-                            title: "Run System Check",
-                            description: "Run system diagnostics",
-                            action: runSystemDiagnostics,
-                            style: .secondary
-                        )
-                    )
+                    description: "Share debug logs for support",
+                    type: .button {
+                        exportLogs()
+                    }
                 )
             ]
         )
     }
     
-    // MARK: - Trading Mode Selector
-    private var tradingModeSelector: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Current Mode Header
-            HStack {
-                Text("Trading Mode")
-                    .font(.headline.weight(.medium))
-                    .foregroundColor(.primary)
-                
-                Spacer()
-                
-                // Current Mode Indicator
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(tradingModeColor)
-                        .frame(width: 8, height: 8)
-                    
-                    Text(settingsRepo.tradingMode.title.uppercased())
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(tradingModeColor)
-                }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(
-                    Capsule()
-                        .fill(tradingModeColor.opacity(0.15))
-                )
-            }
-            
-            // Mode Description
-            Text(settingsRepo.tradingMode.description)
-                .font(.caption)
-                .foregroundColor(.secondary)
-            
-            // Mode Selector
-            HStack(spacing: 0) {
-                ForEach(TradingMode.allCases, id: \.self) { mode in
-                    Button(action: {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            settingsRepo.tradingMode = mode
-                        }
-                    }) {
-                        VStack(spacing: 4) {
-                            Text(mode.title)
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundColor(settingsRepo.tradingMode == mode ? .white : .primary)
-                            
-                            Text(mode.description)
-                                .font(.system(size: 10))
-                                .foregroundColor(settingsRepo.tradingMode == mode ? .white.opacity(0.8) : .secondary)
-                                .lineLimit(2)
-                                .multilineTextAlignment(.center)
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .frame(maxWidth: .infinity)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(settingsRepo.tradingMode == mode ? modeButtonColor(mode) : Color.clear)
-                        )
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(4)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(.quaternary.opacity(0.5))
-            )
-            
-            // API Key Warning for Live Mode
-            if settingsRepo.tradingMode == .live && hasIncompleteAPIKeys {
-                HStack(spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundColor(.orange)
-                    
-                    Text("API keys required for live trading")
-                        .font(.caption)
-                        .foregroundColor(.orange)
-                }
-                .padding(.top, 4)
-            }
-        }
-    }
-    
-    private var tradingModeColor: Color {
-        modeButtonColor(settingsRepo.tradingMode)
-    }
-    
-    private var hasIncompleteAPIKeys: Bool {
-        // API keys are now managed through ExchangeKeysViewModel
-        // This is a placeholder until we integrate with the proper API key management
-        return false
-    }
-    
-    private func modeButtonColor(_ mode: TradingMode) -> Color {
-        switch mode {
-        case .demo: return .blue
-        case .paper: return .green
-        case .live: return .red
-        }
-    }
-    
-    
-    // MARK: - Routing & Confidence Configuration View
-    private var routingConfidenceView: some View {
-        List {
-            Section {
-                SettingsToggleRow(
-                    title: "Strategy Routing for Short Timeframes",
-                    description: "Use strategies for 5m/1h timeframes, AI for 4h. When disabled, AI is used for all timeframes.",
-                    helpText: "Per-timeframe routing optimizes predictions:\n\n• 5m/1h: Strategy aggregation (faster, less complex)\n• 4h: AI model (deeper analysis)\n\nDisabling uses AI for all timeframes.",
-                    isOn: $settingsRepo.useStrategyRouting,
-                    style: .prominent
-                )
-            } header: {
-                Text("Per-Timeframe Routing")
-                    .font(.headline)
-            } footer: {
-                Text("Controls which system handles predictions for different timeframes. Recommended: enabled for optimal performance.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            Section {
-                VStack(spacing: Spacing.md) {
-                    HStack {
-                        Text("Strategy Confidence Range")
-                            .font(.settingsBody)
-                            .fontWeight(.medium)
-                        
-                        Spacer()
-                        
-                        Text("\(String(format: "%.2f", settingsRepo.strategyConfidenceMin)) - \(String(format: "%.2f", settingsRepo.strategyConfidenceMax))")
-                            .font(.settingsBody)
-                            .foregroundColor(.settingsSecondary)
-                    }
-                    
-                    VStack(spacing: Spacing.sm) {
-                        HStack {
-                            Text("Min")
-                                .font(.settingsCaption)
-                                .foregroundColor(.settingsSecondary)
-                            Spacer()
-                            Text("Max")
-                                .font(.settingsCaption)
-                                .foregroundColor(.settingsSecondary)
-                        }
-                        
-                        HStack(spacing: Spacing.md) {
-                            Slider(
-                                value: $settingsRepo.strategyConfidenceMin,
-                                in: 0.55...0.89,
-                                step: 0.01
-                            )
-                            .frame(maxWidth: 120)
-                            
-                            Text("to")
-                                .font(.settingsCaption)
-                                .foregroundColor(.settingsSecondary)
-                            
-                            Slider(
-                                value: $settingsRepo.strategyConfidenceMax,
-                                in: 0.56...0.90,
-                                step: 0.01
-                            )
-                            .frame(maxWidth: 120)
-                        }
-                    }
-                }
-                .padding(.vertical, Spacing.xs)
-                
-            } header: {
-                Text("Confidence Controls")
-                    .font(.settingsHeadline)
-            } footer: {
-                Text("Strategy confidence is clamped to this range (0.55-0.90). AI confidence uses 0.55-0.95 range automatically.")
-                    .font(.settingsFootnote)
-                    .foregroundColor(.settingsTertiary)
-            }
-            
-            Section {
-                let strategyNames = ["RSI", "EMA Crossover", "MACD", "Mean Reversion", "ATR Breakout"]
-                
-                ForEach(strategyNames, id: \.self) { strategyName in
-                    VStack(spacing: Spacing.sm) {
-                        HStack {
-                            VStack(alignment: .leading, spacing: Spacing.xs) {
-                                Text(strategyName)
-                                    .font(.settingsBody)
-                                    .fontWeight(.medium)
-                                
-                                Text("Weight: \(String(format: "%.1f", settingsRepo.getStrategyWeight(strategyName)))")
-                                    .font(.settingsCaption)
-                                    .foregroundColor(.settingsSecondary)
-                            }
-                            
-                            Spacer()
-                            
-                            Toggle("", isOn: Binding(
-                                get: { settingsRepo.isStrategyEnabled(strategyName) },
-                                set: { settingsRepo.updateStrategyEnabled(strategyName, enabled: $0) }
-                            ))
-                            .toggleStyle(SwitchToggleStyle())
-                        }
-                        
-                        if settingsRepo.isStrategyEnabled(strategyName) {
-                            HStack {
-                                Text("Weight")
-                                    .font(.settingsCaption)
-                                    .foregroundColor(.settingsSecondary)
-                                
-                                Slider(
-                                    value: Binding(
-                                        get: { settingsRepo.getStrategyWeight(strategyName) },
-                                        set: { settingsRepo.updateStrategyWeight(strategyName, weight: $0) }
-                                    ),
-                                    in: 0.1...2.0,
-                                    step: 0.1
-                                )
-                                
-                                Text("\(String(format: "%.1f", settingsRepo.getStrategyWeight(strategyName)))")
-                                    .font(.settingsCaption)
-                                    .foregroundColor(.settingsSecondary)
-                                    .frame(width: 30)
-                            }
-                        }
-                    }
-                    .padding(.vertical, Spacing.xs)
-                }
-            } header: {
-                Text("Strategy Settings")
-                    .font(.settingsHeadline)
-            } footer: {
-                Text("Enable/disable individual strategies and adjust their voting weights. Higher weights have more influence in final decisions.")
-                    .font(.settingsFootnote)
-                    .foregroundColor(.settingsTertiary)
-            }
-        }
-        .navigationTitle("Routing & Confidence")
-        .navigationBarTitleDisplayMode(.inline)
-    }
-    
-    // MARK: - Helper Methods
-    private func exportDiagnosticLogs() {
-        guard !isExporting else { return }
-        
+    private func exportLogs() {
         isExporting = true
         
         Task {
             do {
                 let logURL = try await LogExporter.exportDiagnosticLogs()
-                
                 await MainActor.run {
-                    self.exportedLogURL = logURL
-                    self.showShareSheet = true
-                    self.isExporting = false
-                    
-                    // Show success toast
-                    toastManager.showDataExported(type: "Diagnostic logs")
+                    exportedLogURL = logURL
+                    showShareSheet = true
+                    isExporting = false
                 }
             } catch {
                 await MainActor.run {
-                    self.isExporting = false
-                    
-                    // Show error toast
-                    toastManager.showDataExportFailed(
-                        type: "diagnostic logs",
-                        error: error.localizedDescription
-                    )
+                    toastManager.showError(title: "Export Failed", message: error.localizedDescription)
+                    isExporting = false
                 }
             }
         }
     }
-    
-    private func runSystemDiagnostics() {
-        // System diagnostics functionality
-        print("System diagnostics requested")
-    }
-    
-    @ViewBuilder
-    private var widgetRefreshStatusIcon: some View {
-        switch widgetRefreshStats.status {
-        case .idle:
-            Image(systemName: "clock")
-                .foregroundColor(.secondary)
-                .font(.caption2)
-        case .refreshing:
-            ProgressView()
-                .scaleEffect(0.6)
-        case .success:
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundColor(.green)
-                .font(.caption2)
-        case .failed:
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundColor(.red)
-                .font(.caption2)
-        }
-    }
-    
-    private var widgetRefreshDateFormatter: DateFormatter {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .none
-        formatter.timeStyle = .short
-        return formatter
-    }
-    
-    private func updateWidgetRefreshStats() {
-        widgetRefreshStats = WidgetDataManager.shared.getRefreshStats()
-    }
 }
 
-// MARK: - Supporting Views
-struct SettingsRowView: View {
-    let item: SettingsItem
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.xs) {
-            item.view
-        }
-        .padding(.vertical, Spacing.xs)
-    }
-}
-
-struct SettingsToggleRow: View {
-    let title: String
-    let description: String
-    let helpText: String?
-    @Binding var isOn: Bool
-    let style: ToggleStyle
-    let isDisabled: Bool
-    
-    init(
-        title: String, 
-        description: String, 
-        helpText: String? = nil, 
-        isOn: Binding<Bool>, 
-        style: ToggleStyle = .default,
-        isDisabled: Bool = false
-    ) {
-        self.title = title
-        self.description = description
-        self.helpText = helpText
-        self._isOn = isOn
-        self.style = style
-        self.isDisabled = isDisabled
-    }
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.sm) {
-            HStack(alignment: .center, spacing: Spacing.sm) {
-                VStack(alignment: .leading, spacing: Spacing.xs) {
-                    Text(title)
-                        .font(.settingsBody)
-                        .fontWeight(.medium)
-                        .foregroundColor(isDisabled ? .settingsSecondary : .settingsPrimary)
-                    
-                    if !description.isEmpty {
-                        Text(description)
-                            .font(.settingsCaption)
-                            .foregroundColor(.settingsSecondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-                
-                Spacer()
-                
-                HStack(spacing: Spacing.sm) {
-                    if let helpText = helpText {
-                        HelpIconView(helpText: helpText)
-                    }
-                    
-                    StandardToggle(
-                        isOn: $isOn,
-                        style: style,
-                        size: .medium,
-                        isDisabled: isDisabled,
-                        hapticFeedback: true
-                    )
-                }
-            }
-        }
-        .padding(.vertical, Spacing.xs)
-    }
-}
-
-struct SettingsNavigationRow: View {
-    let title: String
-    let description: String
-    let destination: AnyView
-    
-    var body: some View {
-        NavigationLink(destination: destination) {
-            VStack(alignment: .leading, spacing: Spacing.xs) {
-                Text(title)
-                    .font(.settingsBody)
-                    .fontWeight(.medium)
-                    .foregroundColor(.settingsPrimary)
-                
-                if !description.isEmpty {
-                    Text(description)
-                        .font(.settingsCaption)
-                        .foregroundColor(.settingsSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-        }
-        .padding(.vertical, Spacing.xs)
-    }
-}
-
-struct SettingsInfoRow: View {
-    let title: String
-    let value: String
-    
-    var body: some View {
-        HStack {
-            Text(title)
-                .font(.settingsBody)
-                .fontWeight(.medium)
-                .foregroundColor(.settingsPrimary)
-            
-            Spacer()
-            
-            Text(value)
-                .font(.settingsBody)
-                .foregroundColor(.settingsSecondary)
-        }
-        .padding(.vertical, Spacing.xs)
-    }
-}
-
-struct SettingsButtonRow: View {
-    let title: String
-    let description: String
-    let action: () -> Void
-    let style: SettingsButtonStyle
-    
-    enum SettingsButtonStyle {
-        case primary
-        case secondary
-        case destructive
-        
-        var buttonStyle: ButtonStyle {
-            switch self {
-            case .primary: return .primary
-            case .secondary: return .ghost
-            case .destructive: return .destructive
-            }
-        }
-        
-        var color: Color {
-            switch self {
-            case .primary: return .accentColor
-            case .secondary: return TextColor.secondary
-            case .destructive: return .red
-            }
-        }
-    }
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.xs) {
-            Button(action: action) {
-                HStack {
-                    VStack(alignment: .leading, spacing: Spacing.xs) {
-                        Text(title)
-                            .font(Typography.body)
-                            .fontWeight(.medium)
-                            .foregroundColor(style.color)
-                        
-                        if !description.isEmpty {
-                            Text(description)
-                                .font(Typography.caption1)
-                                .foregroundColor(TextColor.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
-                    
-                    Spacer()
-                }
-            }
-            .buttonStyle(PlainButtonStyle())
-        }
-        .padding(.vertical, Spacing.xs)
-    }
-}
-
-struct SettingsExportButtonRow: View {
-    let title: String
-    let description: String
-    let action: () -> Void
-    let isLoading: Bool
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.xs) {
-            Button(action: action) {
-                HStack {
-                    VStack(alignment: .leading, spacing: Spacing.xs) {
-                        Text(title)
-                            .font(Typography.body)
-                            .fontWeight(.medium)
-                            .foregroundColor(isLoading ? TextColor.secondary : .accentColor)
-                        
-                        if !description.isEmpty {
-                            Text(description)
-                                .font(Typography.caption1)
-                                .foregroundColor(TextColor.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
-                    
-                    Spacer()
-                    
-                    if isLoading {
-                        ProgressView()
-                            .scaleEffect(0.8)
-                            .progressViewStyle(CircularProgressViewStyle(tint: .accentColor))
-                    } else {
-                        Image(systemName: "square.and.arrow.up")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.accentColor)
-                    }
-                }
-            }
-            .buttonStyle(PlainButtonStyle())
-            .disabled(isLoading)
-        }
-        .padding(.vertical, Spacing.xs)
-    }
-}
-
-// MARK: - Supporting Types
-struct SettingsSection {
+// MARK: - Settings Models
+struct SettingsSection: Identifiable {
+    let id = UUID()
     let title: String
     let icon: String
     let footer: String
     let items: [SettingsItem]
 }
 
-struct SettingsItem {
+struct SettingsItem: Identifiable {
+    let id = UUID()
     let title: String
     let description: String
-    let view: AnyView
+    let type: SettingsItemType
 }
 
-// Bundle extension is defined in Utils/LogExporter.swift
+enum SettingsItemType {
+    case toggle(Binding<Bool>)
+    case button(() -> Void)
+    case picker([String], Binding<String>)
+    case slider(Binding<Double>, ClosedRange<Double>)
+    case info(String)
+}
 
-#Preview {
-    SettingsView()
-        .preferredColorScheme(nil)
+// MARK: - Modern Toggle Style
+struct ModernToggleStyle: SwiftUI.ToggleStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack {
+            configuration.label
+            Spacer()
+            
+            ZStack {
+                Capsule()
+                    .fill(configuration.isOn ? Brand.blue : Color.gray.opacity(0.3))
+                    .frame(width: 50, height: 30)
+                
+                Circle()
+                    .fill(.white)
+                    .frame(width: 26, height: 26)
+                    .shadow(color: .black.opacity(0.2), radius: 2, x: 0, y: 1)
+                    .offset(x: configuration.isOn ? 10 : -10)
+                    .animation(.spring(response: 0.3), value: configuration.isOn)
+            }
+            .onTapGesture {
+                configuration.isOn.toggle()
+            }
+        }
+    }
+}
+
+
+// MARK: - Settings Widget Refresh Status
+enum SettingsWidgetRefreshStatus {
+    case idle
+    case refreshing
+    case success
+    case failure
 }

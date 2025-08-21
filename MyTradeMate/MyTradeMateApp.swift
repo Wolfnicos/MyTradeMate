@@ -86,7 +86,7 @@ struct MyTradeMateApp: App {
                 .environmentObject(pnlVM)
                 
                 // Theme
-                .preferredColorScheme(colorScheme)
+                .preferredColorScheme(.dark)
                 .task {
                     // Initialize market data and signals
                     await marketDataManager.loadMarketData()

@@ -3,7 +3,7 @@ import Combine
 
 // MARK: - Supporting Types
 
-struct EnsembleSignal {
+struct DirectFusionSignal {
     let direction: SignalDirection
     let confidence: Double
     let reason: String
@@ -20,7 +20,7 @@ final class StrategyManager: ObservableObject {
     @Published var strategies: [Strategy] = []
     @Published var lastSignals: [String: StrategySignal] = [:]
     @Published var isGeneratingSignals: Bool = false
-    @Published var ensembleSignal: EnsembleSignal? = nil
+    @Published var directFusionSignal: DirectFusionSignal? = nil
     
     // MARK: - Private Properties
     private let settingsRepo = SettingsRepository.shared
@@ -95,7 +95,7 @@ final class StrategyManager: ObservableObject {
         Log.userAction("Strategy weight updated", parameters: ["strategy": name, "weight": weight])
     }
     
-    func generateSignals(from candles: [Candle]) async -> EnsembleSignal {
+    func generateSignals(from candles: [Candle]) async -> DirectFusionSignal {
         isGeneratingSignals = true
         defer { isGeneratingSignals = false }
         
@@ -119,15 +119,15 @@ final class StrategyManager: ObservableObject {
             Log.aiDebug("\(strategy.name): \(signal.direction) (\(String(format: "%.1f", signal.confidence * 100))%) - \(signal.reason)")
         }
         
-        // Create ensemble signal
-        let ensemble = createEnsembleSignal(from: signals)
-        ensembleSignal = ensemble
+        // Create Direct Fusion signal
+        let directFusion = createDirectFusionSignal(from: signals)
+        directFusionSignal = directFusion
         
         performanceLogger.finish()
         
-        Log.ai.info("Ensemble signal: \(ensemble.direction) (\(String(format: "%.1f", ensemble.confidence * 100))%)")
+        Log.ai.info("Direct Fusion signal: \(directFusion.direction) (\(String(format: "%.1f", directFusion.confidence * 100))%)")
         
-        return ensemble
+        return directFusion
     }
     
     // ✅ ADD: Generate individual strategy signals for direct fusion
@@ -164,9 +164,9 @@ final class StrategyManager: ObservableObject {
         return signals
     }
     
-    private func createEnsembleSignal(from signals: [StrategySignal]) -> EnsembleSignal {
+    private func createDirectFusionSignal(from signals: [StrategySignal]) -> DirectFusionSignal {
         guard !signals.isEmpty else {
-            return EnsembleSignal(
+            return DirectFusionSignal(
                 direction: .hold,
                 confidence: 0.0,
                 reason: "No active strategies",
@@ -231,7 +231,7 @@ final class StrategyManager: ObservableObject {
             reason = "Hold signals dominate"
         }
         
-        return EnsembleSignal(
+        return DirectFusionSignal(
             direction: direction,
             confidence: maxScore,
             reason: reason,

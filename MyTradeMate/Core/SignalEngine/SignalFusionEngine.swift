@@ -4,7 +4,7 @@ import OSLog
 private let logger = os.Logger(subsystem: "com.mytrademate", category: "SignalFusionEngine")
 
 /// Unified signal fusion engine that combines AI model predictions with strategy signals
-/// Architecture: AI Models + Active Strategies -> Weighted Ensemble -> Final Decision
+/// Architecture: AI Models + Active Strategies -> Direct Fusion -> Final Decision
 @MainActor
 final class SignalFusionEngine {
     

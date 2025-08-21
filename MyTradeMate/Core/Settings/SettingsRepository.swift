@@ -505,7 +505,13 @@ public final class SettingsRepository: ObservableObject {
         return MetaSignalEngine.MetaSignalSettings(
             aiWeight: metaAiWeight,
             strategyWeight: metaStrategyWeight,
-            minConfidenceThresholds: thresholds
+            cryptoIndicatorsWeight: 0.25,  // New parameter for crypto indicators
+            minConfidenceThresholds: thresholds,
+            useWhaleTracking: true,  // Enable whale tracking
+            useSentimentAnalysis: true,  // Enable sentiment analysis
+            useOnChainMetrics: true,  // Enable on-chain metrics
+            adaptiveWeighting: true,  // Enable adaptive weights
+            riskProfile: .balanced  // Balanced risk profile
         )
     }
     

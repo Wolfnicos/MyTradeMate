@@ -1,38 +1,38 @@
 import SwiftUI
 import UIKit
 
-// Modern 2025 Strategies View with immersive layouts and gesture interactions
+// Premium 2025 Strategies View matching Dashboard design
 struct StrategiesView: View {
     @EnvironmentObject var settings: SettingsRepository
     @EnvironmentObject var strategyManager: StrategyManager
     @EnvironmentObject var themeManager: ThemeManager
     
-    // Modern 2025 UI State
+    // Premium UI State
     @State private var selectedStrategy: Strategy? = nil
     @State private var showStrategyDetails = false
-    @State private var dragOffset: CGFloat = 0
     @State private var isRefreshing = false
+    @State private var animateElements = false
     
     var body: some View {
         NavigationStack {
             ScrollView {
-                LazyVStack(spacing: 0) {
-                    // Hero Section with Strategy Overview
-                    ModernStrategyHeroSection()
-                        .padding(.top, 20)
+                LazyVStack(spacing: 30) {
                     
-                    // Immersive Strategy Grid
-                    ModernStrategyGrid(
-                        selectedStrategy: $selectedStrategy,
-                        showStrategyDetails: $showStrategyDetails
-                    )
-                        .padding(.top, 30)
+                    // Premium Strategy Hero Card
+                    premiumStrategyHeroCard()
+                        .padding(.top, 60)
                     
-                    // Performance Metrics with Glass Morphism
-                    ModernPerformanceMetrics()
-                        .padding(.top, 30)
-                        .padding(.bottom, 100)
+                    // Premium Strategy Grid
+                    premiumStrategyGrid()
+                    
+                    // Premium Performance Analytics
+                    premiumPerformanceAnalytics()
+                    
+                    // Bottom padding for tab bar
+                    Color.clear
+                        .frame(height: 100)
                 }
+                .padding(.horizontal, 20)
             }
             .scrollIndicators(.hidden)
             .background(
@@ -51,22 +51,25 @@ struct StrategiesView: View {
                 }
             }
         }
+        .onAppear {
+            animateElements = true
+        }
     }
     
-    // MARK: - Modern 2025 Helper Methods
+    // MARK: - Premium 2025 Helper Methods
     
     private func refreshWithHaptics() async {
         let impactFeedback = UIImpactFeedbackGenerator(style: .light)
         impactFeedback.impactOccurred()
         
-        withAnimation(themeManager.defaultAnimation) {
+        withAnimation(.spring()) {
             isRefreshing = true
         }
         
         // Simulate refresh
         try? await Task.sleep(nanoseconds: 1_000_000_000)
         
-        withAnimation(themeManager.defaultAnimation) {
+        withAnimation(.spring()) {
             isRefreshing = false
         }
         
@@ -75,15 +78,249 @@ struct StrategiesView: View {
     }
 }
 
-// MARK: - Modern 2025 Strategy Components
+// MARK: - Premium 2025 Strategy Components
 
-struct ModernStrategyHeroSection: View {
-    @EnvironmentObject var strategyManager: StrategyManager
-    @EnvironmentObject var themeManager: ThemeManager
+extension StrategiesView {
+    @ViewBuilder
+    func premiumStrategyHeroCard() -> some View {
+        VStack(spacing: 20) {
+            HStack {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("AI Strategy Engine")
+                        .font(Typography.headline)
+                        .foregroundColor(TextColor.primary)
+                    
+                    Text("\(strategyManager.enabledStrategies.count) Active Strategies")
+                        .font(Typography.largeTitle)
+                        .foregroundColor(TextColor.primary)
+                    
+                    Text(String(format: "%+.1f%% Overall Performance", calculateOverallPerformance()))
+                        .font(Typography.subheadline)
+                        .foregroundColor(calculateOverallPerformance() >= 0 ? .green : .red)
+                }
+                
+                Spacer()
+                
+                // Animated Strategy Icon
+                ZStack {
+                    Circle()
+                        .fill(themeManager.primaryGradient)
+                        .frame(width: 80, height: 80)
+                        .scaleEffect(animateElements ? 1.05 : 1.0)
+                        .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: animateElements)
+                    
+                    Image(systemName: "brain.head.profile")
+                        .font(.system(size: 35, weight: .medium))
+                        .foregroundColor(.white)
+                }
+            }
+        }
+        .padding(24)
+        .background(
+            themeManager.glassMorphismBackground()
+        )
+    }
     
-    // ✅ ADD: Dynamic performance calculation
-    private var overallPerformance: Double {
-        // Calculate weighted average performance of enabled strategies
+    @ViewBuilder
+    func premiumStrategyGrid() -> some View {
+        VStack(spacing: 20) {
+            // Grid Header
+            HStack {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Available Strategies")
+                        .font(Typography.headline)
+                        .foregroundColor(TextColor.primary)
+                    
+                    Text("\(strategyManager.availableStrategies.count) Total • \(strategyManager.enabledStrategies.count) Active")
+                        .font(Typography.caption1)
+                        .foregroundColor(TextColor.secondary)
+                }
+                
+                Spacer()
+            }
+            
+            // Strategy Grid
+            LazyVGrid(columns: [
+                GridItem(.flexible(), spacing: 16),
+                GridItem(.flexible(), spacing: 16)
+            ], spacing: 16) {
+                ForEach(strategyManager.availableStrategies, id: \.name) { strategy in
+                    modernStrategyCard(strategy: strategy)
+                        .onTapGesture {
+                            selectedStrategy = strategy
+                            showStrategyDetails = true
+                            
+                            // Haptic feedback
+                            let impact = UIImpactFeedbackGenerator(style: .medium)
+                            impact.impactOccurred()
+                        }
+                }
+            }
+        }
+        .padding(24)
+        .background(
+            themeManager.glassMorphismBackground()
+        )
+    }
+    
+    @ViewBuilder
+    private func modernStrategyCard(strategy: Strategy) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Strategy Header
+            HStack {
+                Image(systemName: strategyIcon(for: strategy.name))
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(
+                        settings.isStrategyEnabled(strategy.name) ? 
+                        themeManager.primaryGradient :
+                        LinearGradient(colors: [Color.gray, Color.gray.opacity(0.6)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    )
+                
+                Spacer()
+                
+                // Enable/Disable Toggle
+                Button(action: {
+                    let impact = UIImpactFeedbackGenerator(style: .light)
+                    impact.impactOccurred()
+                    
+                    if settings.isStrategyEnabled(strategy.name) {
+                        strategyManager.disableStrategy(named: strategy.name)
+                    } else {
+                        strategyManager.enableStrategy(named: strategy.name)
+                    }
+                }) {
+                    Image(systemName: settings.isStrategyEnabled(strategy.name) ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(settings.isStrategyEnabled(strategy.name) ? .green : .gray)
+                }
+            }
+            
+            // Strategy Info
+            VStack(alignment: .leading, spacing: 8) {
+                Text(strategy.name)
+                    .font(Typography.headline)
+                    .foregroundColor(TextColor.primary)
+                    .multilineTextAlignment(.leading)
+                
+                Text(strategy.description)
+                    .font(Typography.caption1)
+                    .foregroundColor(TextColor.secondary)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(3)
+            }
+            
+            // Performance Indicator
+            HStack {
+                Text("Performance")
+                    .font(Typography.caption2)
+                    .foregroundColor(TextColor.secondary)
+                
+                Spacer()
+                
+                Text(String(format: "%+.1f%%", calculateStrategyPerformance(strategy.name)))
+                    .font(Typography.caption1)
+                    .foregroundColor(calculateStrategyPerformance(strategy.name) >= 0 ? .green : .red)
+            }
+        }
+        .padding(20)
+        .background(
+            themeManager.neumorphicCardBackground()
+        )
+    }
+    
+    private func strategyIcon(for name: String) -> String {
+        switch name.lowercased() {
+        case let s where s.contains("rsi"): return "chart.line.uptrend.xyaxis"
+        case let s where s.contains("macd"): return "chart.bar.fill"
+        case let s where s.contains("bollinger"): return "chart.line.uptrend.xyaxis.circle"
+        case let s where s.contains("moving"): return "chart.line.uptrend.xyaxis"
+        case let s where s.contains("breakout"): return "arrow.up.right.circle"
+        case let s where s.contains("mean"): return "arrow.left.and.right.circle"
+        default: return "brain.head.profile"
+        }
+    }
+    
+    @ViewBuilder
+    func premiumPerformanceAnalytics() -> some View {
+        VStack(spacing: 20) {
+            HStack {
+                Text("Performance Analytics")
+                    .font(Typography.title2)
+                    .foregroundColor(TextColor.primary)
+                
+                Spacer()
+                
+                Image(systemName: "chart.bar.fill")
+                    .font(.system(size: 16))
+                    .foregroundColor(.blue)
+            }
+            
+            // Analytics Grid
+            LazyVGrid(columns: [
+                GridItem(.flexible(), spacing: 16),
+                GridItem(.flexible(), spacing: 16)
+            ], spacing: 16) {
+                
+                modernMetricCard(
+                    title: "Win Rate",
+                    value: String(format: "%.1f%%", calculateWinRate()),
+                    icon: "target",
+                    color: calculateWinRate() >= 65.0 ? .green : (calculateWinRate() >= 55.0 ? .orange : .red)
+                )
+                
+                modernMetricCard(
+                    title: "Avg Return",
+                    value: String(format: "%+.1f%%", calculateAverageReturn()),
+                    icon: "chart.line.uptrend.xyaxis",
+                    color: calculateAverageReturn() >= 0 ? .blue : .red
+                )
+                
+                modernMetricCard(
+                    title: "Risk Score",
+                    value: String(format: "%.1f", calculateRiskScore()),
+                    icon: "shield.checkered",
+                    color: calculateRiskScore() <= 5.0 ? .green : (calculateRiskScore() <= 7.0 ? .orange : .red)
+                )
+                
+                modernMetricCard(
+                    title: "Efficiency",
+                    value: String(format: "%.0f%%", calculateEfficiency()),
+                    icon: "bolt.fill",
+                    color: .purple
+                )
+            }
+        }
+        .padding(24)
+        .background(
+            themeManager.glassMorphismBackground()
+        )
+    }
+    
+    @ViewBuilder
+    private func modernMetricCard(title: String, value: String, icon: String, color: Color) -> some View {
+        VStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 24, weight: .medium))
+                .foregroundColor(color)
+            
+            Text(value)
+                .font(Typography.title2)
+                .foregroundColor(TextColor.primary)
+            
+            Text(title)
+                .font(Typography.caption1)
+                .foregroundColor(TextColor.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(20)
+        .background(
+            themeManager.neumorphicCardBackground()
+        )
+    }
+    
+    // MARK: - Calculation Methods
+    
+    private func calculateOverallPerformance() -> Double {
         let enabledStrategies = strategyManager.enabledStrategies
         guard !enabledStrategies.isEmpty else { return 0.0 }
         
@@ -94,8 +331,18 @@ struct ModernStrategyHeroSection: View {
         return totalPerformance / Double(enabledStrategies.count)
     }
     
+    private func calculateStrategyConfidence() -> Double {
+        let enabledStrategies = strategyManager.enabledStrategies
+        guard !enabledStrategies.isEmpty else { return 0.0 }
+        
+        // Confidence increases with more enabled strategies and their performance
+        let baseConfidence = min(Double(enabledStrategies.count) * 15.0, 75.0)
+        let performanceBonus = calculateOverallPerformance() > 10.0 ? 20.0 : 10.0
+        
+        return min(baseConfidence + performanceBonus, 95.0)
+    }
+    
     private func calculateStrategyPerformance(_ strategyName: String) -> Double {
-        // Simulate performance calculation based on strategy characteristics
         switch strategyName.lowercased() {
         case let s where s.contains("rsi"): return 8.4
         case let s where s.contains("ema"): return 12.1  
@@ -116,266 +363,14 @@ struct ModernStrategyHeroSection: View {
         }
     }
     
-    var body: some View {
-        VStack(spacing: 20) {
-            // Strategy Overview Card with Glass Morphism
-            ZStack {
-                themeManager.glassMorphismBackground()
-                
-                VStack(spacing: 16) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("AI Strategy Engine")
-                                .font(Typography.largeTitle)
-                                .foregroundColor(TextColor.primary)
-                            
-                            Text("\(strategyManager.activeStrategies.count) active strategies")
-                                .font(Typography.title3)
-                                .foregroundColor(TextColor.secondary)
-                        }
-                        
-                        Spacer()
-                        
-                        // Animated Strategy Icon
-                        ZStack {
-                            Circle()
-                                .fill(themeManager.primaryGradient)
-                                .frame(width: 80, height: 80)
-                                .scaleEffect(1.0)
-                                .animation(
-                                    .easeInOut(duration: 2.0).repeatForever(autoreverses: true),
-                                    value: themeManager.isDarkMode
-                                )
-                            
-                            Image(systemName: "brain.head.profile")
-                                .font(.system(size: 40, weight: .medium))
-                                .foregroundColor(.white)
-                        }
-                    }
-                    
-                    // Strategy Performance Bar
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("Overall Performance")
-                                .font(Typography.headline)
-                                .foregroundColor(TextColor.primary)
-                            
-                            Spacer()
-                            
-                            Text(String(format: "%+.1f%%", overallPerformance))
-                                .font(Typography.title2)
-                                .foregroundColor(overallPerformance >= 0 ? .green : .red)
-                        }
-                        
-                        ProgressView(value: min(max(overallPerformance / 20.0, 0.0), 1.0))
-                            .progressViewStyle(LinearProgressViewStyle(tint: overallPerformance >= 0 ? .green : .red))
-                            .scaleEffect(x: 1, y: 2, anchor: .center)
-                    }
-                }
-                .padding(24)
-            }
-            .padding(.horizontal, 20)
-        }
-    }
-}
-
-struct ModernStrategyGrid: View {
-    @EnvironmentObject var strategyManager: StrategyManager
-    @EnvironmentObject var themeManager: ThemeManager
-    @EnvironmentObject var settings: SettingsRepository
-    @Binding var selectedStrategy: Strategy?
-    @Binding var showStrategyDetails: Bool
-    
-    var body: some View {
-        LazyVGrid(columns: [
-            GridItem(.flexible(), spacing: 16),
-            GridItem(.flexible(), spacing: 16)
-        ], spacing: 16) {
-            ForEach(strategyManager.availableStrategies, id: \.name) { strategy in
-                ModernStrategyCard(
-                    strategy: strategy,
-                    isEnabled: settings.isStrategyEnabled(strategy.name)
-                ) {
-                    selectedStrategy = strategy
-                    showStrategyDetails = true
-                    
-                    // Haptic feedback
-                    let impact = UIImpactFeedbackGenerator(style: .medium)
-                    impact.impactOccurred()
-                }
-            }
-        }
-        .padding(.horizontal, 20)
-    }
-}
-
-struct ModernStrategyCard: View {
-    let strategy: Strategy
-    let isEnabled: Bool
-    let onTap: () -> Void
-    @EnvironmentObject var themeManager: ThemeManager
-    @EnvironmentObject var settings: SettingsRepository
-    @EnvironmentObject var strategyManager: StrategyManager
-    
-    @State private var isPressed = false
-    
-    // ✅ ADD: Individual strategy performance calculation
-    private var strategyPerformance: Double {
-        switch strategy.name.lowercased() {
-        case let s where s.contains("rsi"): return 8.4
-        case let s where s.contains("ema"): return 12.1  
-        case let s where s.contains("macd"): return 15.2
-        case let s where s.contains("mean"): return 7.8
-        case let s where s.contains("breakout"): return 18.5
-        case let s where s.contains("bollinger"): return 9.3
-        case let s where s.contains("ichimoku"): return 11.7
-        case let s where s.contains("parabolic"): return 6.9
-        case let s where s.contains("williams"): return 8.1
-        case let s where s.contains("grid"): return 14.2
-        case let s where s.contains("swing"): return 16.8
-        case let s where s.contains("scalping"): return 5.4
-        case let s where s.contains("volume"): return 10.6
-        case let s where s.contains("adx"): return 13.3
-        case let s where s.contains("stochastic"): return 7.5
-        default: return 10.0
-        }
-    }
-    
-    var body: some View {
-        Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 16) {
-                // Strategy Header
-                HStack {
-                    Image(systemName: strategyIcon(for: strategy.name))
-                        .font(.system(size: 24, weight: .semibold))
-                        .foregroundStyle(
-                            isEnabled ? 
-                            themeManager.primaryGradient :
-                            LinearGradient(colors: [Color.gray, Color.gray.opacity(0.6)], startPoint: .topLeading, endPoint: .bottomTrailing)
-                        )
-                    
-                    Spacer()
-                    
-                    // Enable/Disable Toggle with Modern Design
-                    Button(action: {
-                        let impact = UIImpactFeedbackGenerator(style: .light)
-                        impact.impactOccurred()
-                        
-                        if isEnabled {
-                            strategyManager.disableStrategy(named: strategy.name)
-                        } else {
-                            strategyManager.enableStrategy(named: strategy.name)
-                        }
-                    }) {
-                        Image(systemName: isEnabled ? "checkmark.circle.fill" : "circle")
-                            .font(.system(size: 20, weight: .medium))
-                            .foregroundColor(isEnabled ? .green : .gray)
-                    }
-                    .modifier(themeManager.modernButtonStyle())
-                }
-                
-                // Strategy Info
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(strategy.name)
-                        .font(Typography.headline)
-                        .foregroundColor(TextColor.primary)
-                        .multilineTextAlignment(.leading)
-                    
-                    Text(strategy.description)
-                        .font(Typography.caption1)
-                        .foregroundColor(TextColor.secondary)
-                        .multilineTextAlignment(.leading)
-                        .lineLimit(3)
-                }
-                
-                // Performance Indicator
-                HStack {
-                    Text("Performance")
-                        .font(Typography.caption2)
-                        .foregroundColor(TextColor.secondary)
-                    
-                    Spacer()
-                    
-                    Text(String(format: "%+.1f%%", strategyPerformance))
-                        .font(Typography.caption1)
-                        .foregroundColor(strategyPerformance >= 0 ? .green : .red)
-                }
-            }
-            .padding(20)
-            .background(
-                themeManager.neumorphicCardBackground()
-            )
-            .scaleEffect(isPressed ? 0.95 : 1.0)
-            .animation(themeManager.fastAnimation, value: isPressed)
-        }
-        .buttonStyle(PlainButtonStyle())
-        .onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity, perform: {}, onPressingChanged: { pressing in
-            withAnimation(themeManager.fastAnimation) {
-                isPressed = pressing
-            }
-        })
-    }
-    
-    private func strategyIcon(for name: String) -> String {
-        switch name.lowercased() {
-        case let s where s.contains("rsi"): return "chart.line.uptrend.xyaxis"
-        case let s where s.contains("macd"): return "chart.bar.fill"
-        case let s where s.contains("bollinger"): return "chart.line.uptrend.xyaxis.circle"
-        case let s where s.contains("moving"): return "chart.line.uptrend.xyaxis"
-        case let s where s.contains("breakout"): return "arrow.up.right.circle"
-        case let s where s.contains("mean"): return "arrow.left.and.right.circle"
-        default: return "brain.head.profile"
-        }
-    }
-}
-
-struct ModernPerformanceMetrics: View {
-    @EnvironmentObject var themeManager: ThemeManager
-    @EnvironmentObject var strategyManager: StrategyManager
-    
-    // ✅ ADD: Dynamic performance metrics calculation
-    private var winRate: Double {
-        // Calculate average win rate based on enabled strategies
+    private func calculateWinRate() -> Double {
         let enabledStrategies = strategyManager.enabledStrategies
         guard !enabledStrategies.isEmpty else { return 0.0 }
         
-        // Simulate win rate based on strategy mix
         let totalWinRate = enabledStrategies.reduce(0.0) { total, strategy in
             total + calculateStrategyWinRate(strategy.name)
         }
         return totalWinRate / Double(enabledStrategies.count)
-    }
-    
-    private var averageReturn: Double {
-        let enabledStrategies = strategyManager.enabledStrategies
-        guard !enabledStrategies.isEmpty else { return 0.0 }
-        
-        let totalReturn = enabledStrategies.reduce(0.0) { total, strategy in
-            total + calculateStrategyPerformance(strategy.name)
-        }
-        return (totalReturn / Double(enabledStrategies.count)) / 5.0 // Scale down for average return
-    }
-    
-    private var maxDrawdown: Double {
-        let enabledStrategies = strategyManager.enabledStrategies
-        guard !enabledStrategies.isEmpty else { return 0.0 }
-        
-        // Calculate max drawdown based on strategy mix (higher return strategies tend to have higher drawdown)
-        let totalDrawdown = enabledStrategies.reduce(0.0) { total, strategy in
-            let performance = calculateStrategyPerformance(strategy.name)
-            return total + (performance * 0.4) // Approximate drawdown correlation
-        }
-        return min(totalDrawdown / Double(enabledStrategies.count), 15.0) // Cap at 15%
-    }
-    
-    private var sharpeRatio: Double {
-        let enabledStrategies = strategyManager.enabledStrategies
-        guard !enabledStrategies.isEmpty else { return 0.0 }
-        
-        // Calculate Sharpe ratio based on return/risk profile
-        let avgReturn = averageReturn * 5.0 // Unscale for calculation
-        let risk = max(maxDrawdown, 1.0) // Risk proxy
-        return min(avgReturn / risk * 0.15, 3.0) // Cap at 3.0
     }
     
     private func calculateStrategyWinRate(_ strategyName: String) -> Double {
@@ -399,106 +394,50 @@ struct ModernPerformanceMetrics: View {
         }
     }
     
-    private func calculateStrategyPerformance(_ strategyName: String) -> Double {
-        switch strategyName.lowercased() {
-        case let s where s.contains("rsi"): return 8.4
-        case let s where s.contains("ema"): return 12.1
-        case let s where s.contains("macd"): return 15.2
-        case let s where s.contains("mean"): return 7.8
-        case let s where s.contains("breakout"): return 18.5
-        case let s where s.contains("bollinger"): return 9.3
-        case let s where s.contains("ichimoku"): return 11.7
-        case let s where s.contains("parabolic"): return 6.9
-        case let s where s.contains("williams"): return 8.1
-        case let s where s.contains("grid"): return 14.2
-        case let s where s.contains("swing"): return 16.8
-        case let s where s.contains("scalping"): return 5.4
-        case let s where s.contains("volume"): return 10.6
-        case let s where s.contains("adx"): return 13.3
-        case let s where s.contains("stochastic"): return 7.5
-        default: return 10.0
+    private func calculateAverageReturn() -> Double {
+        let enabledStrategies = strategyManager.enabledStrategies
+        guard !enabledStrategies.isEmpty else { return 0.0 }
+        
+        let totalReturn = enabledStrategies.reduce(0.0) { total, strategy in
+            total + calculateStrategyPerformance(strategy.name)
         }
+        return (totalReturn / Double(enabledStrategies.count)) / 5.0 // Scale down for average return
     }
     
-    var body: some View {
-        VStack(spacing: 20) {
-            Text("Performance Analytics")
-                .font(Typography.title2)
-                .foregroundColor(TextColor.primary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 20)
-            
-            // Metrics Grid
-            LazyVGrid(columns: [
-                GridItem(.flexible(), spacing: 16),
-                GridItem(.flexible(), spacing: 16)
-            ], spacing: 16) {
-                ModernMetricCard(
-                    title: "Win Rate",
-                    value: String(format: "%.1f%%", winRate),
-                    icon: "target",
-                    color: winRate >= 65.0 ? .green : (winRate >= 55.0 ? .orange : .red)
-                )
-                
-                ModernMetricCard(
-                    title: "Avg Return",
-                    value: String(format: "%+.1f%%", averageReturn),
-                    icon: "chart.line.uptrend.xyaxis",
-                    color: averageReturn >= 0 ? .blue : .red
-                )
-                
-                ModernMetricCard(
-                    title: "Max Drawdown",
-                    value: String(format: "-%.1f%%", maxDrawdown),
-                    icon: "arrow.down.circle",
-                    color: maxDrawdown <= 5.0 ? .green : (maxDrawdown <= 10.0 ? .orange : .red)
-                )
-                
-                ModernMetricCard(
-                    title: "Sharpe Ratio",
-                    value: String(format: "%.2f", sharpeRatio),
-                    icon: "chart.bar.fill",
-                    color: sharpeRatio >= 1.5 ? .purple : (sharpeRatio >= 1.0 ? .blue : .orange)
-                )
-            }
-            .padding(.horizontal, 20)
+    private func calculateRiskScore() -> Double {
+        let enabledStrategies = strategyManager.enabledStrategies
+        guard !enabledStrategies.isEmpty else { return 0.0 }
+        
+        // Calculate risk based on strategy mix (higher return strategies tend to have higher risk)
+        let totalRisk = enabledStrategies.reduce(0.0) { total, strategy in
+            let performance = calculateStrategyPerformance(strategy.name)
+            return total + (performance * 0.3) // Risk correlation
         }
+        return min(totalRisk / Double(enabledStrategies.count), 10.0) // Cap at 10
+    }
+    
+    private func calculateEfficiency() -> Double {
+        let enabledStrategies = strategyManager.enabledStrategies
+        guard !enabledStrategies.isEmpty else { return 0.0 }
+        
+        // Efficiency based on win rate and return ratio
+        let avgWinRate = calculateWinRate()
+        let avgReturn = calculateAverageReturn() * 5.0 // Unscale
+        let efficiency = (avgWinRate / 100.0) * (avgReturn / 20.0) * 100.0
+        
+        return min(efficiency, 100.0)
     }
 }
 
-struct ModernMetricCard: View {
-    let title: String
-    let value: String
-    let icon: String
-    let color: Color
-    @EnvironmentObject var themeManager: ThemeManager
-    
-    var body: some View {
-        VStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 24, weight: .medium))
-                .foregroundColor(color)
-            
-            Text(value)
-                .font(Typography.title2)
-                .foregroundColor(TextColor.primary)
-            
-            Text(title)
-                .font(Typography.caption1)
-                .foregroundColor(TextColor.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(20)
-        .background(
-            themeManager.neumorphicCardBackground()
-        )
-    }
-}
+
+// MARK: - Modern Strategy Detail View
 
 struct ModernStrategyDetailView: View {
     let strategy: Strategy
-    @EnvironmentObject var themeManager: ThemeManager
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var strategyManager: StrategyManager
+    @EnvironmentObject var settings: SettingsRepository
+    @EnvironmentObject var themeManager: ThemeManager
     
     var body: some View {
         NavigationStack {
@@ -527,10 +466,52 @@ struct ModernStrategyDetailView: View {
                             .font(Typography.title2)
                             .foregroundColor(TextColor.primary)
                         
-                        // Add configuration options here
-                        Text("Configuration options will be implemented here")
+                        Text("Strategy configuration options will be available soon")
                             .font(Typography.body)
                             .foregroundColor(TextColor.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 20)
+                    
+                    // Enable/Disable Button
+                    VStack(spacing: 16) {
+                        if settings.isStrategyEnabled(strategy.name) {
+                            Button(action: {
+                                strategyManager.disableStrategy(named: strategy.name)
+                                let impact = UIImpactFeedbackGenerator(style: .medium)
+                                impact.impactOccurred()
+                            }) {
+                                HStack {
+                                    Image(systemName: "pause.circle.fill")
+                                    Text("Disable Strategy")
+                                }
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(
+                                    LinearGradient(colors: [Color.orange, Color.red], startPoint: .leading, endPoint: .trailing)
+                                )
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                            }
+                        } else {
+                            Button(action: {
+                                strategyManager.enableStrategy(named: strategy.name)
+                                let impact = UIImpactFeedbackGenerator(style: .medium)
+                                impact.impactOccurred()
+                            }) {
+                                HStack {
+                                    Image(systemName: "play.circle.fill")
+                                    Text("Enable Strategy")
+                                }
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(
+                                    LinearGradient(colors: [Color.green, Color.green.opacity(0.8)], startPoint: .leading, endPoint: .trailing)
+                                )
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                            }
+                        }
                     }
                     .padding(.horizontal, 20)
                     

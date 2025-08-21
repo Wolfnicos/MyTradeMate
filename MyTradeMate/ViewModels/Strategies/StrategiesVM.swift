@@ -16,10 +16,10 @@ final class StrategiesVM: ObservableObject {
     @Published var selectedStrategy: StrategyInfo? = nil
     @Published var lastSignals: [String: StrategySignal] = [:]
     @Published var isGeneratingSignals: Bool = false
-    @Published var ensembleSignal: EnsembleSignal? = nil
+    @Published var directFusionSignal: DirectFusionSignal? = nil
     
     // MARK: - Private Properties
-    private let ensembleDecider = EnsembleDecider()
+    private let directFusionDecider = DirectFusionDecider()
     private let regimeDetector = RegimeDetector()
     private let strategyEngine = StrategyEngine.shared
     private let settingsRepo = SettingsRepository.shared
@@ -255,8 +255,8 @@ final class StrategiesVM: ObservableObject {
         // Update SettingsRepository for persistence
         settingsRepo.updateStrategyEnabled(strategies[index].name, enabled: enabled)
         
-        // Update ensemble decider
-        ensembleDecider.enableStrategy(strategyName: strategies[index].name, enabled: enabled)
+        // Update Direct Fusion decider
+        directFusionDecider.enableStrategy(strategyName: strategies[index].name, enabled: enabled)
         
         Task { await logger.info("Strategy \(strategies[index].name) \(enabled ? "enabled" : "disabled")") }
         Haptics.playImpact(.light)
@@ -270,8 +270,8 @@ final class StrategiesVM: ObservableObject {
         // Update SettingsRepository for persistence
         settingsRepo.updateStrategyWeight(strategies[index].name, weight: weight)
         
-        // Update ensemble decider
-        ensembleDecider.updateStrategyWeight(strategyName: strategies[index].name, weight: weight)
+        // Update Direct Fusion decider
+        directFusionDecider.updateStrategyWeight(strategyName: strategies[index].name, weight: weight)
         
         Task { await logger.info("Strategy \(strategies[index].name) weight updated to \(weight)") }
     }

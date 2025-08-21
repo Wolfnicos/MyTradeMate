@@ -225,6 +225,9 @@ final class AIModelManager: AIModelManagerProtocol {
         case .m1:
             // M1 încă pe strategie (prea volatil pentru AI)
             result = nil
+        case .d1:
+            // D1 uses 4H model as fallback
+            result = predict4HSafely(candles: candles)
         }
         
         // ✅ ADD: Cache the result if valid
